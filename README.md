@@ -25,8 +25,58 @@ engine and a Roon-style **parametric EQ**.
   MP3 320/192/128 transcoding), ReplayGain (track/album, pre-amp, clip
   protection), scrobbling toggle, library rescan, accent color, startup view,
   grid density
+- **Updates** — finds new releases on its own and installs one only when you
+  click **Restart to update** (Settings → About to check by hand or turn it off)
 - Keyboard shortcuts: `Space`, `←/→` seek, `Ctrl+←/→` prev/next, `F` full
   screen, `Ctrl+E` EQ, `M` mute, `S` shuffle, `R` repeat, `Ctrl+K` search
+
+## Install
+
+Download Reverb for your system from the
+[latest release](https://github.com/ZortexSenpai/Reverb/releases/latest):
+
+| System | File |
+|---|---|
+| macOS (Apple Silicon and Intel) | `…_universal.dmg` |
+| Windows 10/11 (x64) | `…_x64-setup.exe` |
+| Linux (x86-64) | `.AppImage`, `.deb` or `.rpm`; see below |
+
+Reverb isn't signed with a paid developer certificate, so each OS warns
+about it the first time it opens. This is expected, and only happens once.
+
+**macOS.** Open the `.dmg` and drag Reverb into Applications. The first time
+you open it, macOS says it can't check it for malicious software. Close
+that dialog, then go to **System Settings › Privacy & Security**, scroll to
+the message about Reverb, and click **Open Anyway**. Confirm with your
+password, and it opens normally from then on.
+
+**Windows.** Run the `-setup.exe`. If SmartScreen says *Windows protected
+your PC*, click **More info → Run anyway**. Reverb installs for your user
+account only, so neither installing nor updating needs administrator rights.
+
+**Linux.** Pick the package that suits your distro. Any distro with glibc
+2.35 or newer works: Ubuntu 22.04, Debian 12, Fedora 36 or anything since.
+
+| Package | For | How it updates |
+|---|---|---|
+| `.AppImage` | any distro, no install | Replaces itself in place, with no password. Keep it somewhere you can write to (e.g. `~/Applications`) and `chmod +x` it. |
+| `.deb` | Debian, Ubuntu, Mint, … | Installs system-wide, so each update asks for your password once. |
+| `.rpm` | Fedora, openSUSE, … | Installs system-wide, so each update asks for your password once. |
+
+### Updates
+
+Reverb looks for a new release when it starts and every 6 hours after that,
+and downloads it in the background. When one is ready, an **Update to
+vX.Y.Z** marker appears in the sidebar. It shows what changed, and installs
+only when you click **Restart to update**. Playback is never interrupted on
+its own, and your queue, settings and EQ come back as they were.
+
+**Settings → About** shows the version you're running and has **Check now**.
+You can also turn automatic checks off there, and Reverb then doesn't
+contact GitHub unless you ask.
+
+1.0.0 is the first version with in-app updates. If you built or installed
+Reverb before that, replace it by hand once.
 
 ## Architecture
 
@@ -124,10 +174,14 @@ sudo apt install libwebkit2gtk-4.1-dev librsvg2-dev libasound2-dev libgtk-3-dev
 ```sh
 npm install
 npm run tauri dev    # run the app
-npx vitest run       # frontend unit tests (EQ curve math)
-cargo test           # engine unit tests (DSP, models, auth)
-npm run tauri build  # release bundles
+npx vitest run       # frontend unit tests
+npm run typecheck    # TypeScript
+cargo test           # Rust unit tests (DSP, models, auth, settings)
+npm run tauri build -- --no-sign  # local bundles (see RELEASING.md)
 ```
+
+Releases are built and published by CI, never by hand. See
+[RELEASING.md](RELEASING.md).
 
 A disposable test server is handy for development:
 

@@ -2,8 +2,8 @@
 # Build the rpm and install it, choosing install vs reinstall automatically.
 #
 # The trap this exists to avoid: the app version (the Cargo workspace's) and
-# the rpm `release` (default "1") together decide the NVR, so every local build of an
-# unchanged version produces the *same* NVR. `dnf install` treats an
+# the rpm `release` (default "1") together decide the NVR, so every local
+# build of an unchanged version produces the *same* NVR. `dnf install` treats an
 # already-installed NVR as a no-op — it prints "Nothing to do", exits 0, and
 # your new build is simply not installed. That reads as a broken build when it
 # is really a packaging no-op. So dispatch on what is actually installed:

@@ -297,7 +297,7 @@ mod tests {
     }
 
     /// Every `settings.json.bak-*` file in `dir`.
-    fn backups(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    fn backups(dir: &Path) -> Vec<PathBuf> {
         let mut found: Vec<_> = fs::read_dir(dir)
             .unwrap()
             .map(|e| e.unwrap().path())

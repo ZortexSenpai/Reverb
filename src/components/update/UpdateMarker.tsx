@@ -1,6 +1,6 @@
 import { CircleArrowUp } from "lucide-react";
 import { useT } from "../../lib/i18n";
-import { useUpdateState } from "../../lib/updater";
+import { useUpdateState, versionLabel } from "../../lib/updater";
 import { useUiStore } from "../../stores/uiStore";
 
 /**
@@ -20,7 +20,7 @@ export function UpdateMarker() {
     >
       <CircleArrowUp className="size-4 shrink-0" />
       <span className="truncate">
-        {t("update.marker", { version: `v${state.update.version}` })}
+        {t("update.marker", { version: versionLabel(state.update.version) })}
       </span>
     </button>
   );

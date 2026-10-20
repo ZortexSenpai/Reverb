@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createUpdateController,
+  downloadedUpdate,
   type FoundUpdate,
   type UpdateControllerDeps,
 } from "./updateController";
@@ -328,5 +329,23 @@ describe("dev builds", () => {
 
     expect(deps.check).not.toHaveBeenCalled();
     expect(statuses).toEqual([]);
+  });
+});
+
+describe("downloadedUpdate", () => {
+  const update = { version: "1.0.1", notes: "", date: null };
+
+  it("is the update once it has downloaded, through a failed install", () => {
+    expect(downloadedUpdate({ status: "ready", update })).toBe(update);
+    expect(downloadedUpdate({ status: "installing", update })).toBe(update);
+    expect(downloadedUpdate({ status: "error", during: "install", message: "x", update })).toBe(
+      update,
+    );
+  });
+
+  it("is nothing before then", () => {
+    expect(downloadedUpdate({ status: "idle" })).toBeNull();
+    expect(downloadedUpdate({ status: "downloading", update })).toBeNull();
+    expect(downloadedUpdate({ status: "error", during: "check", message: "x" })).toBeNull();
   });
 });

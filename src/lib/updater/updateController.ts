@@ -1,24 +1,22 @@
 // The update controller: when to look for a new release, what to do with one,
 // and the state the UI shows for it. Everything that touches the outside world
-// (the updater plugin, the setting, the queue, timers) is passed in, so this
-// file is pure policy and runs in tests without Tauri.
+// (the updater plugin, the setting, the queue) is passed in, so this file is
+// pure policy and runs in tests without Tauri. Its schedule uses the global
+// timers, which the tests fake.
 
-/** A newer release the updater found. */
-export interface FoundUpdate {
+/** What the UI shows about a found update. */
+export interface UpdateInfo {
   version: string;
   /** Release notes, Markdown (the release's CHANGELOG.md section). */
   notes: string;
   /** When the release was published, as the manifest gives it. */
   date: string | null;
-  download: () => Promise<void>;
-  install: () => Promise<void>;
 }
 
-/** What the UI shows about a found update. */
-export interface UpdateInfo {
-  version: string;
-  notes: string;
-  date: string | null;
+/** A newer release the updater found. */
+export interface FoundUpdate extends UpdateInfo {
+  download: () => Promise<void>;
+  install: () => Promise<void>;
 }
 
 export type UpdateState =
@@ -47,22 +45,10 @@ export interface UpdateControllerDeps {
   };
   /** False in dev builds, which never check. */
   enabled: boolean;
-  /** Defaults to the global timers. */
-  timers?: Timers;
-}
-
-export interface Timers {
-  setInterval: (callback: () => void, ms: number) => unknown;
-  clearInterval: (handle: unknown) => void;
 }
 
 /** How often a long-running session looks again. */
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-
-const globalTimers: Timers = {
-  setInterval: (callback, ms) => setInterval(callback, ms),
-  clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
-};
 
 export interface UpdateController {
   getState: () => UpdateState;
@@ -78,6 +64,22 @@ export interface UpdateController {
   restartToUpdate: () => Promise<void>;
 }
 
+/**
+ * The update a state is about, once it has finished downloading: what the
+ * update panel shows, and what "Restart to update" would install.
+ */
+export function downloadedUpdate(state: UpdateState): UpdateInfo | null {
+  switch (state.status) {
+    case "ready":
+    case "installing":
+      return state.update;
+    case "error":
+      return state.during === "install" ? state.update : null;
+    default:
+      return null;
+  }
+}
+
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
@@ -87,13 +89,12 @@ function infoOf(found: FoundUpdate): UpdateInfo {
 }
 
 export function createUpdateController(deps: UpdateControllerDeps): UpdateController {
-  const timers = deps.timers ?? globalTimers;
   let state: UpdateState = { status: "idle" };
   const listeners = new Set<(state: UpdateState) => void>();
   let started = false;
   let inFlight: Promise<void> | null = null;
   let reportOutcome = false;
-  let schedule: unknown = null;
+  let schedule: ReturnType<typeof setInterval> | null = null;
   /** The downloaded update, once there is one. */
   let downloaded: FoundUpdate | null = null;
 
@@ -153,12 +154,12 @@ export function createUpdateController(deps: UpdateControllerDeps): UpdateContro
 
   function startSchedule() {
     void run(false);
-    schedule = timers.setInterval(() => void run(false), CHECK_INTERVAL_MS);
+    schedule = setInterval(() => void run(false), CHECK_INTERVAL_MS);
   }
 
   function stopSchedule() {
     if (schedule == null) return;
-    timers.clearInterval(schedule);
+    clearInterval(schedule);
     schedule = null;
   }
 

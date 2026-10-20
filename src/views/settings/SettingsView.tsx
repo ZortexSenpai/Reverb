@@ -29,10 +29,12 @@ import { cmd, errorMessage } from "../../lib/ipc/commands";
 import { markStatsImportStarted } from "../../lib/playback/engineBridge";
 import { themeArt } from "../../lib/themes/genshin";
 import {
+  downloadedUpdate,
   releaseUrl,
   updateController,
   updatesEnabled,
   useUpdateState,
+  versionLabel,
   type UpdateState,
 } from "../../lib/updater";
 import type {
@@ -1135,9 +1137,9 @@ function updateStatus(state: UpdateState, t: T): string | undefined {
     case "checking":
       return t("about.checking");
     case "downloading":
-      return t("about.downloading", { version: `v${state.update.version}` });
+      return t("about.downloading", { version: versionLabel(state.update.version) });
     case "ready":
-      return t("about.ready", { version: `v${state.update.version}` });
+      return t("about.ready", { version: versionLabel(state.update.version) });
     case "installing":
       return t("about.installing");
     case "upToDate":
@@ -1168,7 +1170,7 @@ function AboutSection() {
             rel="noreferrer"
             className="flex items-center gap-1 text-sm font-medium tabular-nums hover:underline"
           >
-            v{version.data} <ExternalLink className="size-3.5 text-faint" />
+            {versionLabel(version.data)} <ExternalLink className="size-3.5 text-faint" />
           </a>
         )}
       </SettingRow>
@@ -1180,7 +1182,8 @@ function AboutSection() {
         hint={updatesEnabled ? updateStatus(update, t) : t("about.devBuild")}
       >
         <div className="flex gap-2">
-          {update.status === "ready" && (
+          {/* Also after a failed install, so it can be retried from here. */}
+          {downloadedUpdate(update) && (
             <Button variant="outline" onClick={() => openUpdatePanel(true)}>
               {t("about.showUpdate")}
             </Button>

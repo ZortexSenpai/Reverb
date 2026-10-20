@@ -4,23 +4,16 @@
 import { ExternalLink, RotateCw } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useT } from "../../lib/i18n";
-import { releaseUrl, updateController, useUpdateState, type UpdateState } from "../../lib/updater";
+import {
+  downloadedUpdate,
+  releaseUrl,
+  updateController,
+  useUpdateState,
+  versionLabel,
+} from "../../lib/updater";
 import { useUiStore } from "../../stores/uiStore";
 import { Button } from "../ui/Button";
 import { ReleaseNotes } from "./ReleaseNotes";
-
-/** The update the panel is about: only one that has finished downloading. */
-function downloadedUpdate(state: UpdateState) {
-  switch (state.status) {
-    case "ready":
-    case "installing":
-      return state.update;
-    case "error":
-      return state.during === "install" ? state.update : null;
-    default:
-      return null;
-  }
-}
 
 export function UpdatePanel() {
   const t = useT();
@@ -44,7 +37,7 @@ export function UpdatePanel() {
             aria-describedby={undefined}
           >
             <Dialog.Title className="text-base font-semibold">
-              {t("update.title", { version: `v${update.version}` })}
+              {t("update.title", { version: versionLabel(update.version) })}
             </Dialog.Title>
             {released && (
               <div className="mt-0.5 text-xs text-faint">

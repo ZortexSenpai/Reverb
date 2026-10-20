@@ -9,11 +9,16 @@ import { saveQueueSnapshotNow } from "../../stores/playerStore";
 import { usePrefsStore } from "../../stores/prefsStore";
 import { createUpdateController, type FoundUpdate, type UpdateState } from "./updateController";
 
-export type { UpdateInfo, UpdateState } from "./updateController";
+export { downloadedUpdate, type UpdateState } from "./updateController";
+
+/** A version as listeners see it, and as its release is tagged: "v1.0.1". */
+export function versionLabel(version: string): string {
+  return `v${version}`;
+}
 
 /** The GitHub release page for a version ("1.0.1"). */
 export function releaseUrl(version: string): string {
-  return `https://github.com/ZortexSenpai/Reverb/releases/tag/v${version}`;
+  return `https://github.com/ZortexSenpai/Reverb/releases/tag/${versionLabel(version)}`;
 }
 
 /**

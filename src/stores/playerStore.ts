@@ -469,18 +469,32 @@ interface QueueSnapshot {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+function saveSnapshot(): Promise<void> {
+  saveTimer = null;
+  if (!usePrefsStore.getState().prefs.saveQueue) return Promise.resolve();
+  const { queue, queueIndex } = usePlayerStore.getState();
+  const snapshot: QueueSnapshot | null =
+    queue.length > 0 ? { songs: queue.map((it) => it.song), index: queueIndex } : null;
+  return cmd("queue_save_snapshot", { snapshot });
+}
+
 usePlayerStore.subscribe((state, prev) => {
   if (state.queue === prev.queue && state.queueIndex === prev.queueIndex) return;
   if (!usePrefsStore.getState().prefs.saveQueue) return;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    if (!usePrefsStore.getState().prefs.saveQueue) return;
-    const { queue, queueIndex } = usePlayerStore.getState();
-    const snapshot: QueueSnapshot | null =
-      queue.length > 0 ? { songs: queue.map((it) => it.song), index: queueIndex } : null;
-    void cmd("queue_save_snapshot", { snapshot });
-  }, 2000);
+  saveTimer = setTimeout(() => void saveSnapshot(), 2000);
 });
+
+/**
+ * Save a queue change still waiting out the delay above, now. Nothing saves on
+ * exit, so this is what keeps the last few seconds of queue edits when the app
+ * is about to go away (installing an update).
+ */
+export async function saveQueueSnapshotNow(): Promise<void> {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer);
+  await saveSnapshot();
+}
 
 export async function restoreQueueFromSnapshot() {
   if (!usePrefsStore.getState().prefs.saveQueue) return;

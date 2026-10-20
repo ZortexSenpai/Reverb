@@ -27,6 +27,12 @@ pub fn run() {
                 .level_for("reverb_core", log::LevelFilter::Debug)
                 .build(),
         )
+        // Self-update from GitHub releases, and the relaunch into the new
+        // version. The frontend's update controller decides when.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        // External links (release notes, the release page) open in the browser.
+        .plugin(tauri_plugin_opener::init())
         .register_asynchronous_uri_scheme_protocol("reverb-art", protocol::cover_art::handle)
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;

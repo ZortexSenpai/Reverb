@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ListMusic, Pin, Radio, Settings } from "lucide-react";
 import { NavLink } from "react-router";
 import { Logo } from "../ui/Logo";
+import { UpdateMarker } from "../update/UpdateMarker";
 import { visibleNavItems } from "./navItems";
 import { useT } from "../../lib/i18n";
 import { cmd } from "../../lib/ipc/commands";
@@ -123,6 +124,8 @@ export function Sidebar() {
         <PinnedPlaylists />
       </div>
       <div className="flex flex-col gap-0.5 px-2 pb-3">
+        {/* The sidebar is in both layouts, so the marker is too. */}
+        <UpdateMarker />
         <LastfmOnlySwitch />
         <NavLink
           to="/settings"

@@ -507,6 +507,36 @@ export const de: Messages = {
   "settings.scanLibrary": "Bibliothek scannen",
   "settings.signOut": "Abmelden",
 
+  "settings.about": "Über Reverb",
+  "about.version": "Version",
+  "about.versionHint": "Öffnet die Seite dieser Version auf GitHub.",
+  "about.autoCheck": "Automatisch nach Updates suchen",
+  "about.autoCheckHint":
+    "Sucht beim Start und alle 6 Stunden nach einer neuen Version und lädt sie im Hintergrund herunter. Ist das aus, kontaktiert Reverb GitHub nur, wenn du selbst suchst.",
+  "about.updates": "Updates",
+  "about.checkNow": "Jetzt suchen",
+  "about.checking": "Suche nach Updates…",
+  "about.downloading": "Reverb {version} wird heruntergeladen…",
+  "about.ready": "Reverb {version} ist bereit zur Installation.",
+  "about.showUpdate": "Neuerungen",
+  "about.installing": "Update wird installiert…",
+  "about.upToDate": "Reverb ist auf dem neuesten Stand.",
+  "about.checkFailed": "Die Suche nach Updates ist fehlgeschlagen: {error}",
+  "about.devBuild": "Entwicklungsversionen suchen nie nach Updates.",
+
+  "update.marker": "Update auf {version}",
+  "update.title": "Reverb {version} ist bereit",
+  "update.released": "Veröffentlicht am {date}",
+  "update.noNotes": "Zu dieser Version gibt es keine Hinweise.",
+  "update.viewRelease": "Version auf GitHub ansehen",
+  "update.later": "Später",
+  "update.restart": "Neu starten und aktualisieren",
+  "update.installing": "Wird installiert…",
+  "update.restartHint":
+    "Reverb schließt sich, installiert das Update und öffnet sich wieder. Warteschlange, Einstellungen und EQ bleiben, wie sie sind.",
+  "update.installFailed":
+    "Das Update konnte nicht installiert werden: {error}. Die aktuelle Version läuft weiter, und du kannst es erneut versuchen.",
+
   "eq.title": "Parametrischer EQ",
   "eq.bypassed": "Umgangen",
   "eq.presets": "Presets",

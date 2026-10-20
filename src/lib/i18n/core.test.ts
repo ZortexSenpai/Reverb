@@ -167,6 +167,7 @@ describe("catalogue completeness", () => {
       m: 2,
       disc: 1,
       track: 2,
+      version: "v1.0.1",
     };
     for (const locale of LOCALES) {
       const translate = translator(locale);

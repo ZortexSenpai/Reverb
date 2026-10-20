@@ -13,6 +13,8 @@ interface UiStore {
   newPlaylistName: string;
   /** Non-null while a stats import runs (fed by stats:import events). */
   statsImport: { imported: number; total: number | null } | null;
+  /** The downloaded update's release notes and "Restart to update". */
+  updatePanelOpen: boolean;
 
   setSession: (s: Session) => void;
   setNowPlayingOpen: (open: boolean) => void;
@@ -21,6 +23,7 @@ interface UiStore {
   dismissToast: () => void;
   openNewPlaylist: (songIds?: string[], name?: string) => void;
   closeNewPlaylist: () => void;
+  setUpdatePanelOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -31,6 +34,7 @@ export const useUiStore = create<UiStore>((set) => ({
   newPlaylistSongIds: null,
   newPlaylistName: "",
   statsImport: null,
+  updatePanelOpen: false,
 
   setSession: (session) => set({ session }),
   openNewPlaylist: (songIds = [], name = "") =>
@@ -43,4 +47,5 @@ export const useUiStore = create<UiStore>((set) => ({
     window.setTimeout(() => set({ toast: null }), 5000);
   },
   dismissToast: () => set({ toast: null }),
+  setUpdatePanelOpen: (updatePanelOpen) => set({ updatePanelOpen }),
 }));

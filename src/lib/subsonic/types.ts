@@ -446,6 +446,8 @@ export interface Preferences {
   saveQueue: boolean;
   /** Keep the queue on the server too, and pick up one another client saved. */
   syncQueue: boolean;
+  /** Look for a new release at launch and every 6 hours. */
+  checkForUpdates: boolean;
 }
 
 export type FrontendSettings = Preferences & { volume: number };

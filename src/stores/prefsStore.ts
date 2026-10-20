@@ -166,6 +166,7 @@ const DEFAULT_PREFS: Preferences = {
   radioMode: false,
   saveQueue: true,
   syncQueue: true,
+  checkForUpdates: true,
 };
 
 function applyAccent(accent: string) {

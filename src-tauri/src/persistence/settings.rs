@@ -117,6 +117,9 @@ pub struct Preferences {
     /// Keep the queue on the server too, and pick up a newer one another
     /// client saved there.
     pub sync_queue: bool,
+    /// Look for a new release at launch and every 6 hours. Off means Reverb
+    /// never contacts GitHub unless asked to ("Check now").
+    pub check_for_updates: bool,
 }
 
 impl Default for Preferences {
@@ -158,6 +161,7 @@ impl Default for Preferences {
             radio_mode: false,
             save_queue: true,
             sync_queue: true,
+            check_for_updates: true,
         }
     }
 }
@@ -265,7 +269,8 @@ mod tests {
             "seekBarStyle": "wave",
             "seekBarAnimated": false,
             "seekBarThickness": "thick",
-            "syncQueue": false
+            "syncQueue": false,
+            "checkForUpdates": false
         }"#;
         let prefs: Preferences = serde_json::from_str(raw).expect("camelCase names must match");
         assert!(prefs.lastfm_scrobble_only);
@@ -276,6 +281,7 @@ mod tests {
         assert!(!prefs.seek_bar_animated);
         assert_eq!(prefs.seek_bar_thickness, "thick");
         assert!(!prefs.sync_queue);
+        assert!(!prefs.check_for_updates);
 
         // ...and come back out under the same names.
         let back = serde_json::to_value(&prefs).unwrap();
@@ -287,6 +293,7 @@ mod tests {
         assert_eq!(back["seekBarAnimated"], serde_json::json!(false));
         assert_eq!(back["seekBarThickness"], serde_json::json!("thick"));
         assert_eq!(back["syncQueue"], serde_json::json!(false));
+        assert_eq!(back["checkForUpdates"], serde_json::json!(false));
     }
 
     /// Every `settings.json.bak-*` file in `dir`.
@@ -370,6 +377,7 @@ mod tests {
         assert!(!s.prefs.lastfm_scrobble_only_reset_on_start);
         assert!(!s.prefs.lastfm_scrobble_only_pinned);
         assert!(s.prefs.audio_device.is_none());
+        assert!(s.prefs.check_for_updates, "update checks default to on");
         // And the new shape round-trips.
         let back = serde_json::to_string(&s).unwrap();
         let s2: Settings = serde_json::from_str(&back).unwrap();

@@ -1,8 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   BarChart3,
   Check,
+  ExternalLink,
   Gauge,
+  Info,
   LogOut,
   Maximize2,
   Palette,
@@ -25,6 +28,13 @@ import { LANGUAGE_NAMES, LOCALES, useT, type MessageKey, type T } from "../../li
 import { cmd, errorMessage } from "../../lib/ipc/commands";
 import { markStatsImportStarted } from "../../lib/playback/engineBridge";
 import { themeArt } from "../../lib/themes/genshin";
+import {
+  releaseUrl,
+  updateController,
+  updatesEnabled,
+  useUpdateState,
+  type UpdateState,
+} from "../../lib/updater";
 import type {
   GridSize,
   NowPlayingAlign,
@@ -1117,6 +1127,78 @@ function StatsSourcesSection() {
   );
 }
 
+/** What the last update check came to, for the line under "Check now". */
+function updateStatus(state: UpdateState, t: T): string | undefined {
+  switch (state.status) {
+    case "idle":
+      return undefined;
+    case "checking":
+      return t("about.checking");
+    case "downloading":
+      return t("about.downloading", { version: `v${state.update.version}` });
+    case "ready":
+      return t("about.ready", { version: `v${state.update.version}` });
+    case "installing":
+      return t("about.installing");
+    case "upToDate":
+      return t("about.upToDate");
+    case "error":
+      return state.during === "check"
+        ? t("about.checkFailed", { error: state.message })
+        : t("update.installFailed", { error: state.message });
+  }
+}
+
+function AboutSection() {
+  const t = useT();
+  const autoCheck = usePrefsStore((s) => s.prefs.checkForUpdates);
+  const set = usePrefsStore((s) => s.set);
+  const openUpdatePanel = useUiStore((s) => s.setUpdatePanelOpen);
+  const update = useUpdateState();
+  const version = useQuery({ queryKey: ["app-version"], queryFn: getVersion, staleTime: Infinity });
+  const busy = ["checking", "downloading", "installing"].includes(update.status);
+
+  return (
+    <SectionCard icon={Info} title={t("settings.about")}>
+      <SettingRow label={t("about.version")} hint={t("about.versionHint")}>
+        {version.data && (
+          <a
+            href={releaseUrl(version.data)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 text-sm font-medium tabular-nums hover:underline"
+          >
+            v{version.data} <ExternalLink className="size-3.5 text-faint" />
+          </a>
+        )}
+      </SettingRow>
+      <SettingRow label={t("about.autoCheck")} hint={t("about.autoCheckHint")}>
+        <Toggle checked={autoCheck} onChange={(checkForUpdates) => set({ checkForUpdates })} />
+      </SettingRow>
+      <SettingRow
+        label={t("about.updates")}
+        hint={updatesEnabled ? updateStatus(update, t) : t("about.devBuild")}
+      >
+        <div className="flex gap-2">
+          {update.status === "ready" && (
+            <Button variant="outline" onClick={() => openUpdatePanel(true)}>
+              {t("about.showUpdate")}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => void updateController.checkNow()}
+            disabled={busy || !updatesEnabled}
+          >
+            <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
+            {t("about.checkNow")}
+          </Button>
+        </div>
+      </SettingRow>
+    </SectionCard>
+  );
+}
+
 export function SettingsView() {
   const t = useT();
   return (
@@ -1134,6 +1216,7 @@ export function SettingsView() {
         </div>
         <StatsSourcesSection />
         <ServerSection />
+        <AboutSection />
       </div>
     </div>
   );

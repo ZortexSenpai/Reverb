@@ -1,11 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Song } from "../lib/subsonic/types";
-import { usePlayerStore, type QueueItem } from "./playerStore";
+import { saveQueueSnapshotNow, usePlayerStore, type QueueItem } from "./playerStore";
 import { usePrefsStore } from "./prefsStore";
 
 // Queue actions push the engine commands out over IPC; there is no Tauri host
-// in the test run, so swallow them.
-vi.mock("@tauri-apps/api/core", () => ({ invoke: () => Promise.resolve(undefined) }));
+// in the test run, so swallow them (and keep them, for the tests that care).
+const { invoke } = vi.hoisted(() => ({
+  invoke: vi.fn<(name: string, args?: unknown) => Promise<unknown>>(() =>
+    Promise.resolve(undefined),
+  ),
+}));
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 const song = (id: string, starred?: string): Song => ({ id, title: `Song ${id}`, starred });
 const item = (queueId: string, s: Song): QueueItem => ({ queueId, song: s });
@@ -85,5 +90,51 @@ describe("playContext", () => {
     const { queue, queueIndex } = usePlayerStore.getState();
     expect(queue.map((i) => i.song.id)).toEqual(["a", "b", "c", "d", "e", "f"]);
     expect(queue[queueIndex].song.id).toBe("d");
+  });
+});
+
+describe("saveQueueSnapshotNow", () => {
+  const setSaveQueue = (saveQueue: boolean) =>
+    usePrefsStore.setState({ prefs: { ...usePrefsStore.getState().prefs, saveQueue } });
+  const snapshotSaves = () => invoke.mock.calls.filter(([name]) => name === "queue_save_snapshot");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    invoke.mockClear();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("saves a queue change right away instead of 2 seconds later", async () => {
+    setSaveQueue(true);
+    setQueue([item("q1", song("a")), item("q2", song("b"))]);
+    expect(snapshotSaves()).toEqual([]);
+
+    await saveQueueSnapshotNow();
+
+    expect(snapshotSaves()).toEqual([
+      ["queue_save_snapshot", { snapshot: { songs: [song("a"), song("b")], index: 0 } }],
+    ]);
+  });
+
+  it("leaves nothing for the delayed save to repeat", async () => {
+    setSaveQueue(true);
+    setQueue([item("q1", song("a"))]);
+
+    await saveQueueSnapshotNow();
+    vi.advanceTimersByTime(5000);
+
+    expect(snapshotSaves()).toHaveLength(1);
+  });
+
+  it("does nothing when 'save queue' is off", async () => {
+    setSaveQueue(false);
+    setQueue([item("q1", song("a"))]);
+
+    await saveQueueSnapshotNow();
+    vi.advanceTimersByTime(5000);
+
+    expect(snapshotSaves()).toEqual([]);
   });
 });

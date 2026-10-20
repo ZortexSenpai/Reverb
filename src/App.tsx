@@ -5,6 +5,7 @@ import { CenteredSpinner } from "./components/ui/Spinner";
 import { cmd } from "./lib/ipc/commands";
 import { hydrateFromEngine } from "./lib/playback/engineBridge";
 import { startQueueSync } from "./lib/playback/queueSync";
+import { updateController } from "./lib/updater";
 import { restoreQueueFromSnapshot, usePlayerStore } from "./stores/playerStore";
 import { usePrefsStore } from "./stores/prefsStore";
 import { useUiStore } from "./stores/uiStore";
@@ -45,6 +46,12 @@ export default function App() {
   // After the local queue is back (and after signing in on first launch).
   useEffect(() => {
     if (session === "ready") void startQueueSync();
+  }, [session]);
+
+  // After the preferences are hydrated, so the first check obeys the
+  // automatic-check setting. A no-op in dev builds and on later calls.
+  useEffect(() => {
+    if (session === "ready") updateController.start();
   }, [session]);
 
   if (session === "loading") return <CenteredSpinner />;

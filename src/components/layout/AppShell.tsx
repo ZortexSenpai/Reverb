@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import { NewPlaylistDialog } from "../library/NewPlaylistDialog";
 import { NowPlayingOverlay } from "../../overlays/now-playing/NowPlayingOverlay";
 import { QueuePanel } from "../../overlays/now-playing/QueuePanel";
+import { UpdatePanel } from "../update/UpdatePanel";
 import { useGlobalShortcuts } from "../../lib/keyboard";
 import { themeArt } from "../../lib/themes/genshin";
 import { usePrefsStore } from "../../stores/prefsStore";
@@ -61,6 +62,7 @@ export function AppShell() {
       <NowPlayingOverlay />
       <QueuePanel />
       <NewPlaylistDialog />
+      <UpdatePanel />
       <Toast />
     </>
   );

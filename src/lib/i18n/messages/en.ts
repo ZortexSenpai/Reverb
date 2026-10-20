@@ -534,6 +534,38 @@ export const en = {
   "settings.scanLibrary": "Scan library",
   "settings.signOut": "Sign out",
 
+  // ---- settings: about ----
+  "settings.about": "About",
+  "about.version": "Version",
+  "about.versionHint": "Opens this version's release page on GitHub.",
+  "about.autoCheck": "Check for updates automatically",
+  "about.autoCheckHint":
+    "Looks for a new release at launch and every 6 hours, and downloads it in the background. When this is off, Reverb only contacts GitHub when you check yourself.",
+  "about.updates": "Updates",
+  "about.checkNow": "Check now",
+  "about.checking": "Checking for updates…",
+  "about.downloading": "Downloading Reverb {version}…",
+  "about.ready": "Reverb {version} is ready to install.",
+  "about.showUpdate": "What's new",
+  "about.installing": "Installing the update…",
+  "about.upToDate": "Reverb is up to date.",
+  "about.checkFailed": "Couldn't check for updates: {error}",
+  "about.devBuild": "Development builds never check for updates.",
+
+  // ---- updates ----
+  "update.marker": "Update to {version}",
+  "update.title": "Reverb {version} is ready",
+  "update.released": "Released {date}",
+  "update.noNotes": "This release has no notes.",
+  "update.viewRelease": "View the release on GitHub",
+  "update.later": "Later",
+  "update.restart": "Restart to update",
+  "update.installing": "Installing…",
+  "update.restartHint":
+    "Reverb closes, installs the update and opens again. Your queue, settings and EQ stay as they are.",
+  "update.installFailed":
+    "The update couldn't be installed: {error}. You're still on the current version, and can try again.",
+
   // ---- EQ ----
   "eq.title": "Parametric EQ",
   "eq.bypassed": "Bypassed",

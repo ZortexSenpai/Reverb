@@ -508,6 +508,36 @@ export const fr: Messages = {
   "settings.scanLibrary": "Analyser la bibliothèque",
   "settings.signOut": "Se déconnecter",
 
+  "settings.about": "À propos",
+  "about.version": "Version",
+  "about.versionHint": "Ouvre la page de cette version sur GitHub.",
+  "about.autoCheck": "Rechercher les mises à jour automatiquement",
+  "about.autoCheckHint":
+    "Cherche une nouvelle version au démarrage puis toutes les 6 heures, et la télécharge en arrière-plan. Désactivé, Reverb ne contacte GitHub que lorsque vous vérifiez vous-même.",
+  "about.updates": "Mises à jour",
+  "about.checkNow": "Vérifier maintenant",
+  "about.checking": "Recherche de mises à jour…",
+  "about.downloading": "Téléchargement de Reverb {version}…",
+  "about.ready": "Reverb {version} est prêt à être installé.",
+  "about.showUpdate": "Nouveautés",
+  "about.installing": "Installation de la mise à jour…",
+  "about.upToDate": "Reverb est à jour.",
+  "about.checkFailed": "Impossible de rechercher les mises à jour : {error}",
+  "about.devBuild": "Les versions de développement ne recherchent jamais de mises à jour.",
+
+  "update.marker": "Mettre à jour vers {version}",
+  "update.title": "Reverb {version} est prêt",
+  "update.released": "Publiée le {date}",
+  "update.noNotes": "Cette version n'a pas de notes.",
+  "update.viewRelease": "Voir la version sur GitHub",
+  "update.later": "Plus tard",
+  "update.restart": "Redémarrer pour mettre à jour",
+  "update.installing": "Installation…",
+  "update.restartHint":
+    "Reverb se ferme, installe la mise à jour et se rouvre. Votre file d'attente, vos réglages et votre égaliseur restent tels quels.",
+  "update.installFailed":
+    "La mise à jour n'a pas pu être installée : {error}. Vous êtes toujours sur la version actuelle et pouvez réessayer.",
+
   "eq.title": "Égaliseur paramétrique",
   "eq.bypassed": "Contourné",
   "eq.presets": "Préréglages",

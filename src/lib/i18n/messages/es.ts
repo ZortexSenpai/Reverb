@@ -507,6 +507,36 @@ export const es: Messages = {
   "settings.scanLibrary": "Analizar la biblioteca",
   "settings.signOut": "Cerrar sesión",
 
+  "settings.about": "Acerca de",
+  "about.version": "Versión",
+  "about.versionHint": "Abre la página de esta versión en GitHub.",
+  "about.autoCheck": "Buscar actualizaciones automáticamente",
+  "about.autoCheckHint":
+    "Busca una versión nueva al iniciar y cada 6 horas, y la descarga en segundo plano. Si está desactivado, Reverb solo contacta con GitHub cuando lo compruebas tú.",
+  "about.updates": "Actualizaciones",
+  "about.checkNow": "Comprobar ahora",
+  "about.checking": "Buscando actualizaciones…",
+  "about.downloading": "Descargando Reverb {version}…",
+  "about.ready": "Reverb {version} está listo para instalarse.",
+  "about.showUpdate": "Novedades",
+  "about.installing": "Instalando la actualización…",
+  "about.upToDate": "Reverb está actualizado.",
+  "about.checkFailed": "No se pudieron buscar actualizaciones: {error}",
+  "about.devBuild": "Las versiones de desarrollo nunca buscan actualizaciones.",
+
+  "update.marker": "Actualizar a {version}",
+  "update.title": "Reverb {version} está listo",
+  "update.released": "Publicada el {date}",
+  "update.noNotes": "Esta versión no tiene notas.",
+  "update.viewRelease": "Ver la versión en GitHub",
+  "update.later": "Más tarde",
+  "update.restart": "Reiniciar para actualizar",
+  "update.installing": "Instalando…",
+  "update.restartHint":
+    "Reverb se cierra, instala la actualización y se vuelve a abrir. Tu cola, tus ajustes y tu ecualizador se quedan como están.",
+  "update.installFailed":
+    "No se pudo instalar la actualización: {error}. Sigues en la versión actual y puedes volver a intentarlo.",
+
   "eq.title": "Ecualizador paramétrico",
   "eq.bypassed": "Omitido",
   "eq.presets": "Preajustes",

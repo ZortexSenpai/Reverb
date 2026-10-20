@@ -1,0 +1,37 @@
+{
+  "//": [
+    "release-please owns Reverb's version. See RELEASING.md.",
+    "The `node` release type is deliberate. The `rust` type can't bump a crate that inherits",
+    "`version.workspace = true`, or a root Cargo.toml without a [package] table",
+    "(googleapis/release-please#2111, still open), so don't 'fix' this to `rust`. `node` bumps",
+    "package.json and package-lock.json; the extra-files below bump the Cargo workspace version",
+    "and both workspace crates in Cargo.lock. (TOML strings come out of release-please's parser",
+    "as {value: ...} objects, hence `@.name.value`.) tauri.conf.json has no version: it inherits",
+    "the Cargo one. `scripts/check-versions.mjs` fails CI if any of these disagree.",
+    "`release-as` + `prerelease` cut the first release candidate; RELEASING.md says when to change",
+    "and then remove them."
+  ],
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "draft": true,
+      "force-tag-creation": true,
+      "release-as": "1.0.0-rc.1",
+      "prerelease": true,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "Cargo.toml",
+          "jsonpath": "$.workspace.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "Cargo.lock",
+          "jsonpath": "$.package[?(@.name.value=='reverb' || @.name.value=='reverb-core')].version"
+        }
+      ]
+    }
+  }
+}

@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Reverb",
-  "version": "0.1.0",
   "identifier": "dev.zortexsenpai.reverb",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -25,7 +24,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg", "nsis", "appimage", "deb", "rpm"],
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -43,6 +43,25 @@
           "libasound.so.2()(64bit)",
           "libdbus-1.so.3()(64bit)"
         ]
+      }
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE-WITH-THE-PUBLIC-KEY-FROM-ISSUE-4",
+      "endpoints": [
+        "https://github.com/ZortexSenpai/Reverb/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

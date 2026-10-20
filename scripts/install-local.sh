@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build the rpm and install it, choosing install vs reinstall automatically.
 #
-# The trap this exists to avoid: `version` in tauri.conf.json and the rpm
-# `release` (default "1") together decide the NVR, so every local build of an
+# The trap this exists to avoid: the app version (the Cargo workspace's) and
+# the rpm `release` (default "1") together decide the NVR, so every local build of an
 # unchanged version produces the *same* NVR. `dnf install` treats an
 # already-installed NVR as a no-op — it prints "Nothing to do", exits 0, and
 # your new build is simply not installed. That reads as a broken build when it
@@ -17,7 +17,8 @@
 #   scripts/install-local.sh --skip-build   # install whatever is already built
 #
 # Note this rpm is only usable on the machine that built it (or newer) — the
-# binary picks up the local glibc floor. Use the CI bundle job for releases.
+# binary picks up the local glibc floor, and it is unsigned, so it can't
+# update itself. Releases come from the release workflow (RELEASING.md).
 
 set -euo pipefail
 
@@ -47,7 +48,9 @@ if [[ $SKIP_BUILD -eq 0 ]]; then
   info "Building rpm bundle"
   # Runs the vite build via beforeBuildCommand, then a release cargo build.
   # Slow even for config-only changes: lto=true forces a full relink.
-  (cd "$REPO_ROOT" && npm run tauri build -- --bundles rpm)
+  # --no-sign: the updater signing key lives in CI only, and without it the
+  # build would fail at the signing step.
+  (cd "$REPO_ROOT" && npm run tauri build -- --bundles rpm --no-sign)
 fi
 
 # Glob rather than construct the filename, so a version bump needs no edit here.

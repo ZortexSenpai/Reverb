@@ -16,6 +16,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # release-please labels its PRs, and labels go through the issues API.
+  issues: write
 
 # Never cancel a run that may be halfway through uploading to a draft.
 concurrency:
@@ -35,6 +37,11 @@ jobs:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
+          # A release PR pushed with the default GITHUB_TOKEN triggers no
+          # workflows, so CI would never report on it and the ruleset could
+          # never let it merge. The PAT makes it an ordinary PR. Without the
+          # secret, everything else still works, but CI skips the release PR.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 

@@ -6,7 +6,10 @@
 name: CI
 
 on:
+  # Branches only: the tag release-please pushes for a release is the commit
+  # that was just tested on main.
   push:
+    branches: ["**"]
   pull_request:
 
 permissions:
@@ -40,7 +43,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: node scripts/check-versions.mjs
+      - run: npm run check:versions
 
   rust:
     name: Rust tests (${{ matrix.platform }})

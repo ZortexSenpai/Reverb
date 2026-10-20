@@ -17,8 +17,10 @@ that works, what it depends on, and what to do when it goes wrong.
    `package-lock.json`, the Cargo workspace version in `Cargo.toml`, and the
    `reverb` and `reverb-core` entries in `Cargo.lock`. `tauri.conf.json` has
    no version of its own; it inherits the Cargo one.
-3. **CI runs on the release PR like on any other.** The `main` ruleset won't
-   let it merge until these checks pass:
+3. **CI runs on the release PR like on any other.** That only happens
+   because release-please opens it with `RELEASE_PLEASE_TOKEN` (see
+   [Secrets](#secrets)). The `main` ruleset won't let it merge until these
+   checks pass:
    - Frontend tests and type check
    - Version consistency
    - Rust tests (linux)
@@ -86,8 +88,21 @@ gone until they restore it.
 |---|---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | The updater signing key (from `tauri signer generate`) | Check signing key, Build |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Its password | Check signing key, Build |
+| `RELEASE_PLEASE_TOKEN` | A fine-grained personal access token for this repository only, with read/write access to Contents, Pull requests and Issues | Release PR |
 
 `GITHUB_TOKEN` is provided by Actions and needs no setup.
+
+**Why `RELEASE_PLEASE_TOKEN`:** GitHub runs no workflows for a pull request
+pushed with `GITHUB_TOKEN`. Without the PAT, CI never reports on the release
+PR, and the ruleset's required checks would block it forever.
+
+- If the secret is missing, release-please falls back to `GITHUB_TOKEN`.
+  Releases still work, but merging the release PR then needs the admin
+  bypass, with no checks run.
+- The fallback also needs **Settings → Actions → General → Allow GitHub
+  Actions to create and approve pull requests** turned on.
+- Fine-grained tokens expire. When this one does, the *Release PR* job fails
+  with "Bad credentials". Generate a new token and replace the secret.
 
 The **public** key is not a secret. It lives in `src-tauri/tauri.conf.json`
 under `plugins.updater.pubkey`, and every install checks downloads against
@@ -177,7 +192,8 @@ The pipeline is proved with a release candidate before 1.0.0 ships.
 
 1. Generate the signing key and store the secrets (#4). Paste the public key
    into `plugins.updater.pubkey` in `tauri.conf.json`, replacing the
-   placeholder. Until then, *Check signing key* fails on purpose.
+   placeholder. Until then, *Check signing key* fails on purpose. Also create
+   `RELEASE_PLEASE_TOKEN`, so CI runs on the release PR.
 2. Merge the release PR for **v1.0.0-rc.1** (`release-as: 1.0.0-rc.1`,
    `prerelease: true`). Check that the pre-release has every bundle with its
    `.sig` and a complete `latest.json`. Then install it by hand on each OS

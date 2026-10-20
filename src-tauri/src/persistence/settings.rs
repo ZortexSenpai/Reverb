@@ -1,9 +1,18 @@
 //! Rust-owned settings store: `settings.json` in the app config dir, written
 //! atomically (tmp + rename). Holds everything non-secret, including the EQ
 //! state and presets (the engine needs them before the webview is up).
+//!
+//! Compatibility rule: Reverb updates itself, so every release has to read the
+//! file the one before it wrote. New versions only *add* fields, each with a
+//! default (the `#[serde(default)]` on the structs fills them in for old
+//! files). Changing an existing field's type or meaning needs a deliberate
+//! migration. There is no migration system yet, so that means writing one.
+//! A file that still fails to parse is moved aside as
+//! `settings.json.bak-<timestamp>` rather than overwritten (see
+//! [`SettingsStore::load`]).
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 use reverb_core::audio::{EqState, ReplayGainSettings};
@@ -186,13 +195,32 @@ pub struct SettingsStore {
     data: RwLock<Settings>,
 }
 
+/// Move a settings file this version can't parse out of the way, so the next
+/// save starts a fresh one beside it instead of overwriting the listener's
+/// preferences, EQ and presets. The rename keeps the original bytes.
+fn back_up_unreadable(path: &Path, error: &serde_json::Error) {
+    let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%SZ");
+    let backup = path.with_file_name(format!("settings.json.bak-{stamp}"));
+    match fs::rename(path, &backup) {
+        Ok(()) => log::warn!(
+            "settings.json unreadable ({error}); moved it to {} and starting fresh",
+            backup.display()
+        ),
+        Err(e) => log::warn!(
+            "settings.json unreadable ({error}) and could not be backed up ({e}); starting fresh"
+        ),
+    }
+}
+
 impl SettingsStore {
+    /// Read `settings.json` from `config_dir`. A missing file gives defaults;
+    /// one that can't be parsed is backed up first, then defaults.
     pub fn load(config_dir: PathBuf) -> Result<Self, ReverbError> {
         fs::create_dir_all(&config_dir)?;
         let path = config_dir.join("settings.json");
-        let data = match fs::read_to_string(&path) {
-            Ok(raw) => serde_json::from_str(&raw).unwrap_or_else(|e| {
-                log::warn!("settings.json unreadable ({e}); starting fresh");
+        let data = match fs::read(&path) {
+            Ok(raw) => serde_json::from_slice(&raw).unwrap_or_else(|e| {
+                back_up_unreadable(&path, &e);
                 Settings::default()
             }),
             Err(_) => Settings::default(),
@@ -259,6 +287,65 @@ mod tests {
         assert_eq!(back["seekBarAnimated"], serde_json::json!(false));
         assert_eq!(back["seekBarThickness"], serde_json::json!("thick"));
         assert_eq!(back["syncQueue"], serde_json::json!(false));
+    }
+
+    /// Every `settings.json.bak-*` file in `dir`.
+    fn backups(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut found: Vec<_> = fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with("settings.json.bak-"))
+            })
+            .collect();
+        found.sort();
+        found
+    }
+
+    #[test]
+    fn an_unreadable_settings_file_is_backed_up_before_starting_fresh() {
+        let dir = tempfile::tempdir().unwrap();
+        // A later release changed `volume` into an object this one can't read.
+        let original = br#"{"serverUrl": "https://music.example.com/", "volume": {"db": -3}}"#;
+        fs::write(dir.path().join("settings.json"), original).unwrap();
+
+        let store = SettingsStore::load(dir.path().to_path_buf()).unwrap();
+
+        assert_eq!(store.get().server_url, None, "defaults, not a half-read file");
+        let backups = backups(dir.path());
+        assert_eq!(backups.len(), 1, "exactly one backup: {backups:?}");
+        assert_eq!(fs::read(&backups[0]).unwrap(), original, "byte-for-byte");
+        assert!(
+            !dir.path().join("settings.json").exists(),
+            "the original path is free for the next save"
+        );
+    }
+
+    #[test]
+    fn a_readable_settings_file_loads_and_is_left_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let original = br#"{"serverUrl": "https://music.example.com/", "volume": 0.5}"#;
+        fs::write(dir.path().join("settings.json"), original).unwrap();
+
+        let store = SettingsStore::load(dir.path().to_path_buf()).unwrap();
+
+        assert_eq!(store.get().server_url.as_deref(), Some("https://music.example.com/"));
+        assert_eq!(store.get().volume, 0.5);
+        assert!(backups(dir.path()).is_empty());
+        assert_eq!(fs::read(dir.path().join("settings.json")).unwrap(), original);
+    }
+
+    #[test]
+    fn a_missing_settings_file_gives_defaults_and_no_backup() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let store = SettingsStore::load(dir.path().to_path_buf()).unwrap();
+
+        assert_eq!(store.get().server_url, None);
+        assert!(store.get().prefs.save_queue);
+        assert!(backups(dir.path()).is_empty());
     }
 
     #[test]

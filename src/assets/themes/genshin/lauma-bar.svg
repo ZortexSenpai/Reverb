@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- A pair of antlers rising from the bar around a small moon, with Dendro leaves. -->
+  <defs>
+    <radialGradient id="moon" cx="40%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b8c4e0"/>
+    </radialGradient>
+    <g id="antler" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 0C-4-24-16-48-36-68"/>
+      <path d="M-8-24C-20-28-28-36-32-48"/>
+      <path d="M-18-44C-16-56-12-64-4-72"/>
+    </g>
+  </defs>
+  <circle cx="106" cy="36" r="14" fill="url(#moon)"/>
+  <g stroke="#e8f2ea" stroke-width="4">
+    <use href="#antler" transform="translate(98 90)"/>
+    <use href="#antler" transform="translate(114 90) scale(-1 1)"/>
+  </g>
+  <g fill="#4fa35a">
+    <path d="M78 84C82 76 90 72 98 72 94 80 86 84 78 84Z"/>
+    <path d="M134 84C130 76 122 72 114 72 118 80 126 84 134 84Z"/>
+  </g>
+  <g fill="#8fd08a"><circle cx="40" cy="60" r="2.5"/><circle cx="160" cy="40" r="2"/><circle cx="150" cy="70" r="1.8"/></g>
+</svg>

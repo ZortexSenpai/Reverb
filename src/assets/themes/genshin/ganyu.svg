@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Ganyu: qilin horns, glaze lilies and Liyue's auspicious clouds, touched with frost. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#8fc7f0" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#8fc7f0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="horn" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#2a2a3a"/>
+      <stop offset="0.6" stop-color="#b3372f"/>
+      <stop offset="1" stop-color="#e8704a"/>
+    </linearGradient>
+    <g id="lily">
+      <path d="M0 0C-14-20-12-44 0-56 12-44 14-20 0 0Z"/>
+      <path d="M0 0C-14-20-12-44 0-56 12-44 14-20 0 0Z" transform="rotate(-50)"/>
+      <path d="M0 0C-14-20-12-44 0-56 12-44 14-20 0 0Z" transform="rotate(50)"/>
+      <path d="M0 0C-10-14-9-32 0-40 9-32 10-14 0 0Z" transform="rotate(-100)" opacity="0.8"/>
+      <path d="M0 0C-10-14-9-32 0-40 9-32 10-14 0 0Z" transform="rotate(100)" opacity="0.8"/>
+    </g>
+    <path id="cloud" d="M0 0c0-22 30-26 36-8 6-18 38-16 38 6 16-2 24 20 8 26H-6C-24 24-20 0 0 0Z"/>
+  </defs>
+  <circle cx="340" cy="420" r="310" fill="url(#glow)"/>
+  <!-- A pair of qilin horns -->
+  <g fill="url(#horn)" fill-opacity="0.85">
+    <path d="M280 470C250 400 250 300 290 220 296 280 300 340 310 400 316 430 306 460 280 470Z"/>
+    <path d="M420 470C450 400 450 300 410 220 404 280 400 340 390 400 384 430 394 460 420 470Z"/>
+  </g>
+  <g fill="none" stroke="#d9b36a" stroke-opacity="0.8" stroke-width="2">
+    <path d="M272 420q20-6 36 2M268 370q22-6 38 2M270 320q20-4 32 4"/>
+    <path d="M428 420q-20-6-36 2M432 370q-22-6-38 2M430 320q-20-4-32 4"/>
+  </g>
+  <g fill="#eaf4ff" stroke="#8fc7f0" stroke-width="2" fill-opacity="0.9">
+    <use href="#lily" transform="translate(350 600) scale(1.3)"/>
+    <use href="#lily" transform="translate(180 700) rotate(-20) scale(0.9)"/>
+    <use href="#lily" transform="translate(520 730) rotate(18) scale(0.8)"/>
+  </g>
+  <g fill="#6fb0e0"><circle cx="350" cy="600" r="7"/><circle cx="180" cy="700" r="5"/><circle cx="520" cy="730" r="5"/></g>
+  <g fill="none" stroke="#d9b36a" stroke-width="3" stroke-opacity="0.6" stroke-linejoin="round">
+    <use href="#cloud" transform="translate(90 180)"/>
+    <use href="#cloud" transform="translate(440 120) scale(0.8)"/>
+    <use href="#cloud" transform="translate(460 460) scale(0.7)"/>
+    <use href="#cloud" transform="translate(60 520) scale(0.6)"/>
+  </g>
+  <g stroke="#6fb0e0" stroke-width="3" stroke-linecap="round" fill="none" stroke-opacity="0.6">
+    <path d="M540 300v40M523 310l34 20M523 330l34-20"/>
+    <path d="M140 380v28M128 387l24 14M128 401l24-14"/>
+  </g>
+</svg>

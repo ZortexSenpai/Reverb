@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Amber: Mondstadt's outrider — Baron Bunny, a flaming arrow, windwheel asters and gliding wings. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#f08a5a" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#f08a5a" stop-opacity="0"/>
+    </radialGradient>
+    <g id="aster">
+      <path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z"/><path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z" transform="rotate(60)"/>
+      <path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z" transform="rotate(120)"/><path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z" transform="rotate(180)"/>
+      <path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z" transform="rotate(240)"/><path d="M0 0C-6-14-6-26 0-34 6-26 6-14 0 0Z" transform="rotate(300)"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="450" r="310" fill="url(#glow)"/>
+  <!-- Wing glider behind -->
+  <g fill="#fffaf5" fill-opacity="0.8" stroke="#c89a4e" stroke-width="2">
+    <path d="M330 300C250 220 130 200 60 240 130 250 180 280 210 320 150 310 110 330 90 360 170 340 250 350 320 340Z"/>
+    <path d="M350 300C430 220 550 200 620 240 550 250 500 280 470 320 530 310 570 330 590 360 510 340 430 350 360 340Z"/>
+  </g>
+  <!-- Baron Bunny -->
+  <g transform="translate(340 560)">
+    <path d="M-50-100C-70-200-40-240-20-230-10-200-20-150-20-100ZM50-100C70-200 40-240 20-230 10-200 20-150 20-100Z" fill="#d33a2c"/>
+    <ellipse rx="110" ry="104" fill="#7a4a3a"/>
+    <path d="M-80-70L-20-20M-20-70L-80-20" stroke="#f5e6da" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="44" cy="-40" r="18" fill="#f5e6da"/><circle cx="44" cy="-40" r="8" fill="#2b1a14"/>
+    <path d="M-60 40q60 40 120 0" fill="none" stroke="#f5e6da" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round"/>
+    <path d="M-20 90h40v40h-40Z" fill="#d33a2c"/>
+  </g>
+  <!-- Flaming arrow -->
+  <g transform="translate(120 170) rotate(35)">
+    <path d="M0 0H300" stroke="#7a4a3a" stroke-width="6" stroke-linecap="round"/>
+    <path d="M300 0l-26-12v24Z" fill="#c89a4e"/>
+    <path d="M0 0l-20-14h24ZM0 0l-20 14h24Z" fill="#d33a2c"/>
+    <path d="M290-8c30-20 60-10 80 8-20 18-50 28-80 8Z" fill="#f5a340" fill-opacity="0.75"/>
+  </g>
+  <g fill="#9ac0f0" fill-opacity="0.8">
+    <use href="#aster" transform="translate(130 640) scale(0.9)"/>
+    <use href="#aster" transform="translate(530 700) scale(0.7)"/>
+    <use href="#aster" transform="translate(520 140) scale(0.6)"/>
+  </g>
+  <g fill="#f6e07a"><circle cx="130" cy="640" r="6"/><circle cx="530" cy="700" r="5"/><circle cx="520" cy="140" r="4"/></g>
+</svg>

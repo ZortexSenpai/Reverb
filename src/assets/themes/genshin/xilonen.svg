@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Xilonen: Natlan's smith and DJ — anvil and hammer, a roller skate, Geo crystals and sound waves. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#e0a03a" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#e0a03a" stop-opacity="0"/>
+    </radialGradient>
+    <path id="fret" d="M0 0h40v-40h40v-40h40v80h-40v40H0Z"/>
+  </defs>
+  <circle cx="340" cy="450" r="310" fill="url(#glow)"/>
+  <!-- Sound waves -->
+  <g fill="none" stroke="#4fd1c5" stroke-linecap="round" stroke-opacity="0.55">
+    <path d="M60 300h30l14-50 20 100 20-140 20 180 20-120 14 60 14-30h40" stroke-width="4"/>
+    <path d="M380 180c40 30 40 90 0 120M420 150c60 44 60 136 0 180M460 120c80 60 80 180 0 240" stroke-width="3"/>
+  </g>
+  <!-- Anvil and hammer -->
+  <g transform="translate(330 520)">
+    <path d="M-150-40H110C150-40 180-60 190-80 180-30 150 0 110 0H60L40 60H80V90H-100V60H-60L-80 0H-150Z" fill="#3d3425" stroke="#e0c07a" stroke-width="3" stroke-linejoin="round"/>
+    <g transform="translate(40 -120) rotate(-30)">
+      <rect x="-10" y="-10" width="20" height="150" rx="6" fill="#7a5a36"/>
+      <rect x="-50" y="-40" width="100" height="44" rx="6" fill="#5a4a36" stroke="#e0c07a" stroke-width="3"/>
+    </g>
+    <g fill="#f5a340" fill-opacity="0.85"><circle cx="-40" cy="-60" r="5"/><circle cx="-70" cy="-90" r="3"/><circle cx="-10" cy="-100" r="4"/><circle cx="20" cy="-70" r="3"/></g>
+  </g>
+  <!-- Roller skate -->
+  <g transform="translate(180 760) rotate(-8)">
+    <path d="M-60-80H0C10-80 14-60 14-40 40-36 70-24 80 0H-60Z" fill="#e8ddc8" stroke="#c7861f" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M-60-60H0M-60-40H4" stroke="#c7861f" stroke-width="2"/>
+    <rect x="-66" y="0" width="150" height="12" rx="6" fill="#4fd1c5"/>
+    <circle cx="-40" cy="26" r="14" fill="#2b251b" stroke="#e0c07a" stroke-width="3"/>
+    <circle cx="56" cy="26" r="14" fill="#2b251b" stroke="#e0c07a" stroke-width="3"/>
+  </g>
+  <!-- Geo crystals -->
+  <g fill="#e0a03a" fill-opacity="0.75" stroke="#f6d48a" stroke-width="1.5">
+    <path d="M520 700l18-50 18 50-18 30Z"/><path d="M480 720l12-30 12 30-12 18Z"/>
+    <path d="M130 180l14-40 14 40-14 24Z"/><path d="M540 380l10-28 10 28-10 16Z"/>
+  </g>
+  <g fill="#c7861f" fill-opacity="0.3">
+    <use href="#fret" transform="translate(240 900)"/><use href="#fret" transform="translate(360 900)"/><use href="#fret" transform="translate(480 900)"/>
+  </g>
+</svg>

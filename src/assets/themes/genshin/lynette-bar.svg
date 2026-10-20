@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- A sleepy, deadpan cat peeking over the bar, tail flicking, with a playing card. -->
+  <g transform="translate(106 66)">
+    <path d="M-34-12L-30-44-10-26ZM34-12L30-44 10-26Z" fill="#4c5a66" stroke="#b8c4c8" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M-29-20l2-14 8 8ZM29-20l-2-14-8 8Z" fill="#e8a0b0"/>
+    <path d="M-38 24C-40 0-26-26 0-26S40 0 38 24Z" fill="#4c5a66" stroke="#b8c4c8" stroke-width="1.5"/>
+    <g stroke="#e3ecec" stroke-width="3" stroke-linecap="round" fill="none">
+      <path d="M-20-4h10M10-4h10"/>
+      <path d="M-4 8q4 4 8 0"/>
+    </g>
+    <g stroke="#b8c4c8" stroke-width="1.2" stroke-linecap="round"><path d="M-24 8h-14M-24 13l-12 4M24 8h14M24 13l12 4"/></g>
+    <ellipse cx="-24" cy="24" rx="8" ry="5" fill="#4c5a66" stroke="#b8c4c8" stroke-width="1.5"/>
+    <ellipse cx="24" cy="24" rx="8" ry="5" fill="#4c5a66" stroke="#b8c4c8" stroke-width="1.5"/>
+  </g>
+  <path d="M160 90c-4-16 6-22 4-34s-10-12-8-18" fill="none" stroke="#4c5a66" stroke-width="6" stroke-linecap="round"/>
+  <g transform="translate(40 70) rotate(-18)">
+    <rect x="-12" y="-17" width="24" height="34" rx="3" fill="#f2f5f6" stroke="#b8c4c8" stroke-width="1.2"/>
+    <path d="M0-7l6 7-6 7-6-7Z" fill="#3fbfa6"/>
+  </g>
+  <path d="M20 30l2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#7fe0cc"/>
+</svg>

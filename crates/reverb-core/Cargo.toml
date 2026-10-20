@@ -1,0 +1,53 @@
+[package]
+name = "reverb-core"
+description = "Reverb audio engine and Subsonic client (no Tauri dependency)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+symphonia = { version = "0.6", features = ["mpa", "aac", "alac", "isomp4", "aiff"] }
+cpal = "0.18"
+rtrb = "0.3"
+rubato = "4"
+crossbeam-channel = "0.5"
+triple_buffer = "9"
+tempfile = "3"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "form", "query", "http2", "rustls", "rustls-native-certs", "gzip"] }
+url = "2"
+md-5 = "0.11"
+rand = "0.9"
+uuid = { version = "1", features = ["v4", "serde"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+log.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Asking the sound server to let go of a card, over its D-Bus reservation
+# handshake (see `audio::reserve`).
+zbus = "5"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# WASAPI exclusive mode: cpal only opens shared-mode streams, so the
+# bit-perfect path talks to WASAPI directly. Same major as cpal's own
+# dependency, so both share one copy of the bindings.
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_KernelStreaming",
+  "Win32_Media_Multimedia",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Threading",
+  "Win32_System_Variant",
+  "Win32_Devices_FunctionDiscovery",
+  "Win32_UI_Shell_PropertiesSystem",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Device-level CoreAudio control (nominal rate switching, hog mode); cpal
+# already pulls both in, so this adds no new build weight.
+coreaudio-rs = "0.14"
+objc2-core-audio = "0.3"

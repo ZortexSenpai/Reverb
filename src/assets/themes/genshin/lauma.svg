@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Lauma: Nod-Krai's moon priestess — a full moon, a stag's antlers, frosted Dendro leaves. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#cfd8f0" stop-opacity="0.4"/>
+      <stop offset="0.5" stop-color="#4fa35a" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#4fa35a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="40%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#b8c4e0"/>
+    </radialGradient>
+    <path id="leaf" d="M0 0C10-20 30-30 50-30 40-10 20 0 0 0Z"/>
+    <g id="antler" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 0C-10-60-40-120-90-170"/>
+      <path d="M-20-60C-50-70-70-90-80-120"/>
+      <path d="M-45-110C-40-140-30-160-10-180"/>
+      <path d="M-70-145C-100-150-120-165-130-185"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="420" r="320" fill="url(#glow)"/>
+  <circle cx="350" cy="330" r="130" fill="url(#moon)" fill-opacity="0.85"/>
+  <circle cx="310" cy="300" r="18" fill="#b8c4e0" fill-opacity="0.5"/>
+  <circle cx="390" cy="370" r="12" fill="#b8c4e0" fill-opacity="0.4"/>
+  <!-- Antlers framing the moon -->
+  <g stroke="#e8f2ea" stroke-opacity="0.8" stroke-width="10">
+    <use href="#antler" transform="translate(310 560)"/>
+    <use href="#antler" transform="translate(390 560) scale(-1 1)"/>
+  </g>
+  <g fill="#4fa35a" fill-opacity="0.85">
+    <use href="#leaf" transform="translate(230 420) rotate(-30)"/>
+    <use href="#leaf" transform="translate(470 420) rotate(210) scale(1 -1)"/>
+    <use href="#leaf" transform="translate(300 560) rotate(160)"/>
+    <use href="#leaf" transform="translate(400 560) rotate(20) scale(1 -1)"/>
+  </g>
+  <!-- Forest silhouette and frost -->
+  <g fill="#1d2a22" fill-opacity="0.9">
+    <path d="M100 900L150 720 200 900ZM170 900L230 660 290 900ZM440 900L500 690 560 900ZM520 900L570 760 620 900Z"/>
+  </g>
+  <g stroke="#cfd8f0" stroke-width="3" stroke-linecap="round" fill="none" stroke-opacity="0.6">
+    <path d="M120 200v40M103 210l34 20M103 230l34-20"/>
+    <path d="M540 620v28M528 627l24 14M528 641l24-14"/>
+  </g>
+  <g fill="#8fd08a" fill-opacity="0.8">
+    <circle cx="160" cy="560" r="4"/><circle cx="520" cy="240" r="3"/><circle cx="220" cy="130" r="3.5"/><circle cx="480" cy="560" r="2.5"/><circle cx="360" cy="690" r="3"/>
+  </g>
+</svg>

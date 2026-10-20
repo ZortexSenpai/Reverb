@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Escoffier: Fontaine's master chef — a silver cloche, a frosted parfait, whisk and snowflakes. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4aa3c8" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#4aa3c8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f9fb"/>
+      <stop offset="1" stop-color="#8aa6b4"/>
+    </linearGradient>
+    <g id="flake" stroke="#cfe8f2" stroke-width="3" stroke-linecap="round" fill="none">
+      <path d="M0-30V30M-26-15 26 15M-26 15 26-15"/><path d="M-6-24 0-18 6-24M-6 24 0 18 6 24"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="440" r="310" fill="url(#glow)"/>
+  <!-- Cloche -->
+  <g transform="translate(340 400)">
+    <path d="M-170 60C-170-60-90-140 0-140S170-60 170 60Z" fill="url(#silver)" fill-opacity="0.85" stroke="#c9d4da" stroke-width="3"/>
+    <path d="M-120 0C-110-60-70-100-20-112" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-opacity="0.7"/>
+    <circle cy="-152" r="16" fill="url(#silver)" stroke="#c9d4da" stroke-width="3"/>
+    <rect x="-200" y="58" width="400" height="16" rx="8" fill="#c9d4da"/>
+  </g>
+  <!-- Parfait glass -->
+  <g transform="translate(200 700)">
+    <path d="M-50-90H50L20 0H-20Z" fill="#cfe8f2" fill-opacity="0.35" stroke="#c9d4da" stroke-width="2.5"/>
+    <path d="M-44-70H44L36-46H-36Z" fill="#f2b8c8" fill-opacity="0.8"/>
+    <path d="M-34-40H34L26-18H-26Z" fill="#fbf4e6" fill-opacity="0.9"/>
+    <path d="M-48-90C-40-120 40-120 48-90Z" fill="#fbf4e6"/>
+    <circle cy="-120" r="10" fill="#e24a5a"/>
+    <path d="M0 0V70M-34 70H34" stroke="#c9d4da" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <!-- Whisk -->
+  <g transform="translate(470 700) rotate(20)" fill="none" stroke="#c9d4da" stroke-width="3">
+    <path d="M0-120C-30-80-30-20 0 0 30-20 30-80 0-120Z"/><path d="M0-120C-14-80-14-20 0 0 14-20 14-80 0-120Z"/>
+    <path d="M0 0V80" stroke-width="10" stroke-linecap="round" stroke="#4aa3c8"/>
+  </g>
+  <use href="#flake" transform="translate(130 200)"/>
+  <use href="#flake" transform="translate(520 200) scale(0.7)"/>
+  <use href="#flake" transform="translate(560 520) scale(0.5)"/>
+  <use href="#flake" transform="translate(90 500) scale(0.6)"/>
+  <g fill="#f4f9fb"><circle cx="300" cy="180" r="2"/><circle cx="420" cy="140" r="2.5"/><circle cx="360" cy="800" r="2"/><circle cx="60" cy="760" r="1.6"/></g>
+</svg>

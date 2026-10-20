@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Yaoyao: Yuegui the jade-rabbit basket, radishes, bamboo and blossoming peach. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#9ad07a" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#9ad07a" stop-opacity="0"/>
+    </radialGradient>
+    <g id="radish">
+      <path d="M0 0C24 0 30 30 0 70-30 30-24 0 0 0Z" fill="#fbfdf6" stroke="#e58a9a" stroke-width="2"/>
+      <path d="M0 2C-6-20-24-30-30-24-24-10-10-2 0 2ZM0 2C6-24 20-34 28-28 22-12 10-2 0 2ZM0 2C0-20 4-36 8-40 12-26 8-10 0 2Z" fill="#4f9a3a"/>
+    </g>
+    <g id="leaf"><path d="M0 0C20-6 50-6 70 0 50 6 20 6 0 0Z"/></g>
+    <g id="peach">
+      <circle cy="-10" r="10"/><circle cy="-10" r="10" transform="rotate(72)"/><circle cy="-10" r="10" transform="rotate(144)"/>
+      <circle cy="-10" r="10" transform="rotate(216)"/><circle cy="-10" r="10" transform="rotate(288)"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="470" r="310" fill="url(#glow)"/>
+  <!-- Bamboo -->
+  <g stroke="#6fae55" stroke-width="14" stroke-linecap="round" stroke-opacity="0.55">
+    <path d="M520 0V900"/><path d="M570 60V900" stroke-width="10"/>
+  </g>
+  <g stroke="#4f8a3a" stroke-width="3" stroke-opacity="0.6"><path d="M512 180h16M512 380h16M512 580h16M564 260h12M564 480h12"/></g>
+  <g fill="#6fae55" fill-opacity="0.6">
+    <use href="#leaf" transform="translate(520 180) rotate(-160)"/>
+    <use href="#leaf" transform="translate(520 380) rotate(-150) scale(0.8)"/>
+    <use href="#leaf" transform="translate(570 260) rotate(-20) scale(0.6)"/>
+  </g>
+  <!-- Yuegui -->
+  <g transform="translate(320 540)">
+    <path d="M-60-110C-80-200-50-230-30-210-20-190-30-140-30-110ZM60-110C80-200 50-230 30-210 20-190 30-140 30-110Z" fill="#e8d6a8" stroke="#b08a4a" stroke-width="3"/>
+    <path d="M-44-120C-56-180-42-200-34-190-30-170-34-140-34-120ZM44-120C56-180 42-200 34-190 30-170 34-140 34-120Z" fill="#f2b8c2"/>
+    <ellipse rx="120" ry="110" fill="#e8d6a8" stroke="#b08a4a" stroke-width="3"/>
+    <g stroke="#b08a4a" stroke-opacity="0.6" stroke-width="2" fill="none">
+      <path d="M-110-30h220M-118 10h236M-110 50h220M-40-104v210M40-104v210M0-110v220"/>
+    </g>
+    <circle cx="-44" cy="-30" r="12" fill="#2a3a22"/><circle cx="44" cy="-30" r="12" fill="#2a3a22"/>
+    <circle cx="-40" cy="-34" r="4" fill="#fff"/><circle cx="48" cy="-34" r="4" fill="#fff"/>
+    <ellipse cx="-70" cy="0" rx="16" ry="8" fill="#e58a9a" fill-opacity="0.7"/><ellipse cx="70" cy="0" rx="16" ry="8" fill="#e58a9a" fill-opacity="0.7"/>
+    <path d="M-10-6q10 10 20 0" fill="none" stroke="#2a3a22" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <use href="#radish" transform="translate(140 260) rotate(-16)"/>
+  <use href="#radish" transform="translate(460 760) rotate(20) scale(0.8)"/>
+  <use href="#radish" transform="translate(120 740) rotate(-30) scale(0.6)"/>
+  <g fill="#f2a6b8" fill-opacity="0.8">
+    <use href="#peach" transform="translate(220 140)"/>
+    <use href="#peach" transform="translate(420 170) scale(0.7)"/>
+    <use href="#peach" transform="translate(90 480) scale(0.6)"/>
+  </g>
+  <g fill="#f6c77a"><circle cx="220" cy="140" r="5"/><circle cx="420" cy="170" r="3.5"/><circle cx="90" cy="480" r="3"/></g>
+</svg>

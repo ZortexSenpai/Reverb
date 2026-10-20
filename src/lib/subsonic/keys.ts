@@ -1,0 +1,18 @@
+export const qk = {
+  albumPage: (params: Record<string, unknown>) => ["albums", params] as const,
+  album: (id: string) => ["album", id] as const,
+  artists: () => ["artists"] as const,
+  artist: (id: string) => ["artist", id] as const,
+  artistAppearances: (id: string) => ["artistAppearances", id] as const,
+  topSongs: (name: string) => ["topSongs", name] as const,
+  songPage: (params: Record<string, unknown>) => ["songs", params] as const,
+  genres: () => ["genres"] as const,
+  playlists: () => ["playlists"] as const,
+  playlist: (id: string) => ["playlist", id] as const,
+  starred: () => ["starred"] as const,
+  search: (q: string) => ["search", q] as const,
+  musicFolders: () => ["musicFolders"] as const,
+  indexes: (folderId: string) => ["indexes", folderId] as const,
+  directory: (id: string) => ["directory", id] as const,
+  mixes: () => ["mixes"] as const,
+};

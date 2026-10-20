@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Layla: a sleepy star-gazer — orbiting shooting stars, a dozing crescent, and her curtain of stars. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#5b8fe0" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#5b8fe0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb" cx="40%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#a8e0ff"/>
+      <stop offset="1" stop-color="#3f6fc0"/>
+    </radialGradient>
+    <path id="st" d="M0-14L3.5-4 14 0 3.5 4 0 14-3.5 4-14 0-3.5-4Z"/>
+  </defs>
+  <circle cx="340" cy="430" r="310" fill="url(#glow)"/>
+  <!-- Dozing crescent with a nightcap -->
+  <g transform="translate(350 420)">
+    <path d="M-40-150a150 150 0 1 0 120 250A120 120 0 1 1-40-150Z" fill="#c9d6ee" fill-opacity="0.85"/>
+    <path d="M-60-20q14 10 28 0" fill="none" stroke="#1b2645" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="-58" cy="16" rx="14" ry="7" fill="#9fb5ff" fill-opacity="0.6"/>
+    <path d="M-10-150C30-200 110-200 150-150 110-156 70-140 40-110Z" fill="#3a5aa8"/>
+    <circle cx="160" cy="-146" r="14" fill="#f4f7ff"/>
+  </g>
+  <!-- Orbit of star shields -->
+  <ellipse cx="340" cy="430" rx="260" ry="80" transform="rotate(-16 340 430)" fill="none" stroke="#a8e0ff" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="6 10"/>
+  <g fill="url(#orb)">
+    <circle cx="110" cy="490" r="18"/><circle cx="580" cy="360" r="14"/><circle cx="470" cy="520" r="11"/>
+  </g>
+  <g fill="none" stroke="#a8e0ff" stroke-linecap="round" stroke-opacity="0.6" stroke-width="3">
+    <path d="M110 490l-60 30M580 360l50-20M470 520l40-24"/>
+  </g>
+  <!-- Zzz -->
+  <g fill="none" stroke="#c9d6ee" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.75">
+    <path d="M470 150h30l-30 30h30"/><path d="M520 100h20l-20 20h20"/><path d="M550 60h14l-14 14h14"/>
+  </g>
+  <!-- Curtain of stars hanging from the top -->
+  <g stroke="#c9d6ee" stroke-opacity="0.35" stroke-width="1.2">
+    <path d="M140 0v120M200 0v70M260 0v150M80 0v60"/>
+  </g>
+  <g fill="#f4f7ff">
+    <use href="#st" transform="translate(140 126) scale(0.8)"/>
+    <use href="#st" transform="translate(200 76) scale(0.6)"/>
+    <use href="#st" transform="translate(260 156)"/>
+    <use href="#st" transform="translate(80 66) scale(0.5)"/>
+    <use href="#st" transform="translate(520 700) scale(0.9)"/>
+    <use href="#st" transform="translate(180 760) scale(0.7)"/>
+    <circle cx="400" cy="800" r="2"/><circle cx="560" cy="560" r="1.6"/><circle cx="70" cy="330" r="1.8"/><circle cx="300" cy="680" r="1.5"/>
+  </g>
+</svg>

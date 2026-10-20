@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- Ice crystals growing up from the bar around a small Abyssal orb. -->
+  <defs>
+    <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eaf8ff"/>
+      <stop offset="1" stop-color="#5fa8e0"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="40%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#d9ccff"/>
+      <stop offset="0.5" stop-color="#6a52c8"/>
+      <stop offset="1" stop-color="#140f2e"/>
+    </radialGradient>
+    <path id="spark" d="M0-8Q0 0 8 0 0 0 0 8 0 0-8 0 0 0 0-8Z"/>
+  </defs>
+  <g fill="url(#ice)" stroke="#eaf8ff" stroke-opacity="0.6" stroke-width="1">
+    <path d="M96 90L102 30 112 12 118 34 122 90Z"/>
+    <path d="M118 90L128 50 136 40 140 56 138 90Z"/>
+    <path d="M80 90L84 58 92 48 96 64 96 90Z"/>
+    <path d="M136 90L146 66 152 62 154 72 150 90Z"/>
+    <path d="M66 90L70 72 76 68 80 78 78 90Z" fill-opacity="0.8"/>
+  </g>
+  <circle cx="52" cy="54" r="12" fill="url(#orb)"/>
+  <ellipse cx="52" cy="54" rx="22" ry="6" transform="rotate(-18 52 54)" fill="none" stroke="#b39dff" stroke-width="1.5" stroke-opacity="0.8"/>
+  <g fill="#eaf8ff">
+    <use href="#spark" transform="translate(160 30)"/>
+    <use href="#spark" transform="translate(82 26) scale(0.6)"/>
+    <use href="#spark" transform="translate(28 30) scale(0.5)"/>
+    <circle cx="140" cy="24" r="1.4"/><circle cx="170" cy="58" r="1.2"/>
+  </g>
+</svg>

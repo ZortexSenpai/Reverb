@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Xiangling: Wanmin Restaurant's chef — Guoba, a flaming wok and a spray of chilis. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#e0452c" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#e0452c" stop-opacity="0"/>
+    </radialGradient>
+    <g id="chili">
+      <path d="M0 0C10 20 12 50-6 80-2 50-10 24-10 4Z" fill="#e0452c"/>
+      <path d="M-10 4C-12-4-4-8 0 0Z" fill="#4f9a3a"/>
+      <path d="M-6 2C-6-10 2-16 8-18" fill="none" stroke="#4f9a3a" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="460" r="310" fill="url(#glow)"/>
+  <!-- Wok with flames -->
+  <g transform="translate(330 360)">
+    <path d="M-130-120c-20-40 20-60 10-100 30 30 40 60 20 90 20-10 20-40 16-60 30 30 30 70 0 90Z" fill="#f5a340" fill-opacity="0.7"/>
+    <path d="M10-120c-16-50 20-70 10-110 36 34 40 70 16 100 20-8 24-36 20-54 26 30 26 60-10 70Z" fill="#ff7a3a" fill-opacity="0.75"/>
+    <path d="M110-116c-12-30 10-44 4-70 24 22 28 48 12 70Z" fill="#f5a340" fill-opacity="0.6"/>
+    <path d="M-170-100h340c0 70-70 120-170 120S-170-30-170-100Z" fill="#2b1f1a" stroke="#e2a13a" stroke-width="3"/>
+    <path d="M170-96h90" stroke="#5a3a28" stroke-width="14" stroke-linecap="round"/>
+    <path d="M-150-80c60 20 240 20 300 0" fill="none" stroke="#e2a13a" stroke-opacity="0.5" stroke-width="2"/>
+  </g>
+  <!-- Guoba -->
+  <g transform="translate(300 640)">
+    <path d="M-60-40l-20-40 36 16ZM60-40l20-40-36 16Z" fill="#ff7a3a"/>
+    <circle cx="-54" cy="-58" r="24" fill="#2b1f1a"/><circle cx="54" cy="-58" r="24" fill="#2b1f1a"/>
+    <ellipse rx="92" ry="80" fill="#2b1f1a" stroke="#e2a13a" stroke-width="2"/>
+    <ellipse cy="22" rx="42" ry="30" fill="#f5e6da"/>
+    <circle cx="-32" cy="-16" r="9" fill="#f5e6da"/><circle cx="32" cy="-16" r="9" fill="#f5e6da"/>
+    <circle cx="-32" cy="-16" r="4" fill="#1a1210"/><circle cx="32" cy="-16" r="4" fill="#1a1210"/>
+    <ellipse cy="12" rx="10" ry="7" fill="#1a1210"/>
+    <path d="M-12 30q12 10 24 0" fill="none" stroke="#1a1210" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <use href="#chili" transform="translate(110 200) rotate(-20)"/>
+  <use href="#chili" transform="translate(150 190) rotate(10) scale(0.8)"/>
+  <use href="#chili" transform="translate(520 600) rotate(30) scale(0.9)"/>
+  <use href="#chili" transform="translate(120 700) rotate(-50) scale(0.7)"/>
+  <g fill="#f5a340" fill-opacity="0.7"><circle cx="480" cy="180" r="5"/><circle cx="520" cy="240" r="3"/><circle cx="450" cy="120" r="3.5"/><circle cx="220" cy="820" r="4"/></g>
+</svg>

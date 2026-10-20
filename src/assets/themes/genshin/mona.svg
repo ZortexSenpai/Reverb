@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Mona: an astrolabe of golden rings, constellations and a crescent over a Hydro sea of stars. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#7a6ff0" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7a6ff0" stop-opacity="0"/>
+    </radialGradient>
+    <path id="st" d="M0-14L3.5-4 14 0 3.5 4 0 14-3.5 4-14 0-3.5-4Z"/>
+  </defs>
+  <circle cx="340" cy="440" r="310" fill="url(#glow)"/>
+  <g transform="translate(340 440)" fill="none" stroke="#e0b95a">
+    <circle r="220" stroke-opacity="0.6" stroke-width="2.5"/>
+    <circle r="206" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="2 6"/>
+    <circle r="150" stroke-opacity="0.5" stroke-width="1.5"/>
+    <ellipse rx="220" ry="70" transform="rotate(28)" stroke-opacity="0.45" stroke-width="2"/>
+    <ellipse rx="220" ry="70" transform="rotate(-40)" stroke-opacity="0.3" stroke-width="1.5"/>
+    <g stroke-opacity="0.5" stroke-width="2">
+      <path d="M0-220v24M0 220v-24M-220 0h24M220 0h-24"/>
+      <path d="M155.6-155.6l-14 14M-155.6 155.6l14-14M155.6 155.6l-14-14M-155.6-155.6l14 14" stroke-width="1.2"/>
+    </g>
+  </g>
+  <!-- Crescent moon at the heart -->
+  <path d="M362 360a84 84 0 1 0 50 146 70 70 0 1 1-50-146Z" fill="#e0b95a" fill-opacity="0.8"/>
+  <!-- Constellation (Mona's own, the Astrolabos) -->
+  <g stroke="#cfd4ff" stroke-opacity="0.55" stroke-width="1.5" fill="none">
+    <path d="M150 180L230 150 300 200 380 130 470 170M300 200L280 280"/>
+  </g>
+  <g fill="#fff3d0">
+    <use href="#st" transform="translate(150 180) scale(0.7)"/>
+    <use href="#st" transform="translate(230 150) scale(0.9)"/>
+    <use href="#st" transform="translate(300 200) scale(1.2)"/>
+    <use href="#st" transform="translate(380 130) scale(0.8)"/>
+    <use href="#st" transform="translate(470 170) scale(1)"/>
+    <use href="#st" transform="translate(280 280) scale(0.6)"/>
+    <use href="#st" transform="translate(540 620) scale(1.1)"/>
+    <use href="#st" transform="translate(110 620) scale(0.8)"/>
+    <circle cx="80" cy="380" r="2"/><circle cx="560" cy="300" r="2.2"/><circle cx="200" cy="780" r="1.8"/>
+    <circle cx="480" cy="820" r="2"/><circle cx="360" cy="760" r="1.5"/><circle cx="60" cy="140" r="1.6"/>
+  </g>
+  <g fill="none" stroke="#6f8cf0" stroke-linecap="round" stroke-opacity="0.5">
+    <path d="M80 860c40-26 80-26 120 0s80 26 120 0 80-26 120 0 80 26 120 0" stroke-width="4"/>
+  </g>
+</svg>

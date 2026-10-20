@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Citlali: Natlan step-fret stonework, obsidian stars, a Cryo snowflake and night-sky swirls. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#e58bc4" stop-opacity="0.35"/>
+      <stop offset="0.6" stop-color="#8fb8f0" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#8fb8f0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="obs" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b7ae8"/>
+      <stop offset="1" stop-color="#3a2f52"/>
+    </linearGradient>
+    <path id="star" d="M0-24L6-6 24 0 6 6 0 24-6 6-24 0-6-6Z"/>
+    <path id="fret" d="M0 0h40v-40h40v-40h40v80h-40v40H0Z"/>
+    <g id="flake" stroke="#5aa7d8" stroke-width="4" stroke-linecap="round" fill="none">
+      <path d="M0-60V60M-52-30 52 30M-52 30 52-30"/>
+      <path d="M-12-48 0-36 12-48M-12 48 0 36 12 48"/>
+      <path d="M-47-14-31-18-35-34M47 14 31 18 35 34"/>
+      <path d="M-47 14-31 18-35 34M47-14 31-18 35-34"/>
+    </g>
+  </defs>
+  <circle cx="340" cy="420" r="320" fill="url(#glow)"/>
+  <!-- A big obsidian star with a sky-blue heart -->
+  <g transform="translate(360 400)">
+    <path d="M0-200L40-50 190-40 70 40 120 190 0 100-120 190-70 40-190-40-40-50Z"
+          fill="url(#obs)" fill-opacity="0.55" stroke="#e58bc4" stroke-opacity="0.8" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M0-120L24-30 114-24 42 24 72 114 0 60-72 114-42 24-114-24-24-30Z"
+          fill="none" stroke="#fdf6ff" stroke-opacity="0.7" stroke-width="2" stroke-linejoin="round"/>
+    <circle r="30" fill="#8fd0f0" fill-opacity="0.8"/>
+    <circle r="14" fill="#fdf6ff"/>
+  </g>
+  <!-- Step-fret band along the bottom -->
+  <g fill="#6f5fc8" fill-opacity="0.35">
+    <use href="#fret" transform="translate(0 900)"/>
+    <use href="#fret" transform="translate(120 900)"/>
+    <use href="#fret" transform="translate(240 900)"/>
+    <use href="#fret" transform="translate(360 900)"/>
+    <use href="#fret" transform="translate(480 900)"/>
+  </g>
+  <g fill="none" stroke="#b18ae0" stroke-opacity="0.5" stroke-width="3" stroke-linecap="round">
+    <path d="M90 250c40-60 120-40 110 20-8 44-70 40-64 0 4-24 36-22 36-2"/>
+    <path d="M470 700c50-30 110 10 90 60-16 38-72 24-60-12 8-22 36-16 32 4"/>
+  </g>
+  <use href="#flake" transform="translate(140 640) scale(1.1)" stroke-opacity="0.7"/>
+  <use href="#flake" transform="translate(520 150) scale(0.6)" stroke-opacity="0.6"/>
+  <g fill="#e58bc4">
+    <use href="#star" transform="translate(200 120)" fill-opacity="0.8"/>
+    <use href="#star" transform="translate(560 420) scale(0.8)" fill-opacity="0.7"/>
+    <use href="#star" transform="translate(300 700) scale(0.6)" fill-opacity="0.6"/>
+    <use href="#star" transform="translate(70 450) scale(0.5)" fill="#5aa7d8" fill-opacity="0.7"/>
+    <use href="#star" transform="translate(430 90) scale(0.5)" fill="#5aa7d8" fill-opacity="0.7"/>
+  </g>
+</svg>

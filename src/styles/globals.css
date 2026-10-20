@@ -1,0 +1,1124 @@
+@import "tailwindcss";
+
+@theme {
+  /* Near-black, slightly cool — album art carries the color. */
+  --color-bg: oklch(0.16 0.005 260);
+  --color-surface: oklch(0.21 0.006 260);
+  --color-surface-2: oklch(0.26 0.008 260);
+  --color-edge: oklch(0.3 0.008 260);
+  --color-text: oklch(0.93 0 0);
+  --color-dim: oklch(0.65 0 0);
+  --color-faint: oklch(0.45 0 0);
+  --color-accent: oklch(0.72 0.17 20);
+  --color-accent-bright: oklch(0.78 0.17 20);
+  --color-danger: oklch(0.65 0.2 25);
+  --color-eq-curve: oklch(0.75 0.15 200);
+
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --radius-card: 8px;
+}
+
+/* Non-token variables (not part of @theme so they don't become utilities). */
+:root {
+  --scrollbar-thumb: oklch(0.35 0.008 260);
+  --scrollbar-thumb-hover: oklch(0.45 0.008 260);
+}
+
+html {
+  /* Tell the engine we're a dark page so native widgets — select dropdown
+     popups, checkboxes, scrollbars — render dark instead of light. The prefs
+     store flips data-scheme for the light-based themes. */
+  color-scheme: dark;
+}
+
+html[data-scheme="light"] {
+  color-scheme: light;
+}
+
+/* ---- Themes ------------------------------------------------------------
+   The @theme block above is the "dark" default; themes override its
+   generated custom properties via the data-theme attribute the prefs store
+   sets on <html>. Each theme also states its own accent, which is what the
+   "match theme" accent option falls through to — the accent presets are
+   applied as inline root properties and win over these when chosen.
+
+   Palette themes use their upstream hex values verbatim, so they stay
+   recognisable and are easy to check against the source palette.
+
+   The selectors deliberately match *any* element with the attribute, not only
+   <html>: the theme picker nests data-theme on each preview card, which then
+   renders in that theme's own colours with no second copy of the palette in
+   JS. That also means every theme must declare the full token set — a partial
+   block would leak the surrounding theme's values into the preview. */
+
+/* The @theme defaults, restated so "dark" is a complete theme like the rest. */
+[data-theme="dark"] {
+  --color-bg: oklch(0.16 0.005 260);
+  --color-surface: oklch(0.21 0.006 260);
+  --color-surface-2: oklch(0.26 0.008 260);
+  --color-edge: oklch(0.3 0.008 260);
+  --color-text: oklch(0.93 0 0);
+  --color-dim: oklch(0.65 0 0);
+  --color-faint: oklch(0.45 0 0);
+  --color-accent: oklch(0.72 0.17 20);
+  --color-accent-bright: oklch(0.78 0.17 20);
+  --color-danger: oklch(0.65 0.2 25);
+  --color-eq-curve: oklch(0.75 0.15 200);
+  --scrollbar-thumb: oklch(0.35 0.008 260);
+  --scrollbar-thumb-hover: oklch(0.45 0.008 260);
+}
+
+[data-theme="black"] {
+  /* True black for OLED; slightly lifted surfaces keep depth visible. */
+  --color-bg: oklch(0.05 0 0);
+  --color-surface: oklch(0.13 0.004 260);
+  --color-surface-2: oklch(0.19 0.006 260);
+  --color-edge: oklch(0.24 0.006 260);
+  --color-text: oklch(0.93 0 0);
+  --color-dim: oklch(0.65 0 0);
+  --color-faint: oklch(0.45 0 0);
+  --color-accent: oklch(0.72 0.17 20);
+  --color-accent-bright: oklch(0.78 0.17 20);
+  --color-danger: oklch(0.65 0.2 25);
+  --color-eq-curve: oklch(0.75 0.15 200);
+  --scrollbar-thumb: oklch(0.3 0.006 260);
+  --scrollbar-thumb-hover: oklch(0.4 0.006 260);
+}
+
+[data-theme="light"] {
+  --color-bg: oklch(0.965 0.003 260);
+  --color-surface: oklch(0.99 0.001 260);
+  --color-surface-2: oklch(0.92 0.005 260);
+  --color-edge: oklch(0.86 0.006 260);
+  --color-text: oklch(0.22 0.01 260);
+  --color-dim: oklch(0.45 0.008 260);
+  --color-faint: oklch(0.62 0.006 260);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-eq-curve: oklch(0.55 0.13 200);
+  --scrollbar-thumb: oklch(0.78 0.006 260);
+  --scrollbar-thumb-hover: oklch(0.68 0.008 260);
+}
+
+/* Catppuccin — https://github.com/catppuccin/catppuccin */
+[data-theme="catppuccin-mocha"] {
+  --color-bg: #181825;
+  --color-surface: #1e1e2e;
+  --color-surface-2: #313244;
+  --color-edge: #45475a;
+  --color-text: #cdd6f4;
+  --color-dim: #a6adc8;
+  --color-faint: #7f849c;
+  --color-accent: #cba6f7;
+  --color-accent-bright: #ddbdff;
+  --color-danger: #f38ba8;
+  --color-eq-curve: #89dceb;
+  --scrollbar-thumb: #45475a;
+  --scrollbar-thumb-hover: #585b70;
+}
+
+[data-theme="catppuccin-macchiato"] {
+  --color-bg: #1e2030;
+  --color-surface: #24273a;
+  --color-surface-2: #363a4f;
+  --color-edge: #494d64;
+  --color-text: #cad3f5;
+  --color-dim: #a5adcb;
+  --color-faint: #8087a2;
+  --color-accent: #c6a0f6;
+  --color-accent-bright: #d8b8ff;
+  --color-danger: #ed8796;
+  --color-eq-curve: #91d7e3;
+  --scrollbar-thumb: #494d64;
+  --scrollbar-thumb-hover: #5b6078;
+}
+
+[data-theme="catppuccin-latte"] {
+  --color-bg: #e6e9ef;
+  --color-surface: #eff1f5;
+  --color-surface-2: #ccd0da;
+  --color-edge: #bcc0cc;
+  --color-text: #4c4f69;
+  --color-dim: #6c6f85;
+  --color-faint: #8c8fa1;
+  --color-accent: #8839ef;
+  --color-accent-bright: #9d5cf3;
+  --color-danger: #d20f39;
+  --color-eq-curve: #209fb5;
+  --scrollbar-thumb: #bcc0cc;
+  --scrollbar-thumb-hover: #acb0be;
+}
+
+/* One Dark — Atom's default dark theme */
+[data-theme="one-dark"] {
+  --color-bg: #21252b;
+  --color-surface: #282c34;
+  --color-surface-2: #323842;
+  --color-edge: #3e4451;
+  --color-text: #c8ccd4;
+  --color-dim: #9da5b4;
+  --color-faint: #6b727f;
+  --color-accent: #61afef;
+  --color-accent-bright: #82c3f7;
+  --color-danger: #e06c75;
+  --color-eq-curve: #56b6c2;
+  --scrollbar-thumb: #3e4451;
+  --scrollbar-thumb-hover: #4d5566;
+}
+
+[data-theme="dracula"] {
+  --color-bg: #21222c;
+  --color-surface: #282a36;
+  --color-surface-2: #343746;
+  --color-edge: #44475a;
+  --color-text: #f8f8f2;
+  --color-dim: #b8bcd0;
+  --color-faint: #6272a4;
+  --color-accent: #bd93f9;
+  --color-accent-bright: #d2b0ff;
+  --color-danger: #ff5555;
+  --color-eq-curve: #8be9fd;
+  --scrollbar-thumb: #44475a;
+  --scrollbar-thumb-hover: #565a71;
+}
+
+[data-theme="nord"] {
+  --color-bg: #2e3440;
+  --color-surface: #3b4252;
+  --color-surface-2: #434c5e;
+  --color-edge: #4c566a;
+  --color-text: #eceff4;
+  --color-dim: #b8c1d1;
+  --color-faint: #8892a5;
+  --color-accent: #88c0d0;
+  --color-accent-bright: #a3d3e0;
+  --color-danger: #bf616a;
+  --color-eq-curve: #81a1c1;
+  --scrollbar-thumb: #4c566a;
+  --scrollbar-thumb-hover: #5e6b82;
+}
+
+[data-theme="gruvbox-dark"] {
+  --color-bg: #1d2021;
+  --color-surface: #282828;
+  --color-surface-2: #3c3836;
+  --color-edge: #504945;
+  --color-text: #ebdbb2;
+  --color-dim: #bdae93;
+  --color-faint: #928374;
+  --color-accent: #fe8019;
+  --color-accent-bright: #ff9d4d;
+  --color-danger: #fb4934;
+  --color-eq-curve: #8ec07c;
+  --scrollbar-thumb: #504945;
+  --scrollbar-thumb-hover: #665c54;
+}
+
+[data-theme="tokyo-night"] {
+  --color-bg: #16161e;
+  --color-surface: #1a1b26;
+  --color-surface-2: #24283b;
+  --color-edge: #2f3549;
+  --color-text: #c0caf5;
+  --color-dim: #a9b1d6;
+  --color-faint: #565f89;
+  --color-accent: #7aa2f7;
+  --color-accent-bright: #9db8fa;
+  --color-danger: #f7768e;
+  --color-eq-curve: #7dcfff;
+  --scrollbar-thumb: #2f3549;
+  --scrollbar-thumb-hover: #414868;
+}
+
+[data-theme="solarized-light"] {
+  --color-bg: #eee8d5;
+  --color-surface: #fdf6e3;
+  --color-surface-2: #e6dfc8;
+  --color-edge: #d5cdb4;
+  --color-text: #586e75;
+  --color-dim: #657b83;
+  --color-faint: #93a1a1;
+  --color-accent: #268bd2;
+  --color-accent-bright: #3ba3e8;
+  --color-danger: #dc322f;
+  --color-eq-curve: #2aa198;
+  --scrollbar-thumb: #d5cdb4;
+  --scrollbar-thumb-hover: #c3baa0;
+}
+
+/* Catppuccin Frappé */
+[data-theme="catppuccin-frappe"] {
+  --color-bg: #292c3c;
+  --color-surface: #303446;
+  --color-surface-2: #414559;
+  --color-edge: #51576d;
+  --color-text: #c6d0f5;
+  --color-dim: #a5adce;
+  --color-faint: #838ba7;
+  --color-accent: #ca9ee6;
+  --color-accent-bright: #dbb4f2;
+  --color-danger: #e78284;
+  --color-eq-curve: #81c8be;
+  --scrollbar-thumb: #51576d;
+  --scrollbar-thumb-hover: #626880;
+}
+
+/* Everforest — https://github.com/sainnhe/everforest (medium contrast) */
+[data-theme="everforest-dark"] {
+  --color-bg: #272e33;
+  --color-surface: #2d353b;
+  --color-surface-2: #343f44;
+  --color-edge: #3d484d;
+  --color-text: #d3c6aa;
+  --color-dim: #9da9a0;
+  --color-faint: #859289;
+  --color-accent: #a7c080;
+  --color-accent-bright: #bcd49a;
+  --color-danger: #e67e80;
+  --color-eq-curve: #83c092;
+  --scrollbar-thumb: #3d484d;
+  --scrollbar-thumb-hover: #475258;
+}
+
+[data-theme="everforest-light"] {
+  --color-bg: #f4f0d9;
+  --color-surface: #fdf6e3;
+  --color-surface-2: #efebd4;
+  --color-edge: #e0dcc7;
+  --color-text: #5c6a72;
+  --color-dim: #708089;
+  --color-faint: #939f91;
+  --color-accent: #8da101;
+  --color-accent-bright: #a5bb04;
+  --color-danger: #f85552;
+  --color-eq-curve: #35a77c;
+  --scrollbar-thumb: #e0dcc7;
+  --scrollbar-thumb-hover: #cfcab5;
+}
+
+/* GitHub — Primer design tokens */
+[data-theme="github-dark"] {
+  --color-bg: #010409;
+  --color-surface: #0d1117;
+  --color-surface-2: #161b22;
+  --color-edge: #30363d;
+  --color-text: #e6edf3;
+  --color-dim: #8b949e;
+  --color-faint: #6e7681;
+  --color-accent: #58a6ff;
+  --color-accent-bright: #79c0ff;
+  --color-danger: #f85149;
+  --color-eq-curve: #3fb950;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+}
+
+[data-theme="github-light"] {
+  --color-bg: #f6f8fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eaeef2;
+  --color-edge: #d0d7de;
+  --color-text: #1f2328;
+  --color-dim: #656d76;
+  --color-faint: #8c959f;
+  --color-accent: #0969da;
+  --color-accent-bright: #218bff;
+  --color-danger: #cf222e;
+  --color-eq-curve: #1a7f37;
+  --scrollbar-thumb: #d0d7de;
+  --scrollbar-thumb-hover: #afb8c1;
+}
+
+[data-theme="gruvbox-light"] {
+  --color-bg: #fbf1c7;
+  --color-surface: #f9f5d7;
+  --color-surface-2: #ebdbb2;
+  --color-edge: #d5c4a1;
+  --color-text: #3c3836;
+  --color-dim: #504945;
+  --color-faint: #7c6f64;
+  --color-accent: #af3a03;
+  --color-accent-bright: #d65d0e;
+  --color-danger: #9d0006;
+  --color-eq-curve: #427b58;
+  --scrollbar-thumb: #d5c4a1;
+  --scrollbar-thumb-hover: #bdae93;
+}
+
+/* Kanagawa — https://github.com/rebelot/kanagawa.nvim (wave) */
+[data-theme="kanagawa"] {
+  --color-bg: #16161d;
+  --color-surface: #1f1f28;
+  --color-surface-2: #2a2a37;
+  --color-edge: #363646;
+  --color-text: #dcd7ba;
+  --color-dim: #c8c093;
+  --color-faint: #727169;
+  --color-accent: #7e9cd8;
+  --color-accent-bright: #9cb4e4;
+  --color-danger: #e82424;
+  --color-eq-curve: #7aa89f;
+  --scrollbar-thumb: #363646;
+  --scrollbar-thumb-hover: #54546d;
+}
+
+[data-theme="monokai-pro"] {
+  --color-bg: #221f22;
+  --color-surface: #2d2a2e;
+  --color-surface-2: #403e41;
+  --color-edge: #5b595c;
+  --color-text: #fcfcfa;
+  --color-dim: #c1c0c0;
+  --color-faint: #939293;
+  --color-accent: #ffd866;
+  --color-accent-bright: #ffe490;
+  --color-danger: #ff6188;
+  --color-eq-curve: #78dce8;
+  --scrollbar-thumb: #403e41;
+  --scrollbar-thumb-hover: #5b595c;
+}
+
+/* Nord's Snow Storm as a light counterpart to the Polar Night theme above. */
+[data-theme="nord-light"] {
+  --color-bg: #e5e9f0;
+  --color-surface: #eceff4;
+  --color-surface-2: #d8dee9;
+  --color-edge: #c2cad8;
+  --color-text: #2e3440;
+  --color-dim: #434c5e;
+  --color-faint: #6b7688;
+  --color-accent: #5e81ac;
+  --color-accent-bright: #7295c0;
+  --color-danger: #bf616a;
+  --color-eq-curve: #88c0d0;
+  --scrollbar-thumb: #c2cad8;
+  --scrollbar-thumb-hover: #aeb8ca;
+}
+
+/* One Light — Atom's light theme, sibling of One Dark above */
+[data-theme="one-light"] {
+  --color-bg: #f0f0f1;
+  --color-surface: #fafafa;
+  --color-surface-2: #e5e5e6;
+  --color-edge: #d3d3d5;
+  --color-text: #383a42;
+  --color-dim: #4f525d;
+  --color-faint: #a0a1a7;
+  --color-accent: #4078f2;
+  --color-accent-bright: #5b8df5;
+  --color-danger: #e45649;
+  --color-eq-curve: #0184bc;
+  --scrollbar-thumb: #d3d3d5;
+  --scrollbar-thumb-hover: #bfbfc2;
+}
+
+/* Rosé Pine — https://rosepinetheme.com */
+[data-theme="rose-pine"] {
+  --color-bg: #191724;
+  --color-surface: #1f1d2e;
+  --color-surface-2: #26233a;
+  --color-edge: #403d52;
+  --color-text: #e0def4;
+  --color-dim: #908caa;
+  --color-faint: #6e6a86;
+  --color-accent: #c4a7e7;
+  --color-accent-bright: #d5bdf0;
+  --color-danger: #eb6f92;
+  --color-eq-curve: #9ccfd8;
+  --scrollbar-thumb: #403d52;
+  --scrollbar-thumb-hover: #524f67;
+}
+
+[data-theme="rose-pine-moon"] {
+  --color-bg: #232136;
+  --color-surface: #2a273f;
+  --color-surface-2: #393552;
+  --color-edge: #44415a;
+  --color-text: #e0def4;
+  --color-dim: #908caa;
+  --color-faint: #6e6a86;
+  --color-accent: #c4a7e7;
+  --color-accent-bright: #d5bdf0;
+  --color-danger: #eb6f92;
+  --color-eq-curve: #9ccfd8;
+  --scrollbar-thumb: #44415a;
+  --scrollbar-thumb-hover: #56526e;
+}
+
+[data-theme="rose-pine-dawn"] {
+  --color-bg: #faf4ed;
+  --color-surface: #fffaf3;
+  --color-surface-2: #f2e9e1;
+  --color-edge: #dfdad9;
+  --color-text: #575279;
+  --color-dim: #797593;
+  --color-faint: #9893a5;
+  --color-accent: #907aa9;
+  --color-accent-bright: #a48bbd;
+  --color-danger: #b4637a;
+  --color-eq-curve: #56949f;
+  --scrollbar-thumb: #dfdad9;
+  --scrollbar-thumb-hover: #cecacd;
+}
+
+/* Solarized Dark — the base03 side of the palette the light theme uses */
+[data-theme="solarized-dark"] {
+  --color-bg: #002b36;
+  --color-surface: #073642;
+  --color-surface-2: #0e4a57;
+  --color-edge: #2d5c66;
+  --color-text: #93a1a1;
+  --color-dim: #839496;
+  --color-faint: #657b83;
+  --color-accent: #268bd2;
+  --color-accent-bright: #3ba3e8;
+  --color-danger: #dc322f;
+  --color-eq-curve: #2aa198;
+  --scrollbar-thumb: #2d5c66;
+  --scrollbar-thumb-hover: #3f717c;
+}
+
+[data-theme="tokyo-night-storm"] {
+  --color-bg: #1f2335;
+  --color-surface: #24283b;
+  --color-surface-2: #292e42;
+  --color-edge: #3b4261;
+  --color-text: #c0caf5;
+  --color-dim: #a9b1d6;
+  --color-faint: #565f89;
+  --color-accent: #7aa2f7;
+  --color-accent-bright: #9db8fa;
+  --color-danger: #f7768e;
+  --color-eq-curve: #7dcfff;
+  --scrollbar-thumb: #3b4261;
+  --scrollbar-thumb-hover: #414868;
+}
+
+/* ---- Genshin Impact ----------------------------------------------------
+   Character themes. Beyond the usual tokens each declares an ornament colour
+   (the gold/silver trim on Teyvat's UI) and how strongly its background art
+   shows; the art itself is picked in src/lib/themes/genshin.ts. */
+
+/* Citlali — Natlan's star-gazing Cryo witch: lavender, pink and ice. */
+[data-theme="genshin-citlali"] {
+  --color-bg: #ece6f5;
+  --color-surface: #f9f6fd;
+  --color-surface-2: #e2daef;
+  --color-edge: #d0c5e2;
+  --color-text: #352b4d;
+  --color-dim: #5d5178;
+  --color-faint: #9287a9;
+  --color-accent: #7b6be0;
+  --color-accent-bright: #9486ec;
+  --color-danger: #d6336c;
+  --color-eq-curve: #d4639f;
+  --scrollbar-thumb: #d0c5e2;
+  --scrollbar-thumb-hover: #b8aad0;
+  --theme-ornament: #c9a0d8;
+  --theme-art-opacity: 0.55;
+}
+
+/* Skirk — Cryo from beyond the Abyss: void navy, violet rings, icy light. */
+[data-theme="genshin-skirk"] {
+  --color-bg: #0b0f1c;
+  --color-surface: #121829;
+  --color-surface-2: #1a2238;
+  --color-edge: #26304c;
+  --color-text: #e3ecf8;
+  --color-dim: #a3b3cc;
+  --color-faint: #66758f;
+  --color-accent: #6fb6e8;
+  --color-accent-bright: #97cff3;
+  --color-danger: #ff6b8b;
+  --color-eq-curve: #b39dff;
+  --scrollbar-thumb: #26304c;
+  --scrollbar-thumb-hover: #34405f;
+  --theme-ornament: #a9c2e2;
+  --theme-art-opacity: 0.4;
+}
+
+/* Hu Tao — Wangsheng Funeral Parlor: ember red, plum and lacquered brown. */
+[data-theme="genshin-hu-tao"] {
+  --color-bg: #1a0f11;
+  --color-surface: #24151a;
+  --color-surface-2: #321d23;
+  --color-edge: #46272f;
+  --color-text: #f3e2d8;
+  --color-dim: #c9a89c;
+  --color-faint: #8c6a62;
+  --color-accent: #d9472f;
+  --color-accent-bright: #ef6649;
+  --color-danger: #ff4d5e;
+  --color-eq-curve: #f2a65a;
+  --scrollbar-thumb: #46272f;
+  --scrollbar-thumb-hover: #5b333d;
+  --theme-ornament: #d2ad64;
+  --theme-art-opacity: 0.4;
+}
+
+/* Raiden Shogun — Inazuma's Electro Archon: violet, gold trim, sakura. */
+[data-theme="genshin-raiden-shogun"] {
+  --color-bg: #15101f;
+  --color-surface: #1e1729;
+  --color-surface-2: #2a2039;
+  --color-edge: #3b2e50;
+  --color-text: #ece4f7;
+  --color-dim: #b7a8d1;
+  --color-faint: #7d6c9a;
+  --color-accent: #8f5cf0;
+  --color-accent-bright: #a97ffa;
+  --color-danger: #ff5c7a;
+  --color-eq-curve: #f2a7c6;
+  --scrollbar-thumb: #3b2e50;
+  --scrollbar-thumb-hover: #4d3d67;
+  --theme-ornament: #d8b56a;
+  --theme-art-opacity: 0.4;
+}
+
+/* Furina — Fontaine's star of the stage: Hydro blue, white and gold. */
+[data-theme="genshin-furina"] {
+  --color-bg: #0c1428;
+  --color-surface: #121c36;
+  --color-surface-2: #1a2748;
+  --color-edge: #26375f;
+  --color-text: #eaf1ff;
+  --color-dim: #a9bcdf;
+  --color-faint: #6a7fa6;
+  --color-accent: #3f82e0;
+  --color-accent-bright: #5f9cf0;
+  --color-danger: #ff6b81;
+  --color-eq-curve: #8fd0ff;
+  --scrollbar-thumb: #26375f;
+  --scrollbar-thumb-hover: #34487a;
+  --theme-ornament: #d8c07a;
+  --theme-art-opacity: 0.4;
+}
+
+/* Ganyu — Liyue's Cryo qilin: frost blue, glaze lily white, Liyue gold. */
+[data-theme="genshin-ganyu"] {
+  --color-bg: #e6eff7;
+  --color-surface: #f6fafd;
+  --color-surface-2: #dae6f1;
+  --color-edge: #c6d6e6;
+  --color-text: #1f3147;
+  --color-dim: #465c76;
+  --color-faint: #8499b0;
+  --color-accent: #3d7fc2;
+  --color-accent-bright: #5595d6;
+  --color-danger: #c8362e;
+  --color-eq-curve: #c99a3e;
+  --scrollbar-thumb: #c6d6e6;
+  --scrollbar-thumb-hover: #aec3d8;
+  --theme-ornament: #c9a458;
+  --theme-art-opacity: 0.55;
+}
+
+/* Mona — the astrologist: midnight violet, starlight and astrolabe gold. */
+[data-theme="genshin-mona"] {
+  --color-bg: #0f0f24;
+  --color-surface: #161632;
+  --color-surface-2: #201f44;
+  --color-edge: #2e2c5a;
+  --color-text: #ebe8ff;
+  --color-dim: #b3aee0;
+  --color-faint: #726da3;
+  --color-accent: #6f68e8;
+  --color-accent-bright: #8a84f4;
+  --color-danger: #ff6b8e;
+  --color-eq-curve: #e0b95a;
+  --scrollbar-thumb: #2e2c5a;
+  --scrollbar-thumb-hover: #3e3b72;
+  --theme-ornament: #e0b95a;
+  --theme-art-opacity: 0.4;
+}
+
+/* Lynette — the deadpan magician's assistant: Anemo teal on slate grey. */
+[data-theme="genshin-lynette"] {
+  --color-bg: #13181c;
+  --color-surface: #1a2126;
+  --color-surface-2: #232c33;
+  --color-edge: #313c45;
+  --color-text: #e6eeee;
+  --color-dim: #a8b6b8;
+  --color-faint: #6c7a7e;
+  --color-accent: #2fa892;
+  --color-accent-bright: #45c2aa;
+  --color-danger: #ff6b7a;
+  --color-eq-curve: #e8a0b0;
+  --scrollbar-thumb: #313c45;
+  --scrollbar-thumb-hover: #414e59;
+  --theme-ornament: #b8c4c8;
+  --theme-art-opacity: 0.4;
+}
+
+/* Layla — the sleepy Rtawahist: night-sky blue and pale starlight. */
+[data-theme="genshin-layla"] {
+  --color-bg: #0d1426;
+  --color-surface: #131c33;
+  --color-surface-2: #1b2645;
+  --color-edge: #28365c;
+  --color-text: #e6eeff;
+  --color-dim: #a8b8dc;
+  --color-faint: #687aa3;
+  --color-accent: #5b8fe0;
+  --color-accent-bright: #7aa7ee;
+  --color-danger: #ff6b85;
+  --color-eq-curve: #a8e0ff;
+  --scrollbar-thumb: #28365c;
+  --scrollbar-thumb-hover: #36477a;
+  --theme-ornament: #c9d6ee;
+  --theme-art-opacity: 0.4;
+}
+
+/* Xiangling — Wanmin Restaurant's chef: chili red and wok-black, with Guoba. */
+[data-theme="genshin-xiangling"] {
+  --color-bg: #1a1210;
+  --color-surface: #241915;
+  --color-surface-2: #31221c;
+  --color-edge: #452f26;
+  --color-text: #f5e6da;
+  --color-dim: #cfae98;
+  --color-faint: #8f705e;
+  --color-accent: #e0452c;
+  --color-accent-bright: #f2623f;
+  --color-danger: #ff4d5a;
+  --color-eq-curve: #f5a340;
+  --scrollbar-thumb: #452f26;
+  --scrollbar-thumb-hover: #5a3d31;
+  --theme-ornament: #e2a13a;
+  --theme-art-opacity: 0.4;
+}
+
+/* Yaoyao — Liyue's little Dendro disciple: bamboo green, radish white, peach pink. */
+[data-theme="genshin-yaoyao"] {
+  --color-bg: #eef3e6;
+  --color-surface: #fbfdf6;
+  --color-surface-2: #e1ead4;
+  --color-edge: #cfdcbf;
+  --color-text: #2a3a22;
+  --color-dim: #4d6041;
+  --color-faint: #8a9a7c;
+  --color-accent: #4f9a3a;
+  --color-accent-bright: #62b04b;
+  --color-danger: #d2485a;
+  --color-eq-curve: #e58a9a;
+  --scrollbar-thumb: #cfdcbf;
+  --scrollbar-thumb-hover: #b8c9a4;
+  --theme-ornament: #c8a45a;
+  --theme-art-opacity: 0.55;
+}
+
+/* Amber — Mondstadt's outrider: Baron Bunny red on a sunny cream sky. */
+[data-theme="genshin-amber"] {
+  --color-bg: #f7ede4;
+  --color-surface: #fffaf5;
+  --color-surface-2: #efe0d2;
+  --color-edge: #e2cdb9;
+  --color-text: #3b241c;
+  --color-dim: #64443a;
+  --color-faint: #a0847a;
+  --color-accent: #d33a2c;
+  --color-accent-bright: #e8553f;
+  --color-danger: #b3202a;
+  --color-eq-curve: #e89a3a;
+  --scrollbar-thumb: #e2cdb9;
+  --scrollbar-thumb-hover: #d0b69e;
+  --theme-ornament: #c89a4e;
+  --theme-art-opacity: 0.55;
+}
+
+/* Xilonen — Natlan's smith and DJ: Geo gold on forge stone, with a teal beat. */
+[data-theme="genshin-xilonen"] {
+  --color-bg: #16130e;
+  --color-surface: #1f1b14;
+  --color-surface-2: #2b251b;
+  --color-edge: #3d3425;
+  --color-text: #f3eadb;
+  --color-dim: #c9b99a;
+  --color-faint: #8a7b60;
+  --color-accent: #c7861f;
+  --color-accent-bright: #dea036;
+  --color-danger: #ff6b5a;
+  --color-eq-curve: #4fd1c5;
+  --scrollbar-thumb: #3d3425;
+  --scrollbar-thumb-hover: #524631;
+  --theme-ornament: #e0c07a;
+  --theme-art-opacity: 0.4;
+}
+
+/* Escoffier — Fontaine's master chef: icy blue, silverware and frost. */
+[data-theme="genshin-escoffier"] {
+  --color-bg: #0f171c;
+  --color-surface: #152027;
+  --color-surface-2: #1d2b34;
+  --color-edge: #2a3c47;
+  --color-text: #eaf4f8;
+  --color-dim: #aac2cc;
+  --color-faint: #6c8590;
+  --color-accent: #4aa3c8;
+  --color-accent-bright: #6bbad9;
+  --color-danger: #ff6b7a;
+  --color-eq-curve: #cfe8f2;
+  --scrollbar-thumb: #2a3c47;
+  --scrollbar-thumb-hover: #384f5d;
+  --theme-ornament: #c9d4da;
+  --theme-art-opacity: 0.4;
+}
+
+/* Lauma — Nod-Krai's moon priestess: moonlit forest green and silver. */
+[data-theme="genshin-lauma"] {
+  --color-bg: #0f1612;
+  --color-surface: #151f19;
+  --color-surface-2: #1d2a22;
+  --color-edge: #2a3b30;
+  --color-text: #e8f2ea;
+  --color-dim: #a9c2b0;
+  --color-faint: #6b8573;
+  --color-accent: #4fa35a;
+  --color-accent-bright: #68ba72;
+  --color-danger: #ff6b7a;
+  --color-eq-curve: #cfd8f0;
+  --scrollbar-thumb: #2a3b30;
+  --scrollbar-thumb-hover: #384e40;
+  --theme-ornament: #c8d0e0;
+  --theme-art-opacity: 0.4;
+}
+
+/* Background art layer (AppShell). Anchored bottom-right above the player
+   bar and faded out to the left so it never sits under the text column. */
+.theme-art {
+  /* Panel transparency (AppShell's --panel-clear, 0–1) also brings the art
+     forward: towards full opacity, and fading out further to the left. */
+  --art-fade: linear-gradient(
+    to left,
+    #000 calc(20% + 25% * var(--panel-clear, 0)),
+    transparent calc(70% + 30% * var(--panel-clear, 0))
+  );
+  position: absolute;
+  inset: 0 0 84px 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: right -2rem bottom;
+  background-size: auto 92%;
+  opacity: calc(
+    var(--theme-art-opacity, 0.4) + (1 - var(--theme-art-opacity, 0.4)) * 0.7 *
+      var(--panel-clear, 0)
+  );
+  mask-image: var(--art-fade);
+  -webkit-mask-image: var(--art-fade);
+}
+/* Real character art carries more detail than the motifs — let it show more,
+   and hug the right edge rather than overhang it. */
+.theme-art-character {
+  background-position: right bottom;
+  background-size: auto 100%;
+  opacity: calc(
+    var(--theme-art-opacity, 0.4) + 0.15 + (0.85 - var(--theme-art-opacity, 0.4)) * 0.8 *
+      var(--panel-clear, 0)
+  );
+}
+.liquid-shell .theme-art {
+  inset: 0;
+  background-position: right 4% bottom 96px;
+  background-size: auto 85%;
+}
+
+/* Player bar accent (PlayerBar). The trim is an ornament-coloured line along
+   the top edge with a diamond at its centre; the accent image stands on that
+   edge towards the right, above the volume controls, and overhangs into the
+   content area a little. */
+.player-bar-trim {
+  position: absolute;
+  inset: -1px 8% auto;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--theme-ornament) 20%,
+    var(--theme-ornament) 80%,
+    transparent
+  );
+  opacity: 0.8;
+}
+.player-bar-trim::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  translate: -50% -50%;
+  rotate: 45deg;
+  background: var(--theme-ornament);
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+.player-bar-accent {
+  position: absolute;
+  right: 3rem;
+  /* The SVGs draw their base on the bottom edge; sink it a few px into the
+     bar so the figure reads as sitting on it. */
+  bottom: calc(100% - 6px);
+  width: 120px;
+  height: 60px;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: contain;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.3));
+}
+/* A dropped-in image (e.g. a chibi sticker) can be taller than the motifs. */
+.player-bar-accent-character {
+  height: 88px;
+}
+
+/* Themed buttons: Teyvat-style pills with a double ornament ring and an
+   elemental glow. Only buttons that are filled with the accent (primary
+   buttons, segmented selections, card play buttons) — accent bars, switches
+   and checkboxes keep their plain look. */
+[data-theme^="genshin-"] button.bg-accent.text-white {
+  border-radius: 9999px;
+  background-image: linear-gradient(
+    180deg,
+    var(--color-accent-bright),
+    var(--color-accent) 60%,
+    color-mix(in oklab, var(--color-accent) 80%, black)
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--theme-ornament) 85%, transparent),
+    inset 0 0 0 3px color-mix(in oklab, var(--color-accent) 90%, transparent),
+    inset 0 0 0 4px color-mix(in oklab, var(--theme-ornament) 45%, transparent),
+    0 0 14px -4px var(--color-accent);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  transition:
+    box-shadow 0.2s,
+    filter 0.2s;
+}
+[data-theme^="genshin-"] button.bg-accent.text-white:not(:disabled):hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 0 0 1px var(--theme-ornament),
+    inset 0 0 0 3px color-mix(in oklab, var(--color-accent) 90%, transparent),
+    inset 0 0 0 4px color-mix(in oklab, var(--theme-ornament) 70%, transparent),
+    0 0 20px -2px var(--color-accent);
+}
+
+/* The play button becomes an elemental orb ringed in ornament. */
+[data-theme^="genshin-"] .play-button {
+  background: radial-gradient(
+    circle at 35% 30%,
+    var(--color-accent-bright),
+    var(--color-accent) 55%,
+    color-mix(in oklab, var(--color-accent) 70%, black)
+  );
+  color: white;
+  box-shadow:
+    0 0 0 2px var(--color-bg),
+    0 0 0 3px var(--theme-ornament),
+    0 0 18px -2px var(--color-accent);
+}
+
+/* Outline buttons pick up the ornament trim. */
+[data-theme^="genshin-"] button.border-edge.text-text {
+  border-color: color-mix(in oklab, var(--theme-ornament) 55%, var(--color-edge));
+  border-radius: 9999px;
+}
+
+/* Range sliders (volume, glass, crossfade) in the theme's accent. */
+[data-theme^="genshin-"] input[type="range"] {
+  accent-color: var(--color-accent);
+}
+
+/* ---- Liquid layout ----------------------------------------------------
+   Floating translucent panels over an ambient album-art backdrop. Every
+   colour is mixed from the theme tokens, so the same rules hold up in
+   dark, black and light. */
+
+/* Every glass property scales off this one number, so the intensity slider
+   has a single knob and 0 genuinely means "no glass": panels go fully
+   opaque, blur goes to zero and the ambient wash disappears. AppShell sets
+   it from the `glassIntensity` preference. */
+.liquid-shell {
+  --glass: 1;
+  --panel-clear: 0;
+}
+
+/* Panel transparency (--panel-clear, 0–1) thins the tint and the blur on top
+   of whatever glass intensity leaves; it stops short of fully clear so text
+   keeps something to sit on. */
+.glass {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface)
+      calc((100% - 40% * var(--glass)) * (1 - 0.85 * var(--panel-clear, 0))),
+    transparent
+  );
+  backdrop-filter: blur(calc(30px * var(--glass) * (1 - 0.8 * var(--panel-clear, 0))))
+    saturate(calc(100% + 80% * var(--glass)));
+  -webkit-backdrop-filter: blur(calc(30px * var(--glass) * (1 - 0.8 * var(--panel-clear, 0))))
+    saturate(calc(100% + 80% * var(--glass)));
+  border: 1px solid color-mix(in oklab, var(--color-text) 12%, transparent);
+  /* The inset top line is the specular edge that reads as glass. */
+  box-shadow:
+    0 14px 40px -12px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 color-mix(in oklab, var(--color-text) calc(12% * var(--glass)), transparent);
+}
+
+html[data-scheme="light"] .glass {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface)
+      calc((100% - 34% * var(--glass)) * (1 - 0.85 * var(--panel-clear, 0))),
+    transparent
+  );
+  box-shadow:
+    0 14px 40px -16px rgb(0 0 0 / 0.25),
+    inset 0 1px 0 rgb(255 255 255 / calc(0.6 * var(--glass)));
+}
+
+/* Classic layout's sidebar and player bar: solid surface by default, thinned
+   and lightly frosted by panel transparency. */
+.classic-panel {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface) calc(100% - 85% * var(--panel-clear, 0)),
+    transparent
+  );
+  backdrop-filter: blur(calc(14px * var(--panel-clear, 0)));
+  -webkit-backdrop-filter: blur(calc(14px * var(--panel-clear, 0)));
+}
+
+/* Ambient wash behind the glass; the art layer sits on top of this. */
+.liquid-backdrop {
+  background:
+    radial-gradient(
+      120% 90% at 15% 0%,
+      color-mix(in oklab, var(--color-accent) calc(22% * var(--glass)), transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      100% 80% at 100% 100%,
+      color-mix(in oklab, var(--color-accent) calc(14% * var(--glass)), transparent),
+      transparent 55%
+    ),
+    var(--color-bg);
+}
+
+/* View headers are flex siblings above their view's scroll area (never
+   sticky chrome inside it), so content can't scroll behind them and they
+   need no background of their own. Same for the paginator (view-footer)
+   below the scroll area. */
+
+/* Selection pills on glass (sidebar nav). The opaque surface-2 utility would
+   punch a solid hole in the panel, so interpolate off --glass: at 0 the pill
+   is exactly the classic surface-2, at 1 a translucent text tint the
+   backdrop shows through. Unlayered, so these beat the Tailwind utilities
+   they sit next to — but only inside the liquid shell. */
+.liquid-shell .glass-active {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface-2) calc(100% - 100% * var(--glass)),
+    color-mix(in oklab, var(--color-text) 9%, transparent)
+  );
+}
+.liquid-shell .glass-hover:hover {
+  background-color: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--color-surface-2) 60%, transparent) calc(100% - 100% * var(--glass)),
+    color-mix(in oklab, var(--color-text) 6%, transparent)
+  );
+}
+
+/* In liquid mode the scrollbar sits on glass, so the classic bg-coloured
+   track border would punch a solid hole in it. */
+.liquid-shell ::-webkit-scrollbar-thumb {
+  border-color: transparent;
+  background: color-mix(in oklab, var(--color-text) 25%, transparent);
+}
+.liquid-shell ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-text) 38%, transparent);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+/* WebKitGTK draws <select> as a native widget and discards our
+   background-color, so the control only ever followed `color-scheme` — every
+   dark theme shared one grey box. Take the rendering over so the utility
+   classes on each select actually apply. Unlayered on purpose: it has to beat
+   Tailwind's padding utility to make room for the caret. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  /* The caret is two gradient triangles rather than an inline SVG, so it can
+     take a theme token as its colour. */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-dim) 50%),
+    linear-gradient(135deg, var(--color-dim) 50%, transparent 50%);
+  background-position:
+    right 0.72rem center,
+    right 0.42rem center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.8rem;
+}
+
+/* Fallback for engines that style the dropdown list from the options
+   themselves rather than from color-scheme. */
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Indeterminate activity bar (stats imports) */
+@keyframes import-sweep {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+.animate-import-sweep {
+  animation: import-sweep 1.2s ease-in-out infinite;
+}
+
+/* Carousel rows scroll horizontally via buttons/trackpad; no visible bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Desktop-app scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+  border: 2px solid var(--color-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

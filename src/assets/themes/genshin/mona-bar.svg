@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- Mona's witch hat, star-pinned, resting on the bar under a few stars. -->
+  <defs>
+    <linearGradient id="hat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2e6e"/>
+      <stop offset="1" stop-color="#1a1638"/>
+    </linearGradient>
+    <path id="st" d="M0-8L2-2 8 0 2 2 0 8-2 2-8 0-2-2Z"/>
+  </defs>
+  <ellipse cx="98" cy="82" rx="54" ry="8" fill="url(#hat)" stroke="#e0b95a" stroke-width="1.5"/>
+  <path d="M70 80C76 58 84 36 98 22 108 12 124 8 138 14 124 16 116 26 114 40 112 56 118 70 126 80Z" fill="url(#hat)" stroke="#e0b95a" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M74 72c16 4 36 4 50 0l2 7c-16 4-36 4-54 0Z" fill="#e0b95a"/>
+  <path d="M100 66l3-8 3 8 8 1-6 5 2 8-7-4-7 4 2-8-6-5Z" fill="#fff3d0" transform="translate(-6 -18) scale(1.1)"/>
+  <g fill="#fff3d0">
+    <use href="#st" transform="translate(152 30)"/>
+    <use href="#st" transform="translate(40 50) scale(0.7)"/>
+    <use href="#st" transform="translate(166 58) scale(0.5)"/>
+    <circle cx="60" cy="30" r="1.5"/><circle cx="140" cy="46" r="1.2"/>
+  </g>
+</svg>

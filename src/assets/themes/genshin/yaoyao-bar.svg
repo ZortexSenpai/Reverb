@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- Yuegui peeking over the bar, with a radish. -->
+  <g transform="translate(106 72)">
+    <path d="M-24-30C-32-70-20-82-12-74-8-64-12-44-12-30ZM24-30C32-70 20-82 12-74 8-64 12-44 12-30Z" fill="#e8d6a8" stroke="#b08a4a" stroke-width="1.5"/>
+    <path d="M-18-36C-22-60-17-68-14-64-12-56-14-44-14-36ZM18-36C22-60 17-68 14-64 12-56 14-44 14-36Z" fill="#f2b8c2"/>
+    <path d="M-48 18C-50-10-30-38 0-38S50-10 48 18Z" fill="#e8d6a8" stroke="#b08a4a" stroke-width="1.5"/>
+    <g stroke="#b08a4a" stroke-opacity="0.55" stroke-width="1" fill="none"><path d="M-44-8h88M-48 8h96M-16-36v54M16-36v54"/></g>
+    <circle cx="-18" cy="-14" r="5" fill="#2a3a22"/><circle cx="18" cy="-14" r="5" fill="#2a3a22"/>
+    <circle cx="-16.5" cy="-15.5" r="1.6" fill="#fff"/><circle cx="19.5" cy="-15.5" r="1.6" fill="#fff"/>
+    <ellipse cx="-30" cy="-2" rx="6" ry="3" fill="#e58a9a" fill-opacity="0.75"/><ellipse cx="30" cy="-2" rx="6" ry="3" fill="#e58a9a" fill-opacity="0.75"/>
+    <path d="M-4-4q4 4 8 0" fill="none" stroke="#2a3a22" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(38 58) rotate(-14) scale(0.42)">
+    <path d="M0 0C24 0 30 30 0 70-30 30-24 0 0 0Z" fill="#fbfdf6" stroke="#e58a9a" stroke-width="4"/>
+    <path d="M0 2C-6-20-24-30-30-24-24-10-10-2 0 2ZM0 2C6-24 20-34 28-28 22-12 10-2 0 2Z" fill="#4f9a3a"/>
+  </g>
+  <g fill="#f2a6b8"><circle cx="160" cy="36" r="4"/><circle cx="165" cy="30" r="4"/><circle cx="168" cy="37" r="4"/><circle cx="162" cy="42" r="4"/><circle cx="156" cy="41" r="4"/></g>
+  <circle cx="162" cy="37" r="2" fill="#f6c77a"/>
+</svg>

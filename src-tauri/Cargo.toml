@@ -1,0 +1,31 @@
+[package]
+name = "reverb"
+description = "Reverb — a Navidrome music player"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+# The `_lib` suffix avoids a Windows-only clash between lib and bin names.
+name = "reverb_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+reverb-core = { path = "../crates/reverb-core" }
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+crossbeam-channel = "0.5"
+keyring = "4"
+md-5 = "0.11"
+souvlaki = "0.8"
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "query", "rustls", "rustls-native-certs", "gzip"] }
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+log.workspace = true

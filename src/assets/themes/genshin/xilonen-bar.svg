@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- A roller skate rolling along the bar, trailing music notes. -->
+  <g transform="translate(100 64) rotate(-6)">
+    <path d="M-30-40H0C5-40 7-30 7-20 20-18 35-12 40 0H-30Z" fill="#e8ddc8" stroke="#c7861f" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M-30-30H0M-30-20H2" stroke="#c7861f" stroke-width="1"/>
+    <rect x="-33" y="0" width="76" height="6" rx="3" fill="#4fd1c5"/>
+    <circle cx="-20" cy="13" r="7" fill="#2b251b" stroke="#e0c07a" stroke-width="1.5"/>
+    <circle cx="28" cy="13" r="7" fill="#2b251b" stroke="#e0c07a" stroke-width="1.5"/>
+  </g>
+  <g fill="#e0c07a">
+    <path d="M40 60V36l16-4v22" fill="none" stroke="#e0c07a" stroke-width="2.4"/>
+    <ellipse cx="36" cy="60" rx="5" ry="4"/><ellipse cx="52" cy="54" rx="5" ry="4"/>
+    <path d="M150 40V20" stroke="#4fd1c5" stroke-width="2.4"/><ellipse cx="146" cy="40" rx="5" ry="4" fill="#4fd1c5"/>
+    <path d="M150 20q8 2 10 10" fill="none" stroke="#4fd1c5" stroke-width="2.4"/>
+  </g>
+  <g fill="none" stroke="#4fd1c5" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.8"><path d="M20 84h10M14 76h12"/></g>
+</svg>

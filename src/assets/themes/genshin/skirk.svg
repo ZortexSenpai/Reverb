@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900">
+  <!-- Skirk: a Cryo crystal star opening onto the Abyss — orbit rings, shards, starlight. -->
+  <defs>
+    <radialGradient id="void" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b39dff" stop-opacity="0.45"/>
+      <stop offset="0.55" stop-color="#4a3a9a" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#0b0f1c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8f7ff"/>
+      <stop offset="1" stop-color="#6fb6e8"/>
+    </linearGradient>
+    <g id="arm">
+      <path d="M0 0L-9-40 0-190 9-40Z"/>
+      <path d="M0-95l-34-30 6-6 28 22Z"/>
+      <path d="M0-95l34-30-6-6-28 22Z"/>
+      <path d="M0-145l-22-22 5-5 17 15Z"/>
+      <path d="M0-145l22-22-5-5-17 15Z"/>
+    </g>
+    <path id="spark" d="M0-20Q0 0 20 0 0 0 0 20 0 0-20 0 0 0 0-20Z"/>
+  </defs>
+  <circle cx="350" cy="440" r="330" fill="url(#void)"/>
+  <g transform="translate(350 440)" fill="none" stroke="#b39dff">
+    <ellipse rx="270" ry="80" transform="rotate(-24)" stroke-opacity="0.5" stroke-width="2"/>
+    <ellipse rx="230" ry="60" transform="rotate(32)" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="2 8"/>
+    <circle r="120" stroke="#7fc8f0" stroke-opacity="0.35" stroke-width="1"/>
+  </g>
+  <g transform="translate(350 440)" fill="url(#ice)" fill-opacity="0.8">
+    <use href="#arm"/>
+    <use href="#arm" transform="rotate(60)"/>
+    <use href="#arm" transform="rotate(120)"/>
+    <use href="#arm" transform="rotate(180)"/>
+    <use href="#arm" transform="rotate(240)"/>
+    <use href="#arm" transform="rotate(300)"/>
+    <circle r="26" fill="#0b0f1c" stroke="#b39dff" stroke-width="3"/>
+    <circle r="10" fill="#e8f7ff"/>
+  </g>
+  <g fill="#9fd4f5" fill-opacity="0.55" stroke="#e3ecf8" stroke-opacity="0.5">
+    <path d="M120 170l24-52 14 60-26 30Z"/>
+    <path d="M540 700l18-40 12 46-20 22Z"/>
+    <path d="M170 740l30-34 4 50-30 14Z"/>
+    <path d="M560 180l12-30 10 34-14 16Z"/>
+    <path d="M80 560l16-26 6 32-16 10Z"/>
+  </g>
+  <g fill="#e3ecf8">
+    <use href="#spark" transform="translate(470 110) scale(1.2)" fill-opacity="0.9"/>
+    <use href="#spark" transform="translate(150 390) scale(0.7)" fill-opacity="0.7"/>
+    <use href="#spark" transform="translate(520 560) scale(0.9)" fill-opacity="0.8"/>
+    <use href="#spark" transform="translate(260 820) scale(1.1)" fill-opacity="0.7"/>
+    <use href="#spark" transform="translate(90 80) scale(0.5)" fill-opacity="0.6"/>
+    <use href="#spark" transform="translate(420 860) scale(0.5)" fill-opacity="0.6"/>
+    <circle cx="230" cy="250" r="2"/><circle cx="560" cy="300" r="1.6"/>
+    <circle cx="300" cy="650" r="1.8"/><circle cx="60" cy="690" r="1.4"/>
+    <circle cx="460" cy="780" r="2"/><circle cx="380" cy="60" r="1.5"/>
+  </g>
+</svg>

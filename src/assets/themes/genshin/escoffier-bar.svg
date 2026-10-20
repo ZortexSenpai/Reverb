@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- A silver cloche resting on the bar, with a frosty sparkle. -->
+  <defs>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f9fb"/>
+      <stop offset="1" stop-color="#8aa6b4"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(100 82)">
+    <path d="M-44 0C-44-30-24-50 0-50S44-30 44 0Z" fill="url(#silver)" stroke="#c9d4da" stroke-width="1.5"/>
+    <path d="M-30-12C-27-28-18-38-6-42" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.8"/>
+    <circle cy="-54" r="5" fill="url(#silver)" stroke="#c9d4da" stroke-width="1.5"/>
+    <rect x="-52" y="-2" width="104" height="6" rx="3" fill="#c9d4da"/>
+  </g>
+  <g stroke="#cfe8f2" stroke-width="1.8" stroke-linecap="round" fill="none" transform="translate(156 30)">
+    <path d="M0-12V12M-10-6 10 6M-10 6 10-6"/>
+  </g>
+  <g transform="translate(34 70)">
+    <path d="M-10-18H10L4 0H-4Z" fill="#cfe8f2" fill-opacity="0.4" stroke="#c9d4da"/>
+    <path d="M-9-14H9L7-8H-7Z" fill="#f2b8c8"/>
+    <path d="M-10-18C-8-24 8-24 10-18Z" fill="#fbf4e6"/>
+    <circle cy="-24" r="2.5" fill="#e24a5a"/>
+    <path d="M0 0V14M-7 14H7" stroke="#c9d4da" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <!-- Guoba peeking over the bar next to a chili. -->
+  <g transform="translate(106 66)">
+    <path d="M-30-22l-10-20 18 8ZM30-22l10-20-18 8Z" fill="#ff7a3a"/>
+    <circle cx="-26" cy="-28" r="12" fill="#2b1f1a"/><circle cx="26" cy="-28" r="12" fill="#2b1f1a"/>
+    <path d="M-44 24C-46-4-26-36 0-36S46-4 44 24Z" fill="#2b1f1a" stroke="#e2a13a" stroke-width="1.2"/>
+    <ellipse cy="10" rx="20" ry="13" fill="#f5e6da"/>
+    <circle cx="-16" cy="-12" r="5" fill="#f5e6da"/><circle cx="16" cy="-12" r="5" fill="#f5e6da"/>
+    <circle cx="-16" cy="-12" r="2.3" fill="#1a1210"/><circle cx="16" cy="-12" r="2.3" fill="#1a1210"/>
+    <ellipse cy="4" rx="5" ry="3.5" fill="#1a1210"/>
+    <path d="M-6 12q6 5 12 0" fill="none" stroke="#1a1210" stroke-width="1.8" stroke-linecap="round"/>
+    <ellipse cx="-30" cy="24" rx="9" ry="6" fill="#2b1f1a" stroke="#e2a13a" stroke-width="1.2"/>
+    <ellipse cx="30" cy="24" rx="9" ry="6" fill="#2b1f1a" stroke="#e2a13a" stroke-width="1.2"/>
+  </g>
+  <g transform="translate(40 52) rotate(-30) scale(0.45)">
+    <path d="M0 0C10 20 12 50-6 80-2 50-10 24-10 4Z" fill="#e0452c"/>
+    <path d="M-6 2C-6-10 2-16 8-18" fill="none" stroke="#4f9a3a" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <path d="M158 40c-6-8 1-14-2-22 7 6 10 14 4 22 5-2 6-8 6-12 4 6 2 14-8 12Z" fill="#f5a340"/>
+</svg>

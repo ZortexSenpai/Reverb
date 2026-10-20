@@ -128,6 +128,25 @@ describe("saveQueueSnapshotNow", () => {
     expect(snapshotSaves()).toHaveLength(1);
   });
 
+  it("waits for a delayed save that is already under way", async () => {
+    let finishSave!: () => void;
+    invoke.mockImplementationOnce(
+      () => new Promise((resolve) => (finishSave = () => resolve(undefined))),
+    );
+    setSaveQueue(true);
+    setQueue([item("q1", song("a"))]);
+    vi.advanceTimersByTime(2000);
+
+    let saved = false;
+    const saving = saveQueueSnapshotNow().then(() => (saved = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saved).toBe(false);
+
+    finishSave();
+    await saving;
+    expect(snapshotSaves()).toHaveLength(1);
+  });
+
   it("does nothing when 'save queue' is off", async () => {
     setSaveQueue(false);
     setQueue([item("q1", song("a"))]);

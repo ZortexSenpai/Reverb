@@ -468,6 +468,8 @@ interface QueueSnapshot {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/** The last save sent, until it lands. */
+let saving: Promise<void> | null = null;
 
 function saveSnapshot(): Promise<void> {
   saveTimer = null;
@@ -475,7 +477,11 @@ function saveSnapshot(): Promise<void> {
   const { queue, queueIndex } = usePlayerStore.getState();
   const snapshot: QueueSnapshot | null =
     queue.length > 0 ? { songs: queue.map((it) => it.song), index: queueIndex } : null;
-  return cmd("queue_save_snapshot", { snapshot });
+  const save = cmd("queue_save_snapshot", { snapshot }).finally(() => {
+    if (saving === save) saving = null;
+  });
+  saving = save;
+  return save;
 }
 
 usePlayerStore.subscribe((state, prev) => {
@@ -486,14 +492,18 @@ usePlayerStore.subscribe((state, prev) => {
 });
 
 /**
- * Save a queue change still waiting out the delay above, now. Nothing saves on
- * exit, so this is what keeps the last few seconds of queue edits when the app
- * is about to go away (installing an update).
+ * Save a queue change still waiting out the delay above, now, or wait for the
+ * save already on its way. Nothing saves on exit, so this is what keeps the
+ * last few seconds of queue edits when the app is about to go away
+ * (installing an update).
  */
 export async function saveQueueSnapshotNow(): Promise<void> {
-  if (!saveTimer) return;
-  clearTimeout(saveTimer);
-  await saveSnapshot();
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    await saveSnapshot();
+  } else if (saving) {
+    await saving;
+  }
 }
 
 export async function restoreQueueFromSnapshot() {

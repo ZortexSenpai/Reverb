@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:versions": "node scripts/check-versions.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

@@ -468,14 +468,14 @@ mod tests {
 
     #[test]
     fn credential_shape_accepts_only_32_hex_characters() {
-        assert!(check_credential_shape("API key", "9071b02c5295280feb8ee2c95ff0d677").is_ok());
+        assert!(check_credential_shape("API key", "0123456789abcdef0123456789abcdef").is_ok());
         // Truncated by a partial paste.
-        let err = check_credential_shape("shared secret", "9071b02c5295").unwrap_err();
+        let err = check_credential_shape("shared secret", "0123456789ab").unwrap_err();
         assert!(err.contains("12 characters"), "{err}");
         // Right length, but not hex — e.g. a password pasted into the field.
         assert!(check_credential_shape("API key", "z".repeat(32).as_str()).is_err());
         // Whitespace counts, so a trailing newline is caught rather than signed.
-        assert!(check_credential_shape("API key", "9071b02c5295280feb8ee2c95ff0d677 ").is_err());
+        assert!(check_credential_shape("API key", "0123456789abcdef0123456789abcdef ").is_err());
     }
 
     #[test]

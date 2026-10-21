@@ -27,6 +27,11 @@ function minisignPayload(encoded) {
   return line ? Buffer.from(line.trim(), "base64") : Buffer.alloc(0);
 }
 
+/** A key id as minisign prints it ("untrusted comment: … key: 1A34D851E2FE9D38"). */
+function keyId(bytes) {
+  return Buffer.from(bytes).reverse().toString("hex").toUpperCase();
+}
+
 /**
  * Check `signature` (a `.sig` file's contents) over `data` against `pubkey`
  * (tauri.conf.json's `plugins.updater.pubkey`).
@@ -50,8 +55,8 @@ export function verifyUpdaterSignature(pubkey, signature, data) {
     return {
       ok: false,
       reason:
-        `signed with a different key (id ${sig.subarray(2, 10).toString("hex")}) than the ` +
-        `public key in tauri.conf.json (id ${key.subarray(2, 10).toString("hex")})`,
+        `signed with a different key (id ${keyId(sig.subarray(2, 10))}) than the ` +
+        `public key in tauri.conf.json (id ${keyId(key.subarray(2, 10))})`,
     };
   }
   const publicKey = createPublicKey({

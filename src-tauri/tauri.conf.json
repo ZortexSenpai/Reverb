@@ -56,7 +56,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE-WITH-THE-PUBLIC-KEY-FROM-ISSUE-4",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBMzREODUxRTJGRTlEMzgKUldRNG5mN2lVZGcwR29DVFc0RG91TlhCWXJGalFkVDk4K01ENnBscDZ5M0JCcWRqelNJa0tTVUYK",
       "endpoints": [
         "https://github.com/ZortexSenpai/Reverb/releases/latest/download/latest.json"
       ],

@@ -47,7 +47,9 @@ that works, what it depends on, and what to do when it goes wrong.
 
    3. *Publish release* runs only if all three builds succeeded. It checks
       that `latest.json` has darwin-aarch64, darwin-x86_64, windows-x86_64
-      and linux-x86_64 entries, then publishes the draft.
+      and linux-x86_64 entries, plus the per-installer ones an install
+      looks up first (`-app`, `-nsis`, `-appimage`, `-deb`, `-rpm`), then
+      publishes the draft.
 6. **Installs pick it up.** Publishing makes it GitHub's "latest" release,
    and every install with automatic checks on finds it within 6 hours (or
    at its next launch).

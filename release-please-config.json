@@ -8,8 +8,7 @@
     "and both workspace crates in Cargo.lock. (TOML strings come out of release-please's parser",
     "as {value: ...} objects, hence `@.name.value`.) tauri.conf.json has no version: it inherits",
     "the Cargo one. `scripts/check-versions.mjs` fails CI if any of these disagree.",
-    "`release-as` + `prerelease` cut the first release candidate; RELEASING.md says when to change",
-    "and then remove them."
+    "`release-as` pins the first stable release to 1.0.0. Remove it once v1.0.0 is published."
   ],
   "packages": {
     ".": {
@@ -18,8 +17,7 @@
       "changelog-path": "CHANGELOG.md",
       "draft": true,
       "force-tag-creation": true,
-      "release-as": "1.0.0-rc.2",
-      "prerelease": true,
+      "release-as": "1.0.0",
       "extra-files": [
         {
           "type": "toml",

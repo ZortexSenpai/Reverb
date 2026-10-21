@@ -108,6 +108,33 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The rpm crate refuses the `-` in a pre-release version like
+      # 1.0.0-rc.2, so the stock CLI fails the whole Linux build
+      # (tauri-apps/tauri#16336). Until a Tauri release has that fix,
+      # pre-release Linux builds use the CLI version package-lock.json pins,
+      # built from source with the fix applied. Stable versions don't need it.
+      # RELEASING.md (Pre-releases) says when to remove this.
+      - name: Build a Tauri CLI that can bundle a pre-release rpm
+        id: tauri-cli
+        if: runner.os == 'Linux' && contains(needs.release-please.outputs.tag, '-')
+        env:
+          # It only has to bundle, not be small: skip the slow LTO build.
+          CARGO_PROFILE_RELEASE_LTO: "false"
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+        run: |
+          version=$(node -p "require('./node_modules/@tauri-apps/cli/package.json').version")
+          {
+            git clone --quiet --depth 1 --branch "tauri-cli-v$version" \
+              https://github.com/tauri-apps/tauri "$RUNNER_TEMP/tauri" &&
+            git -C "$RUNNER_TEMP/tauri" apply \
+              "$GITHUB_WORKSPACE/.github/patches/tauri-rpm-prerelease-version.patch"
+          } || {
+            echo "::error::Can't patch Tauri CLI $version for the rpm." \
+              "See Pre-releases in RELEASING.md."
+            exit 1
+          }
+          cargo install --path "$RUNNER_TEMP/tauri/crates/tauri-cli" --locked
+          echo "script=cargo tauri" >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -121,6 +148,8 @@ jobs:
           releaseBody: ${{ needs.release-please.outputs.body }}
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+          # The patched CLI from the step above, if it ran. Empty means npm's.
+          tauriScript: ${{ steps.tauri-cli.outputs.script }}
 
   publish:
     name: Publish release

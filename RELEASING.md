@@ -185,6 +185,22 @@ To cut one through the same pipeline, set these in
 (`release-as` is deprecated upstream in favour of a `Release-As: 1.3.0-rc.1`
 commit footer. Either works.)
 
+The Linux build of a pre-release takes about 5 minutes longer. Tauri can't
+bundle an `.rpm` for a version with a `-` in it yet
+([tauri-apps/tauri#16336](https://github.com/tauri-apps/tauri/pull/16336)),
+so the job builds the Tauri CLI from source with that fix applied
+(`.github/patches/tauri-rpm-prerelease-version.patch`). The rpm's Version
+tag says `1.3.0~rc.1`, which rpm sorts before `1.3.0`, so the `rpm -U` the
+updater runs takes 1.3.0 over it. The file name keeps the `-`. Once a Tauri
+release has the fix, update `@tauri-apps/cli` and delete the patch, the
+workflow step that applies it, and `tauriScript`. Until then, that step
+fails the build if the patch stops applying.
+
+The `.deb` gets it the other way round: dpkg reads `1.3.0-rc.1` as
+`1.3.0` packaging revision `rc.1`, which sorts *after* `1.3.0`. The updater
+still installs 1.3.0 over it (it runs `dpkg -i`, which only warns), but apt
+treats installing 1.3.0 by hand as a downgrade.
+
 ## First release
 
 The pipeline is proved with a release candidate before 1.0.0 ships.

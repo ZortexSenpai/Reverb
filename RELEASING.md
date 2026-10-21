@@ -141,7 +141,9 @@ installs keep seeing the previous release. To recover:
 
 1. Open the failed run in **Actions → Release** and use **Re-run failed
    jobs**. tauri-action replaces any files the failed attempt uploaded, and
-   *Publish release* runs again once all three builds are green.
+   *Publish release* runs again once all three builds are green. A job that
+   failed with "The job was not acquired by Runner" never ran at all
+   (GitHub had no runner free), so a re-run is all it needs.
 2. If *Publish release* says `latest.json` is missing a platform, re-run
    that platform's build job. Each build merges its entries into
    `latest.json`, so the re-run puts the missing ones back.
@@ -149,6 +151,10 @@ installs keep seeing the previous release. To recover:
    release commit again. Skip the version instead:
    1. Leave the draft unpublished.
    2. Land the fix on `main`, and merge the next release PR (vX.Y.Z+1).
+      release-please only opens one once a `feat:` or `fix:` commit has
+      landed since the last release, `release-as` or not, so give the fix
+      one of those types. For a pre-release, also bump `release-as` (say
+      to `1.3.0-rc.2`).
    3. Once that release is out, delete the stale draft with
       `gh release delete vX.Y.Z`. Keep its tag, because release-please's
       history counts on it.
@@ -212,17 +218,19 @@ The pipeline is proved with a release candidate before 1.0.0 ships.
    into `plugins.updater.pubkey` in `tauri.conf.json`, replacing the
    placeholder. Until then, *Check signing key* fails on purpose. Also create
    `RELEASE_PLEASE_TOKEN`, so CI runs on the release PR.
-2. Merge the release PR for **v1.0.0-rc.1** (`release-as: 1.0.0-rc.1`,
+2. Merge the release PR for **v1.0.0-rc.2** (`release-as: 1.0.0-rc.2`,
    `prerelease: true`). Check that the pre-release has every bundle with its
    `.sig` and a complete `latest.json`. Then install it by hand on each OS
    (#5).
-   - Watch the **rpm** here. The bundler puts the version into the rpm's
-     Version field as is, and rpm doesn't normally allow `-` there. If
-     `1.0.0-rc.1` won't install, that's a pre-release-only problem; 1.0.0
-     doesn't have it.
+   - v1.0.0-rc.1 never got past a draft. Its Linux build failed on the rpm
+     (see [Pre-releases](#pre-releases)), so it was skipped as in
+     [When a build fails](#when-a-build-fails). Once rc.2 is out, delete
+     that draft with `gh release delete v1.0.0-rc.1` and keep its tag.
 3. Delete the old local tag that was never pushed (`git tag -d v1.0.0`).
-   Set `release-as` to `1.0.0` and remove `prerelease`. Merge the release
-   PR, and check that **v1.0.0** is GitHub's latest release (#10).
+   Set `release-as` to `1.0.0` and remove `prerelease`. The release PR
+   shows up once a `feat:` or `fix:` has landed since the release
+   candidate. Merge it, and check that **v1.0.0** is GitHub's latest
+   release (#10).
 4. Remove `release-as` from the config. From here on, versions follow the
    commits.
 

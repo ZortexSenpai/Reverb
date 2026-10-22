@@ -110,6 +110,12 @@ function shuffled<T>(items: T[]): T[] {
   return out;
 }
 
+/** `items` slotted in after the current item, or at the end when nothing is current. */
+function insertAfterCurrent(queue: QueueItem[], queueIndex: number, items: QueueItem[]) {
+  const at = queueIndex < 0 ? queue.length : queueIndex + 1;
+  return { queue: [...queue.slice(0, at), ...items, ...queue.slice(at)], at };
+}
+
 export const usePlayerStore = create<PlayerStore>((set, get) => {
   /** Compute the item after `index` under current repeat rules. */
   function nextItemAfter(index: number): QueueItem | null {
@@ -241,8 +247,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     playNext: (songs) => {
       const items = songs.map((song) => ({ queueId: nanoid(), song }));
       const { queue, queueIndex } = get();
-      const at = queueIndex < 0 ? queue.length : queueIndex + 1;
-      const nextQueue = [...queue.slice(0, at), ...items, ...queue.slice(at)];
+      const { queue: nextQueue } = insertAfterCurrent(queue, queueIndex, items);
       set({ queue: nextQueue });
       if (queueIndex < 0 && nextQueue.length > 0) {
         set({ queueIndex: 0 });
@@ -255,8 +260,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     playNow: (song) => {
       const item = { queueId: nanoid(), song };
       const { queue, queueIndex } = get();
-      const at = queueIndex < 0 ? queue.length : queueIndex + 1;
-      set({ queue: [...queue.slice(0, at), item, ...queue.slice(at)], queueIndex: at });
+      const { queue: nextQueue, at } = insertAfterCurrent(queue, queueIndex, [item]);
+      set({ queue: nextQueue, queueIndex: at });
       playItem(item);
     },
 

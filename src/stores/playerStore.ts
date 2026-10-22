@@ -50,6 +50,8 @@ interface PlayerStore {
    */
   startRadio: (song: Song) => Promise<number | null>;
   playNext: (songs: Song[]) => void;
+  /** Play `song` right away, slotted in after the current one; the rest of the queue stays put. */
+  playNow: (song: Song) => void;
   addToQueue: (songs: Song[]) => void;
   removeFromQueue: (queueId: string) => void;
   moveInQueue: (from: number, to: number) => void;
@@ -248,6 +250,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       } else {
         syncNext();
       }
+    },
+
+    playNow: (song) => {
+      const item = { queueId: nanoid(), song };
+      const { queue, queueIndex } = get();
+      const at = queueIndex < 0 ? queue.length : queueIndex + 1;
+      set({ queue: [...queue.slice(0, at), item, ...queue.slice(at)], queueIndex: at });
+      playItem(item);
     },
 
     addToQueue: (songs) => {

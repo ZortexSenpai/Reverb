@@ -3,7 +3,7 @@ resolver = "2"
 members = ["src-tauri", "crates/reverb-core"]
 
 [workspace.package]
-version = "1.0.0-rc.2"
+version = "1.0.0"
 edition = "2021"
 authors = ["ZortexSenpai"]
 license = "GPL-3.0-only"

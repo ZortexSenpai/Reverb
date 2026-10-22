@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/ZortexSenpai/Reverb/compare/v1.0.0-rc.2...v1.0.0) (2026-10-22)
+
+
+### Features
+
+* Recently played tab in the queue panel ([#19](https://github.com/ZortexSenpai/Reverb/issues/19)) ([718a193](https://github.com/ZortexSenpai/Reverb/commit/718a1930b3ce93c00db0c9f2d45f6e5af331b821))
+
 ## [1.0.0-rc.2](https://github.com/ZortexSenpai/Reverb/compare/v1.0.0-rc.1...v1.0.0-rc.2) (2026-10-21)
 
 

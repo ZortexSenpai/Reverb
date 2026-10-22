@@ -125,6 +125,7 @@ function PlayRow({ play }: { play: Play }) {
 function PlayHistoryList() {
   const t = useT();
   const { data: plays } = usePlayHistory();
+  // Still loading. One that can't be read arrives as empty (see readPlayHistory).
   if (!plays) return null;
   if (plays.length === 0) return <p className={emptyClass}>{t("queue.nothingPlayed")}</p>;
   // A Song played twice is two Plays, so the Song id alone is no key; when it

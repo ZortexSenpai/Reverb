@@ -140,6 +140,15 @@ export function useMixes() {
   });
 }
 
+/** The Play History ("Recently played"), newest first. Recording a Play and
+ *  clearing invalidate it, so an open list follows along. */
+export function usePlayHistory() {
+  return useQuery({
+    queryKey: qk.playHistory(),
+    queryFn: () => cmd("history_get"),
+  });
+}
+
 export function useStarred() {
   return useQuery({
     queryKey: qk.starred(),

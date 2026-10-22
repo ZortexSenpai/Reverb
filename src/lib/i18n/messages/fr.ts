@@ -71,6 +71,9 @@ export const fr: Messages = {
   "queue.nextUp": "À suivre",
   "queue.playFromHere": "Lire à partir d'ici",
   "queue.remove": "Retirer de la file",
+  "queue.recentlyPlayed": "Historique",
+  "queue.clearHistory": "Effacer l'historique",
+  "queue.nothingPlayed": "Aucune écoute pour l'instant.",
 
   "lyrics.none": "Aucune parole disponible pour ce morceau.",
 

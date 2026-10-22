@@ -88,7 +88,8 @@ pub fn run() {
 
             let data_dir = app.path().app_data_dir()?;
             let stats = stats::store::StatsStore::load(data_dir.clone())?;
-            let mixes = mixes::store::MixStore::load(data_dir);
+            let mixes = mixes::store::MixStore::load(data_dir.clone());
+            let play_history = play_history::store::PlayHistoryStore::load(data_dir);
 
             // Manage state before the forwarder spawns: the media-session
             // callback resolves AppState through the app handle.
@@ -100,6 +101,7 @@ pub fn run() {
                 player: player.clone(),
                 stats,
                 mixes,
+                play_history,
             });
 
             events::spawn_forwarder(app.handle().clone(), event_rx, player, subsonic);
@@ -168,6 +170,9 @@ pub fn run() {
             commands::library::library_start_scan,
             commands::library::library_get_scan_status,
             commands::mixes::mixes_get,
+            commands::history::history_get,
+            commands::history::history_record,
+            commands::history::history_clear,
             commands::player::player_get_state,
             commands::player::player_play_track,
             commands::player::player_set_next,

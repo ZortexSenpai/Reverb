@@ -299,6 +299,14 @@ export interface PlayableTrack {
   replayGain?: ReplayGainData;
 }
 
+/** One listening of a Song in Reverb on this computer, as the Play History
+ *  ("Recently played") keeps it. */
+export interface Play {
+  /** Unix ms of when the Song started. */
+  playedAt: number;
+  song: Song;
+}
+
 // ---- EQ ----
 
 export type EqFilterType = "peaking" | "lowshelf" | "highshelf" | "lowpass" | "highpass";

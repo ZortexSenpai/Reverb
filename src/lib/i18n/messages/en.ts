@@ -633,7 +633,7 @@ export const en = {
   "stats.topTracks": "Top tracks",
   "stats.topAlbums": "Top albums",
   "stats.onThisDay": "On this day, {year}",
-  "stats.recentlyPlayed": "Recent scrobbles",
+  "stats.recentScrobbles": "Recent scrobbles",
 
   "chart.plays": "plays",
   "chart.playsWithLabel": "{label} · {n, plural, one {# play} other {# plays}}",

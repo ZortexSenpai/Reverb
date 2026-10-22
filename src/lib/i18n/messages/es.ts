@@ -604,7 +604,7 @@ export const es: Messages = {
   "stats.topTracks": "Pistas más escuchadas",
   "stats.topAlbums": "Álbumes más escuchados",
   "stats.onThisDay": "Un día como hoy de {year}",
-  "stats.recentlyPlayed": "Scrobbles recientes",
+  "stats.recentScrobbles": "Scrobbles recientes",
 
   "chart.plays": "reproducciones",
   "chart.playsWithLabel":

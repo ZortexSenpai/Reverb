@@ -36,6 +36,11 @@ interface Props {
   targets?: Song[];
   /** When set, offers "Remove from playlist" (used in playlist detail). */
   onRemoveFromPlaylist?: (songs: Song[]) => void;
+  /**
+   * When set, "Play now" hands it the clicked song instead of playing
+   * `context` (for the Play History, which is no list to play through).
+   */
+  onPlayNow?: (song: Song) => void;
   children: ReactNode;
 }
 
@@ -48,6 +53,7 @@ export function TrackContextMenu({
   index,
   targets,
   onRemoveFromPlaylist,
+  onPlayNow,
   children,
 }: Props) {
   const t = useT();
@@ -104,7 +110,11 @@ export function TrackContextMenu({
         <ContextMenu.Content className="z-50 min-w-52 rounded-lg border border-edge bg-surface p-1 shadow-xl">
           <ContextMenu.Item
             className={itemClass}
-            onSelect={() => (many ? playContext(songs, 0) : playContext(context, index))}
+            onSelect={() => {
+              if (onPlayNow) onPlayNow(song);
+              else if (many) playContext(songs, 0);
+              else playContext(context, index);
+            }}
           >
             <Play className="size-4 text-dim" /> {t("menu.playNow")}
             {suffix}

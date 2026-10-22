@@ -15,4 +15,5 @@ export const qk = {
   indexes: (folderId: string) => ["indexes", folderId] as const,
   directory: (id: string) => ["directory", id] as const,
   mixes: () => ["mixes"] as const,
+  playHistory: () => ["playHistory"] as const,
 };

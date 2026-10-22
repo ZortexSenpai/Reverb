@@ -21,6 +21,7 @@ import type {
   Mix,
   MusicFolder,
   OutputDevice,
+  Play,
   PlayableTrack,
   PlayerSnapshot,
   PlayQueue,
@@ -136,6 +137,13 @@ export interface CommandMap {
   // mixes
   /** Today's mixes; `refresh` throws them away and picks new ones. */
   mixes_get: { args: { refresh: boolean }; result: Mix[] };
+
+  // play history
+  /** The signed-in account's Plays, newest first; none when signed out. */
+  history_get: { args: NoArgs; result: Play[] };
+  /** `playedAt` is Unix ms of when the Song started. */
+  history_record: { args: { song: Song; playedAt: number }; result: void };
+  history_clear: { args: NoArgs; result: void };
 
   // player
   player_get_state: { args: NoArgs; result: PlayerSnapshot };

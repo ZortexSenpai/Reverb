@@ -7,6 +7,7 @@ use serde::Serialize;
 use crate::mixes::store::MixStore;
 use crate::persistence::keychain::Keychain;
 use crate::persistence::settings::SettingsStore;
+use crate::play_history::store::PlayHistoryStore;
 use crate::stats::store::StatsStore;
 
 /// Snapshot handed to the frontend on boot/reload — mirrors what the event
@@ -43,4 +44,14 @@ pub struct AppState {
     pub player: Arc<Mutex<PlayerSnapshot>>,
     pub stats: StatsStore,
     pub mixes: MixStore,
+    pub play_history: PlayHistoryStore,
+}
+
+impl AppState {
+    /// The signed-in account as `user@server_url`, what the mixes and the
+    /// Play History are kept under: song ids mean nothing on another server.
+    /// `None` when signed out.
+    pub fn account(&self) -> Option<String> {
+        self.subsonic.credentials().map(|creds| format!("{}@{}", creds.username, creds.server_url))
+    }
 }

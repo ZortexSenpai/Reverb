@@ -601,7 +601,7 @@ export const fr: Messages = {
   "stats.topTracks": "Morceaux les plus écoutés",
   "stats.topAlbums": "Albums les plus écoutés",
   "stats.onThisDay": "Ce jour-là, en {year}",
-  "stats.recentlyPlayed": "Écoutés récemment",
+  "stats.recentlyPlayed": "Scrobbles récents",
 
   "chart.plays": "écoutes",
   "chart.playsWithLabel": "{label} · {n, plural, one {# écoute} other {# écoutes}}",

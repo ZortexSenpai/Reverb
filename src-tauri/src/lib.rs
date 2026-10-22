@@ -4,6 +4,7 @@ mod events;
 mod media_keys;
 mod mixes;
 mod persistence;
+mod play_history;
 mod protocol;
 mod state;
 mod stats;

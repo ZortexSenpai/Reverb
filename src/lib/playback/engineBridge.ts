@@ -11,6 +11,7 @@ import { useEqStore } from "../../stores/eqStore";
 import { advanceToPendingNext, usePlayerStore } from "../../stores/playerStore";
 import { usePrefsStore } from "../../stores/prefsStore";
 import { useUiStore } from "../../stores/uiStore";
+import { recordPlay } from "./playRecorder";
 import { positionClock } from "./positionClock";
 
 let initialized = false;
@@ -43,6 +44,12 @@ export function initEngineBridge() {
 
   void on("player:track-ended", () => {
     positionClock.reset();
+  });
+
+  // Counted at "Mark as played after", the moment a Scrobble would be sent,
+  // whether or not scrobbling is on.
+  void on("player:play-counted", (counted) => {
+    recordPlay(counted).catch((e) => console.warn("could not record a Play:", e));
   });
 
   void on("player:error", ({ message, recoverable }) => {

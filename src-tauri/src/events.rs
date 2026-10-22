@@ -160,6 +160,14 @@ struct TrackEndedPayload {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct PlayCountedPayload {
+    track_id: String,
+    /// Unix ms of when the Song started.
+    started_at_ms: u64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ErrorPayload {
     code: String,
     message: String,
@@ -269,18 +277,27 @@ fn forward(
             duration_ms,
         } => {
             use tauri::Manager;
+            // Submissions carry the time the song *started* playing.
+            let time_ms = submission.then(|| {
+                let position_ms = player.lock().unwrap().position_ms;
+                let now_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0);
+                now_ms.saturating_sub(position_ms)
+            });
+            // A submission is also the moment the Song counts as a Play. The
+            // Play History records it whether or not it gets scrobbled, and
+            // wherever scrobbles go.
+            if let Some(started_at_ms) = time_ms {
+                let _ = app.emit(
+                    "player:play-counted",
+                    PlayCountedPayload { track_id: track_id.clone(), started_at_ms },
+                );
+            }
             let scrobble_enabled =
                 app.state::<crate::state::AppState>().settings.get().prefs.scrobble_enabled;
             if scrobble_enabled {
-                // Submissions carry the time the song *started* playing.
-                let time_ms = submission.then(|| {
-                    let position_ms = player.lock().unwrap().position_ms;
-                    let now_ms = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_millis() as u64)
-                        .unwrap_or(0);
-                    now_ms.saturating_sub(position_ms)
-                });
                 match lastfm_target(app) {
                     Some(target) => {
                         // Last.fm-only: the server is skipped entirely.

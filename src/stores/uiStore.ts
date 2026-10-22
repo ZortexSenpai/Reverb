@@ -2,10 +2,15 @@ import { create } from "zustand";
 
 export type Session = "loading" | "setup" | "ready";
 
+/** The queue panel's tabs: the Queue itself, and the Play History ("Recently played"). */
+export type QueuePanelTab = "queue" | "playHistory";
+
 interface UiStore {
   session: Session;
   nowPlayingOpen: boolean;
   queuePanelOpen: boolean;
+  /** Kept while the panel is closed, so it reopens on the tab used last. */
+  queuePanelTab: QueuePanelTab;
   toast: { message: string; kind: "error" | "info" } | null;
   /** Non-null opens the "new playlist" dialog, seeded with these song ids. */
   newPlaylistSongIds: string[] | null;
@@ -19,6 +24,7 @@ interface UiStore {
   setSession: (s: Session) => void;
   setNowPlayingOpen: (open: boolean) => void;
   setQueuePanelOpen: (open: boolean) => void;
+  setQueuePanelTab: (tab: QueuePanelTab) => void;
   showToast: (message: string, kind?: "error" | "info") => void;
   dismissToast: () => void;
   openNewPlaylist: (songIds?: string[], name?: string) => void;
@@ -30,6 +36,7 @@ export const useUiStore = create<UiStore>((set) => ({
   session: "loading",
   nowPlayingOpen: false,
   queuePanelOpen: false,
+  queuePanelTab: "queue",
   toast: null,
   newPlaylistSongIds: null,
   newPlaylistName: "",
@@ -42,6 +49,7 @@ export const useUiStore = create<UiStore>((set) => ({
   closeNewPlaylist: () => set({ newPlaylistSongIds: null }),
   setNowPlayingOpen: (nowPlayingOpen) => set({ nowPlayingOpen }),
   setQueuePanelOpen: (queuePanelOpen) => set({ queuePanelOpen }),
+  setQueuePanelTab: (queuePanelTab) => set({ queuePanelTab }),
   showToast: (message, kind = "info") => {
     set({ toast: { message, kind } });
     window.setTimeout(() => set({ toast: null }), 5000);

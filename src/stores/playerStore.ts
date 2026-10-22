@@ -50,6 +50,8 @@ interface PlayerStore {
    */
   startRadio: (song: Song) => Promise<number | null>;
   playNext: (songs: Song[]) => void;
+  /** Play `song` right away, slotted in after the current one; the rest of the queue stays put. */
+  playNow: (song: Song) => void;
   addToQueue: (songs: Song[]) => void;
   removeFromQueue: (queueId: string) => void;
   moveInQueue: (from: number, to: number) => void;
@@ -106,6 +108,12 @@ function shuffled<T>(items: T[]): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+/** `items` slotted in after the current item, or at the end when nothing is current. */
+function insertAfterCurrent(queue: QueueItem[], queueIndex: number, items: QueueItem[]) {
+  const at = queueIndex < 0 ? queue.length : queueIndex + 1;
+  return { queue: [...queue.slice(0, at), ...items, ...queue.slice(at)], at };
 }
 
 export const usePlayerStore = create<PlayerStore>((set, get) => {
@@ -239,8 +247,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
     playNext: (songs) => {
       const items = songs.map((song) => ({ queueId: nanoid(), song }));
       const { queue, queueIndex } = get();
-      const at = queueIndex < 0 ? queue.length : queueIndex + 1;
-      const nextQueue = [...queue.slice(0, at), ...items, ...queue.slice(at)];
+      const { queue: nextQueue } = insertAfterCurrent(queue, queueIndex, items);
       set({ queue: nextQueue });
       if (queueIndex < 0 && nextQueue.length > 0) {
         set({ queueIndex: 0 });
@@ -248,6 +255,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       } else {
         syncNext();
       }
+    },
+
+    playNow: (song) => {
+      const item = { queueId: nanoid(), song };
+      const { queue, queueIndex } = get();
+      const { queue: nextQueue, at } = insertAfterCurrent(queue, queueIndex, [item]);
+      set({ queue: nextQueue, queueIndex: at });
+      playItem(item);
     },
 
     addToQueue: (songs) => {

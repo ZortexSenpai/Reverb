@@ -93,6 +93,98 @@ describe("playContext", () => {
   });
 });
 
+const playedTrackIds = () =>
+  invoke.mock.calls
+    .filter(([name]) => name === "player_play_track")
+    .map(([, args]) => (args as { track: { trackId: string } }).track.trackId);
+
+describe("playNext", () => {
+  beforeEach(() => {
+    invoke.mockClear();
+  });
+
+  it("slots the Songs in after the current item, in order, and leaves it playing", () => {
+    usePlayerStore.setState({
+      queue: [item("q1", song("a")), item("q2", song("b")), item("q3", song("c"))],
+      queueIndex: 1,
+    });
+
+    usePlayerStore.getState().playNext([song("x"), song("y")]);
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["a", "b", "x", "y", "c"]);
+    expect(queueIndex).toBe(1);
+    expect(playedTrackIds()).toEqual([]);
+  });
+
+  it("starts an empty Queue with the first of the Songs", () => {
+    usePlayerStore.setState({ queue: [], queueIndex: -1 });
+
+    usePlayerStore.getState().playNext([song("x"), song("y")]);
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["x", "y"]);
+    expect(queueIndex).toBe(0);
+    expect(playedTrackIds()).toEqual(["x"]);
+  });
+});
+
+describe("playNow", () => {
+  beforeEach(() => {
+    invoke.mockClear();
+  });
+
+  it("inserts the Song after the current item and plays it", () => {
+    usePlayerStore.setState({
+      queue: [item("q1", song("a")), item("q2", song("b")), item("q3", song("c"))],
+      queueIndex: 1,
+    });
+
+    usePlayerStore.getState().playNow(song("x"));
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["a", "b", "x", "c"]);
+    expect(queueIndex).toBe(2);
+    expect(usePlayerStore.getState().currentItem()?.song.id).toBe("x");
+    expect(playedTrackIds()).toEqual(["x"]);
+  });
+
+  it("keeps every other item in its place, both before and after", () => {
+    usePlayerStore.setState({
+      queue: [
+        item("q1", song("a")),
+        item("q2", song("b")),
+        item("q3", song("c")),
+        item("q4", song("d")),
+      ],
+      queueIndex: 1,
+    });
+
+    usePlayerStore.getState().playNow(song("a"));
+
+    const { queue } = usePlayerStore.getState();
+    expect(queue).toHaveLength(5);
+    expect(queue[0].queueId).toBe("q1");
+    expect(queue[1].queueId).toBe("q2");
+    expect(queue[3].queueId).toBe("q3");
+    expect(queue[4].queueId).toBe("q4");
+    // A Song already in the Queue is played as a copy, leaving the original where it was.
+    expect(queue[2].queueId).not.toBe("q1");
+    expect(queue[2].song.id).toBe("a");
+  });
+
+  it("makes the Song the only item of an empty Queue and plays it", () => {
+    usePlayerStore.setState({ queue: [], queueIndex: -1 });
+
+    usePlayerStore.getState().playNow(song("x"));
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["x"]);
+    expect(queueIndex).toBe(0);
+    expect(playedTrackIds()).toEqual(["x"]);
+  });
+});
+
 describe("saveQueueSnapshotNow", () => {
   const setSaveQueue = (saveQueue: boolean) =>
     usePrefsStore.setState({ prefs: { ...usePrefsStore.getState().prefs, saveQueue } });

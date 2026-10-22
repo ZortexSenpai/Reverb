@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { usePlayerStore } from "../../stores/playerStore";
 import { cmd } from "../ipc/commands";
 import { qk } from "./keys";
-import type { AlbumListType } from "./types";
+import type { AlbumListType, Play } from "./types";
 
 export const ALBUM_PAGE_SIZE = 60;
 export const SONG_PAGE_SIZE = 100;
@@ -137,6 +137,29 @@ export function useMixes() {
     queryKey: qk.mixes(),
     queryFn: () => cmd("mixes_get", { refresh: false }),
     staleTime: 10 * 60_000,
+  });
+}
+
+/**
+ * The signed-in account's Plays, newest first. One that can't be read reads as
+ * empty, as an unreadable file does in the store, so the Recently played tab
+ * says "Nothing played yet" rather than looking broken.
+ */
+export async function readPlayHistory(): Promise<Play[]> {
+  try {
+    return await cmd("history_get");
+  } catch (e) {
+    console.warn("could not read the Play History:", e);
+    return [];
+  }
+}
+
+/** The Play History ("Recently played"), newest first. Recording a Play and
+ *  clearing invalidate it, so an open list follows along. */
+export function usePlayHistory() {
+  return useQuery({
+    queryKey: qk.playHistory(),
+    queryFn: readPlayHistory,
   });
 }
 

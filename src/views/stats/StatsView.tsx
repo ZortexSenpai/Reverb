@@ -411,7 +411,7 @@ export function StatsView() {
               </div>
             )}
 
-            <Section title={t("stats.recentlyPlayed")}>
+            <Section title={t("stats.recentScrobbles")}>
               {summary.recent.length === 0 ? (
                 <p className="px-1 py-4 text-xs text-faint">{t("stats.noPlays")}</p>
               ) : (

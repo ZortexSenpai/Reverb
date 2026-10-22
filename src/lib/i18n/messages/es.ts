@@ -71,6 +71,9 @@ export const es: Messages = {
   "queue.nextUp": "A continuación",
   "queue.playFromHere": "Reproducir desde aquí",
   "queue.remove": "Quitar de la cola",
+  "queue.recentlyPlayed": "Historial",
+  "queue.clearPlayHistory": "Borrar el historial",
+  "queue.nothingPlayed": "Aún no hay reproducciones.",
 
   "lyrics.none": "No hay letra disponible para esta pista.",
 
@@ -601,7 +604,7 @@ export const es: Messages = {
   "stats.topTracks": "Pistas más escuchadas",
   "stats.topAlbums": "Álbumes más escuchados",
   "stats.onThisDay": "Un día como hoy de {year}",
-  "stats.recentlyPlayed": "Reproducido recientemente",
+  "stats.recentScrobbles": "Scrobbles recientes",
 
   "chart.plays": "reproducciones",
   "chart.playsWithLabel":

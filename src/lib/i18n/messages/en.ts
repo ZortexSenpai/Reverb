@@ -84,6 +84,9 @@ export const en = {
   "queue.nextUp": "Next up",
   "queue.playFromHere": "Play from here",
   "queue.remove": "Remove from queue",
+  "queue.recentlyPlayed": "Recently played",
+  "queue.clearPlayHistory": "Clear history",
+  "queue.nothingPlayed": "Nothing played yet.",
 
   "lyrics.none": "No lyrics available for this track.",
 
@@ -630,7 +633,7 @@ export const en = {
   "stats.topTracks": "Top tracks",
   "stats.topAlbums": "Top albums",
   "stats.onThisDay": "On this day, {year}",
-  "stats.recentlyPlayed": "Recently played",
+  "stats.recentScrobbles": "Recent scrobbles",
 
   "chart.plays": "plays",
   "chart.playsWithLabel": "{label} · {n, plural, one {# play} other {# plays}}",

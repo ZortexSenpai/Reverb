@@ -45,8 +45,7 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
     let state = app.state::<AppState>();
     let _generating = state.mixes.generation.lock().await;
 
-    let creds = state.subsonic.credentials().ok_or(SubsonicError::NotConfigured)?;
-    let account = format!("{}@{}", creds.username, creds.server_url);
+    let account = state.account().ok_or(SubsonicError::NotConfigured)?;
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
     let week = now.format("%G-W%V").to_string();

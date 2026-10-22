@@ -93,12 +93,43 @@ describe("playContext", () => {
   });
 });
 
-describe("playNow", () => {
-  const playedTrackIds = () =>
-    invoke.mock.calls
-      .filter(([name]) => name === "player_play_track")
-      .map(([, args]) => (args as { track: { trackId: string } }).track.trackId);
+const playedTrackIds = () =>
+  invoke.mock.calls
+    .filter(([name]) => name === "player_play_track")
+    .map(([, args]) => (args as { track: { trackId: string } }).track.trackId);
 
+describe("playNext", () => {
+  beforeEach(() => {
+    invoke.mockClear();
+  });
+
+  it("slots the Songs in after the current item, in order, and leaves it playing", () => {
+    usePlayerStore.setState({
+      queue: [item("q1", song("a")), item("q2", song("b")), item("q3", song("c"))],
+      queueIndex: 1,
+    });
+
+    usePlayerStore.getState().playNext([song("x"), song("y")]);
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["a", "b", "x", "y", "c"]);
+    expect(queueIndex).toBe(1);
+    expect(playedTrackIds()).toEqual([]);
+  });
+
+  it("starts an empty Queue with the first of the Songs", () => {
+    usePlayerStore.setState({ queue: [], queueIndex: -1 });
+
+    usePlayerStore.getState().playNext([song("x"), song("y")]);
+
+    const { queue, queueIndex } = usePlayerStore.getState();
+    expect(queue.map((i) => i.song.id)).toEqual(["x", "y"]);
+    expect(queueIndex).toBe(0);
+    expect(playedTrackIds()).toEqual(["x"]);
+  });
+});
+
+describe("playNow", () => {
   beforeEach(() => {
     invoke.mockClear();
   });

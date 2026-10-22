@@ -72,7 +72,7 @@ export const fr: Messages = {
   "queue.playFromHere": "Lire à partir d'ici",
   "queue.remove": "Retirer de la file",
   "queue.recentlyPlayed": "Historique",
-  "queue.clearHistory": "Effacer l'historique",
+  "queue.clearPlayHistory": "Effacer l'historique",
   "queue.nothingPlayed": "Aucune écoute pour l'instant.",
 
   "lyrics.none": "Aucune parole disponible pour ce morceau.",
@@ -604,7 +604,7 @@ export const fr: Messages = {
   "stats.topTracks": "Morceaux les plus écoutés",
   "stats.topAlbums": "Albums les plus écoutés",
   "stats.onThisDay": "Ce jour-là, en {year}",
-  "stats.recentlyPlayed": "Scrobbles récents",
+  "stats.recentScrobbles": "Scrobbles récents",
 
   "chart.plays": "écoutes",
   "chart.playsWithLabel": "{label} · {n, plural, one {# écoute} other {# écoutes}}",

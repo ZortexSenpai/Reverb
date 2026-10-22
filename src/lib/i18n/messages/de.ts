@@ -72,7 +72,7 @@ export const de: Messages = {
   "queue.playFromHere": "Ab hier abspielen",
   "queue.remove": "Aus der Warteschlange entfernen",
   "queue.recentlyPlayed": "Verlauf",
-  "queue.clearHistory": "Verlauf löschen",
+  "queue.clearPlayHistory": "Verlauf löschen",
   "queue.nothingPlayed": "Noch keine Wiedergaben.",
 
   "lyrics.none": "Für diesen Titel ist kein Liedtext verfügbar.",
@@ -604,7 +604,7 @@ export const de: Messages = {
   "stats.topTracks": "Top-Tracks",
   "stats.topAlbums": "Top-Alben",
   "stats.onThisDay": "An diesem Tag, {year}",
-  "stats.recentlyPlayed": "Letzte Scrobbles",
+  "stats.recentScrobbles": "Letzte Scrobbles",
 
   "chart.plays": "Wiedergaben",
   "chart.playsWithLabel": "{label} · {n, plural, one {# Wiedergabe} other {# Wiedergaben}}",

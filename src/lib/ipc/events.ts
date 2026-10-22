@@ -24,6 +24,11 @@ export interface EventMap {
     message?: string | null;
   };
   "player:track-ended": { trackId: string };
+  /**
+   * The Song passed "Mark as played after" and counts as a Play, whether or
+   * not it gets scrobbled. `startedAtMs` is Unix ms of when it started.
+   */
+  "player:play-counted": { trackId: string; startedAtMs: number };
   "player:error": {
     code: string;
     message: string;

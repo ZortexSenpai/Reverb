@@ -72,7 +72,7 @@ export const fr: Messages = {
   "queue.playFromHere": "Lire à partir d'ici",
   "queue.remove": "Retirer de la file",
   "queue.recentlyPlayed": "Historique",
-  "queue.clearHistory": "Effacer l'historique",
+  "queue.clearPlayHistory": "Effacer l'historique",
   "queue.nothingPlayed": "Aucune écoute pour l'instant.",
 
   "lyrics.none": "Aucune parole disponible pour ce morceau.",

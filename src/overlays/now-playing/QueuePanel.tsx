@@ -132,13 +132,13 @@ function PlayHistoryList() {
   return plays.map((play) => <PlayRow key={`${play.playedAt}-${play.song.id}`} play={play} />);
 }
 
-function ClearHistoryButton() {
+function ClearPlayHistoryButton() {
   const t = useT();
   const queryClient = useQueryClient();
   const showToast = useUiStore((s) => s.showToast);
   const { data: plays } = usePlayHistory();
 
-  async function clearHistory() {
+  async function clearPlayHistory() {
     try {
       await cmd("history_clear");
       void queryClient.invalidateQueries({ queryKey: qk.playHistory() });
@@ -149,8 +149,8 @@ function ClearHistoryButton() {
 
   return (
     <IconButton
-      label={t("queue.clearHistory")}
-      onClick={() => void clearHistory()}
+      label={t("queue.clearPlayHistory")}
+      onClick={() => void clearPlayHistory()}
       disabled={!plays?.length}
     >
       <ListX className="size-4" />
@@ -231,7 +231,7 @@ export function QueuePanel() {
                     </IconButton>
                   </>
                 ) : (
-                  <ClearHistoryButton />
+                  <ClearPlayHistoryButton />
                 )}
                 <IconButton label={t("common.close")} onClick={() => setOpen(false)}>
                   <X className="size-4" />

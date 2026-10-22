@@ -85,7 +85,7 @@ export const en = {
   "queue.playFromHere": "Play from here",
   "queue.remove": "Remove from queue",
   "queue.recentlyPlayed": "Recently played",
-  "queue.clearHistory": "Clear history",
+  "queue.clearPlayHistory": "Clear history",
   "queue.nothingPlayed": "Nothing played yet.",
 
   "lyrics.none": "No lyrics available for this track.",

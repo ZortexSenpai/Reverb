@@ -72,7 +72,7 @@ export const es: Messages = {
   "queue.playFromHere": "Reproducir desde aquí",
   "queue.remove": "Quitar de la cola",
   "queue.recentlyPlayed": "Historial",
-  "queue.clearHistory": "Borrar el historial",
+  "queue.clearPlayHistory": "Borrar el historial",
   "queue.nothingPlayed": "Aún no hay reproducciones.",
 
   "lyrics.none": "No hay letra disponible para esta pista.",

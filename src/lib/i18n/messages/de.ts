@@ -583,6 +583,7 @@ export const de: Messages = {
   "stats.noPlaysRefresh":
     "Keine Wiedergaben in diesem Zeitraum — versuche, die Quelle zu aktualisieren.",
   "stats.plays": "Wiedergaben",
+  "stats.listeningTime": "Hörzeit",
   "stats.playsPerDay": "Wiedergaben pro Tag",
   "stats.since": "seit {date}",
   "stats.longestStreak": "Längste Serie",
@@ -649,6 +650,8 @@ export const de: Messages = {
 
   "format.hoursMinutes": "{h} Std. {m} Min.",
   "format.minutes": "{m} Min.",
+  "format.aboutHours": "≈ {n} Std.",
+  "format.aboutMinutes": "≈ {n} Min.",
   "format.minutesAgo": "vor {n} Min.",
   "format.hoursAgo": "vor {n} Std.",
   "format.daysAgo": "vor {n} T.",

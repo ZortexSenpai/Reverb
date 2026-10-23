@@ -2064,7 +2064,7 @@ mod tests {
     }
 
     #[test]
-    fn the_current_streak_and_busiest_day_have_no_change() {
+    fn the_current_streak_busiest_day_and_obsession_have_no_change() {
         let scrobbles = vec![scrobble(days_ago(9), "A", "one"), scrobble(days_ago(1), "A", "one")];
         let s = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
 
@@ -2077,6 +2077,9 @@ mod tests {
             compared,
             ["albums", "artists", "listeningTime", "longestStreak", "plays", "playsPerDay", "songs"]
         );
+        // One day's plays, not a place in a ranking.
+        assert_eq!(s.top_songs[0].movement, Some(Movement::Moved { places: 0 }));
+        assert_eq!(s.obsession.expect("the week has plays").song.movement, None);
     }
 
     #[test]

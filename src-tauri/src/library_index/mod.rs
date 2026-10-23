@@ -33,10 +33,28 @@ const MAX_LIBRARY_SONGS: u32 = 250_000;
 /// How often a scan started from Reverb is checked on.
 const SCAN_POLL: Duration = Duration::from_secs(2);
 
+/// How fresh an index a caller needs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Need {
+    /// Any built today.
+    Today,
+    /// A new one, though one already being built when asked will do.
+    Fresh,
+    /// One built from listings read after asking.
+    Rebuilt,
+}
+
 /// The signed-in account's index for today, built first when there's none.
 /// A caller arriving during a build waits for that build.
 pub async fn get(app: &AppHandle) -> Result<Arc<LibraryIndex>, ReverbError> {
-    ensure(app, false).await
+    ensure(app, Need::Today).await
+}
+
+/// A newly built index of the signed-in account, so it holds the stars,
+/// ratings and play counts of the moment. A caller arriving during a build
+/// shares that build.
+pub async fn refresh(app: &AppHandle) -> Result<Arc<LibraryIndex>, ReverbError> {
+    ensure(app, Need::Fresh).await
 }
 
 /// The signed-in account's index as it stands, without waiting: `None`
@@ -57,7 +75,7 @@ pub fn current(app: &AppHandle) -> Option<Arc<LibraryIndex>> {
 /// Make sure the index is current, in the background: at startup, and when
 /// the account changes.
 pub async fn warm_up(app: AppHandle) {
-    if let Err(e) = ensure(&app, false).await {
+    if let Err(e) = ensure(&app, Need::Today).await {
         log::debug!("library index not built: {e}");
     }
 }
@@ -81,17 +99,19 @@ pub fn rebuild_after_scan(app: AppHandle) {
         };
         app.state::<AppState>().library_index.watching_scan.store(false, Ordering::SeqCst);
         if finished {
-            if let Err(e) = ensure(&app, true).await {
+            // A build already under way may have read the library mid-scan.
+            if let Err(e) = ensure(&app, Need::Rebuilt).await {
                 log::debug!("library index not rebuilt after the scan: {e}");
             }
         }
     });
 }
 
-/// The current index, built anew when `rebuild` asks or the one at hand is
-/// for another account or an earlier day.
-async fn ensure(app: &AppHandle, rebuild: bool) -> Result<Arc<LibraryIndex>, ReverbError> {
+/// The current index, built anew when the one at hand is for another
+/// account, from an earlier day, or not as fresh as `need` asks.
+async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, ReverbError> {
     let state = app.state::<AppState>();
+    let builds_before = state.library_index.builds();
     let _building = state.library_index.building.lock().await;
     let account = state.account().ok_or(SubsonicError::NotConfigured)?;
     let date = today();
@@ -101,8 +121,16 @@ async fn ensure(app: &AppHandle, rebuild: bool) -> Result<Arc<LibraryIndex>, Rev
     if saved.is_some_and(|saved| saved.account == account) {
         announce(app);
     }
+    // A build that finished while this call waited was under way when it
+    // arrived.
+    let shared_build = state.library_index.builds() != builds_before;
+    let fresh_enough = match need {
+        Need::Today => true,
+        Need::Fresh => shared_build,
+        Need::Rebuilt => false,
+    };
     let current = state.library_index.current().filter(|built| built.account == account);
-    if let Some(built) = current.filter(|built| !rebuild && built.date == date) {
+    if let Some(built) = current.filter(|built| fresh_enough && built.date == date) {
         return Ok(built.index);
     }
 

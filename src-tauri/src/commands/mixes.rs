@@ -55,7 +55,10 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
         return Ok((set.mixes.clone(), false));
     }
 
-    let library = library_index::get(app).await?;
+    // New picks come from the library as it is now: stars, ratings and play
+    // counts change during the day.
+    let library =
+        if refresh { library_index::refresh(app).await? } else { library_index::get(app).await? };
     let scrobbles = state.stats.all_scrobbles()?;
     let profile = build_profile(&library, &scrobbles, now.timestamp());
     let (library, unplayed) = profile.coverage();

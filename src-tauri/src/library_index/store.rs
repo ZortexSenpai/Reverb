@@ -4,7 +4,7 @@
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use reverb_core::subsonic::models::{ArtistId3, Child};
@@ -51,6 +51,9 @@ pub struct LibraryIndexStore {
     /// Held while the index is read or built, so a second caller waits for
     /// that result instead of reading the library again.
     pub building: tauri::async_runtime::Mutex<()>,
+    /// Indexes built since startup, so a caller can tell whether one was
+    /// built while it waited.
+    builds: AtomicU64,
     /// A scan started from Reverb is being watched, to rebuild after it.
     pub watching_scan: AtomicBool,
 }
@@ -62,6 +65,7 @@ impl LibraryIndexStore {
             current: Mutex::new(None),
             read: AtomicBool::new(false),
             building: Default::default(),
+            builds: AtomicU64::new(0),
             watching_scan: AtomicBool::new(false),
         }
     }
@@ -69,6 +73,10 @@ impl LibraryIndexStore {
     /// The index in memory, whichever account and day it is for.
     pub fn current(&self) -> Option<Built> {
         self.current.lock().unwrap().clone()
+    }
+
+    pub fn builds(&self) -> u64 {
+        self.builds.load(Ordering::SeqCst)
     }
 
     /// Read the saved index the first time this is called, and make it
@@ -114,6 +122,7 @@ impl LibraryIndexStore {
         let built = Built { account, date, index: Arc::new(LibraryIndex::new(songs, artists)) };
         self.read.store(true, Ordering::SeqCst);
         *self.current.lock().unwrap() = Some(built.clone());
+        self.builds.fetch_add(1, Ordering::SeqCst);
         Ok(built)
     }
 }

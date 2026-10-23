@@ -134,7 +134,7 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
     }
 
     let songs = fetch_songs(&state.subsonic).await?;
-    let artists = fetch_artists(&state.subsonic).await?;
+    let artists = fetch_artists(&state.subsonic).await;
     let handle = app.clone();
     let built = blocking(move || {
         handle.state::<AppState>().library_index.save(account, date, songs, artists)
@@ -183,10 +183,17 @@ async fn fetch_songs(client: &SubsonicClient) -> Result<Vec<Child>, ReverbError>
     Ok(songs)
 }
 
-/// Every artist in the artist listing, with its art.
-async fn fetch_artists(client: &SubsonicClient) -> Result<Vec<ArtistId3>, ReverbError> {
-    let listing = client.get_artists().await?;
-    Ok(listing.index.into_iter().flat_map(|group| group.artist).collect())
+/// Every artist in the artist listing, with its art. Only stats read the
+/// listing, so when it fails the index is built without it, and mixes work
+/// as before: its Artists still come from the Songs' credits.
+async fn fetch_artists(client: &SubsonicClient) -> Vec<ArtistId3> {
+    match client.get_artists().await {
+        Ok(listing) => listing.index.into_iter().flat_map(|group| group.artist).collect(),
+        Err(e) => {
+            log::warn!("library index built without the artist listing: {e}");
+            Vec::new()
+        }
+    }
 }
 
 /// Library Songs and Artists built by hand, as the listings send them.

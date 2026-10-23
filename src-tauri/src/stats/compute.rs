@@ -3,17 +3,24 @@
 
 use std::collections::HashMap;
 
-use chrono::{Datelike, Duration, Local, Months, NaiveDate, NaiveDateTime, TimeZone, Timelike};
+use chrono::{
+    DateTime, Datelike, Duration, Local, Months, NaiveDate, NaiveDateTime, TimeZone, Timelike,
+};
 use serde::Serialize;
 
+use super::grouping::{Group, Grouper, Tally};
 use super::store::StatScrobble;
+use crate::library_index::index::LibraryIndex;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopEntry {
     pub name: String,
-    /// Artist for track/album entries.
+    /// Artist for album and Song entries.
     pub artist: Option<String>,
+    /// The library item's id and cover-art id, for a Library match.
+    pub id: Option<String>,
+    pub cover_art: Option<String>,
     pub count: u64,
 }
 
@@ -38,13 +45,13 @@ pub struct RecentPlay {
 pub struct StatsSummary {
     pub total_plays: u64,
     pub unique_artists: u64,
-    pub unique_tracks: u64,
+    pub unique_songs: u64,
     pub unique_albums: u64,
     pub first_ts: Option<i64>,
     pub last_ts: Option<i64>,
     pub plays_per_day: f64,
     pub top_artists: Vec<TopEntry>,
-    pub top_tracks: Vec<TopEntry>,
+    pub top_songs: Vec<TopEntry>,
     pub top_albums: Vec<TopEntry>,
     /// Local-time hour of day, 24 buckets.
     pub by_hour: Vec<u64>,
@@ -66,6 +73,9 @@ pub struct StatsSummary {
     /// Same calendar day in earlier years, most recent first. Independent of
     /// the selected range.
     pub on_this_day: Vec<OnThisDay>,
+    /// Whether the Library index was there to match Scrobbles against. Until
+    /// it is, everything is grouped by name and nothing has art.
+    pub library_available: bool,
 }
 
 /// Listening broken into sittings — runs of plays with no long gap. Scrobbles
@@ -244,18 +254,21 @@ fn local_naive(ts: i64) -> Option<NaiveDateTime> {
     Local.timestamp_opt(ts, 0).single().map(|t| t.naive_local())
 }
 
-fn top_n(counts: HashMap<(String, Option<String>), u64>) -> Vec<TopEntry> {
-    let mut entries: Vec<TopEntry> = counts
-        .into_iter()
-        .map(|((name, artist), count)| TopEntry { name, artist, count })
-        .collect();
-    entries.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.name.cmp(&b.name)));
+/// The [`TOP_N`] most played entries.
+fn top(tally: Tally) -> Vec<TopEntry> {
+    let mut entries = tally.ranked();
     entries.truncate(TOP_N);
     entries
 }
 
-pub fn compute(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
-    let now = Local::now();
+/// The stats page's summary of `scrobbles` over the Period `query` picks, as
+/// of `now`. Scrobbles with a Library match in `library` are grouped by it.
+pub fn compute(
+    scrobbles: &[StatScrobble],
+    library: Option<&LibraryIndex>,
+    query: StatsQuery,
+    now: DateTime<Local>,
+) -> StatsSummary {
     let (from, to) = query.window(now.timestamp());
     let filtered: Vec<&StatScrobble> = scrobbles
         .iter()
@@ -268,19 +281,20 @@ pub fn compute(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
     let end = to.unwrap_or(now.timestamp()).min(now.timestamp()).max(start + 1);
     let bucket = Bucket::for_span(end - start);
 
-    let mut artists: HashMap<(String, Option<String>), u64> = HashMap::new();
-    let mut tracks: HashMap<(String, Option<String>), u64> = HashMap::new();
-    let mut albums: HashMap<(String, Option<String>), u64> = HashMap::new();
+    let mut grouper = Grouper::new(library);
+    let mut artists = Tally::default();
+    let mut songs = Tally::default();
+    let mut albums = Tally::default();
     let mut by_hour = vec![0u64; 24];
     let mut by_weekday = vec![0u64; 7];
     let mut buckets: HashMap<String, u64> = HashMap::new();
     let mut day_counts: HashMap<i32, u64> = HashMap::new();
 
     for s in &filtered {
-        *artists.entry((s.artist.clone(), None)).or_default() += 1;
-        *tracks.entry((s.track.clone(), Some(s.artist.clone()))).or_default() += 1;
-        if let Some(album) = &s.album {
-            *albums.entry((album.clone(), Some(s.artist.clone()))).or_default() += 1;
+        artists.add(grouper.artist(s));
+        songs.add(grouper.song(s));
+        if let Some(album) = grouper.album(s) {
+            albums.add(album);
         }
         if let Some(local) = Local.timestamp_opt(s.ts, 0).single() {
             by_hour[local.hour() as usize] += 1;
@@ -355,7 +369,7 @@ pub fn compute(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
     }
 
     let sessions = sessionize(&filtered);
-    let discovery = from.map(|window_start| discover(scrobbles, window_start, to, &artists));
+    let discovery = from.map(|window_start| discover(scrobbles, window_start, to));
     let on_this_day = on_this_day(scrobbles, now.date_naive());
 
     let first_ts = filtered.first().map(|s| s.ts);
@@ -368,14 +382,14 @@ pub fn compute(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
     StatsSummary {
         total_plays: filtered.len() as u64,
         unique_artists: artists.len() as u64,
-        unique_tracks: tracks.len() as u64,
+        unique_songs: songs.len() as u64,
         unique_albums: albums.len() as u64,
         first_ts,
         last_ts,
         plays_per_day: filtered.len() as f64 / span_days,
-        top_artists: top_n(artists),
-        top_tracks: top_n(tracks),
-        top_albums: top_n(albums),
+        top_artists: top(artists),
+        top_songs: top(songs),
+        top_albums: top(albums),
         by_hour,
         by_weekday,
         timeline,
@@ -386,6 +400,7 @@ pub fn compute(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
         sessions,
         discovery,
         on_this_day,
+        library_available: library.is_some(),
     }
 }
 
@@ -457,19 +472,18 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
 }
 
 /// Artists and tracks whose *first ever* play falls inside the window.
-fn discover(
-    all: &[StatScrobble],
-    from: i64,
-    to: Option<i64>,
-    window_artist_plays: &HashMap<(String, Option<String>), u64>,
-) -> Discovery {
+fn discover(all: &[StatScrobble], from: i64, to: Option<i64>) -> Discovery {
     let in_window = |ts: i64| ts >= from && to.is_none_or(|t| ts < t);
     let mut first_artist: HashMap<&str, i64> = HashMap::new();
     let mut first_track: HashMap<(&str, &str), i64> = HashMap::new();
+    let mut window_plays: HashMap<&str, u64> = HashMap::new();
     // Scrobbles are chronological, so the first sighting wins.
     for s in all {
         first_artist.entry(s.artist.as_str()).or_insert(s.ts);
         first_track.entry((s.artist.as_str(), s.track.as_str())).or_insert(s.ts);
+        if in_window(s.ts) {
+            *window_plays.entry(s.artist.as_str()).or_default() += 1;
+        }
     }
 
     let mut first_artists: Vec<FirstHeard> = first_artist
@@ -478,7 +492,7 @@ fn discover(
         .map(|(name, ts)| FirstHeard {
             name: (*name).to_owned(),
             ts: *ts,
-            plays: window_artist_plays.get(&((*name).to_owned(), None)).copied().unwrap_or(0),
+            plays: window_plays.get(name).copied().unwrap_or(0),
         })
         .collect();
     // Discoveries that stuck first: a one-off play says less about the period
@@ -496,9 +510,9 @@ fn discover(
 
 /// One earlier year's plays on today's date, still being tallied.
 #[derive(Default)]
-struct DayInYear {
+struct DayInYear<'a> {
     plays: u64,
-    tracks: HashMap<(String, Option<String>), u64>,
+    tracks: Tally<'a>,
 }
 
 /// Plays from the same month/day in earlier years, most recent year first.
@@ -513,13 +527,13 @@ fn on_this_day(all: &[StatScrobble], today: NaiveDate) -> Vec<OnThisDay> {
         }
         let entry = years.entry(date.year()).or_default();
         entry.plays += 1;
-        *entry.tracks.entry((s.track.clone(), Some(s.artist.clone()))).or_default() += 1;
+        entry.tracks.add(Group::by_name(&s.track, Some(&s.artist)));
     }
 
     let mut out: Vec<OnThisDay> = years
         .into_iter()
         .map(|(year, day)| {
-            let mut tracks = top_n(day.tracks);
+            let mut tracks = day.tracks.ranked();
             tracks.truncate(ON_THIS_DAY_TRACKS);
             OnThisDay { year, plays: day.plays, tracks }
         })
@@ -532,10 +546,16 @@ fn on_this_day(all: &[StatScrobble], today: NaiveDate) -> Vec<OnThisDay> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::library_index::testing as library;
 
     /// A preset range needs no explicit bounds.
     fn preset(range: StatsRange) -> StatsQuery {
         StatsQuery { range, from: None, to: None }
+    }
+
+    /// The summary as of the wall clock, with no Library index.
+    fn compute_now(scrobbles: &[StatScrobble], query: StatsQuery) -> StatsSummary {
+        compute(scrobbles, None, query, Local::now())
     }
 
     fn scrobble(ts: i64, artist: &str, track: &str) -> StatScrobble {
@@ -556,14 +576,14 @@ mod tests {
             scrobble(now - 300, "A", "two"),
             scrobble(now - 400, "B", "three"),
         ];
-        let s = compute(&scrobbles, preset(StatsRange::All));
+        let s = compute_now(&scrobbles, preset(StatsRange::All));
         assert_eq!(s.total_plays, 4);
         assert_eq!(s.unique_artists, 2);
-        assert_eq!(s.unique_tracks, 3);
+        assert_eq!(s.unique_songs, 3);
         assert_eq!(s.top_artists[0].name, "A");
         assert_eq!(s.top_artists[0].count, 3);
-        assert_eq!(s.top_tracks[0].name, "one");
-        assert_eq!(s.top_tracks[0].count, 2);
+        assert_eq!(s.top_songs[0].name, "one");
+        assert_eq!(s.top_songs[0].count, 2);
         assert_eq!(s.by_hour.iter().sum::<u64>(), 4);
         assert_eq!(s.by_weekday.iter().sum::<u64>(), 4);
     }
@@ -575,9 +595,9 @@ mod tests {
             scrobble(now - 100, "A", "recent"),
             scrobble(now - 400 * 86_400, "B", "ancient"),
         ];
-        let year = compute(&scrobbles, preset(StatsRange::Year));
+        let year = compute_now(&scrobbles, preset(StatsRange::Year));
         assert_eq!(year.total_plays, 1);
-        let all = compute(&scrobbles, preset(StatsRange::All));
+        let all = compute_now(&scrobbles, preset(StatsRange::All));
         assert_eq!(all.total_plays, 2);
     }
 
@@ -590,7 +610,7 @@ mod tests {
             scrobble(now - 20 * 86_400, "C", "three weeks ago"),
         ];
 
-        let day = compute(&scrobbles, preset(StatsRange::Day));
+        let day = compute_now(&scrobbles, preset(StatsRange::Day));
         assert_eq!(day.total_plays, 1);
         // 24h window, hourly buckets: current hour plus the 24 before it.
         assert_eq!(day.timeline.len(), 25);
@@ -600,7 +620,7 @@ mod tests {
         let newest: u64 = day.timeline.iter().rev().take(2).map(|p| p.count).sum();
         assert_eq!(newest, 1);
 
-        let week = compute(&scrobbles, preset(StatsRange::Week));
+        let week = compute_now(&scrobbles, preset(StatsRange::Week));
         assert_eq!(week.total_plays, 2);
         assert_eq!(week.timeline.len(), 8);
         assert_eq!(week.timeline.iter().map(|p| p.count).sum::<u64>(), 2);
@@ -617,7 +637,7 @@ mod tests {
             scrobble(now - 400, "C", "four"),
             scrobble(now - 200, "C", "five"),
         ];
-        let s = compute(&scrobbles, preset(StatsRange::Day)).sessions;
+        let s = compute_now(&scrobbles, preset(StatsRange::Day)).sessions;
         assert_eq!(s.count, 2);
         assert_eq!(s.median_tracks, 3);
         // Longest first: 3 tracks over the ~6 minutes between first and last.
@@ -636,7 +656,7 @@ mod tests {
             scrobble(now - 3_600, "A", "one"),
             scrobble(now - 1_800, "A", "two"),
         ];
-        assert_eq!(compute(&scrobbles, preset(StatsRange::Day)).sessions.count, 1);
+        assert_eq!(compute_now(&scrobbles, preset(StatsRange::Day)).sessions.count, 1);
     }
 
     #[test]
@@ -651,7 +671,7 @@ mod tests {
             scrobble(now - day, "New", "first"),
             scrobble(now - 3_600, "New", "second"),
         ];
-        let week = compute(&scrobbles, preset(StatsRange::Week)).discovery.unwrap();
+        let week = compute_now(&scrobbles, preset(StatsRange::Week)).discovery.unwrap();
         assert_eq!(week.new_artists, 1);
         assert_eq!(week.new_tracks, 2);
         assert_eq!(week.first_artists.len(), 1);
@@ -662,21 +682,22 @@ mod tests {
         // A discovery that stuck outranks a more recent one-off.
         let mut with_oneoff = scrobbles.clone();
         with_oneoff.push(scrobble(now - 60, "Passing", "once"));
-        let listed = compute(&with_oneoff, preset(StatsRange::Week)).discovery.unwrap().first_artists;
+        let week = compute_now(&with_oneoff, preset(StatsRange::Week));
+        let listed = week.discovery.unwrap().first_artists;
         let names: Vec<&str> = listed.iter().map(|a| a.name.as_str()).collect();
         assert_eq!(names, ["New", "Passing"]);
 
         // Everything is "new" over all time, so the section is left out.
-        assert!(compute(&scrobbles, preset(StatsRange::All)).discovery.is_none());
+        assert!(compute_now(&scrobbles, preset(StatsRange::All)).discovery.is_none());
     }
 
     #[test]
     fn calendar_covers_long_windows_only() {
         let now = Local::now().timestamp();
         let scrobbles = vec![scrobble(now - 100, "A", "one")];
-        assert!(compute(&scrobbles, preset(StatsRange::Week)).daily.is_empty());
+        assert!(compute_now(&scrobbles, preset(StatsRange::Week)).daily.is_empty());
 
-        let month = compute(&scrobbles, preset(StatsRange::Month)).daily;
+        let month = compute_now(&scrobbles, preset(StatsRange::Month)).daily;
         assert_eq!(month.len(), 31, "30-day window spans 31 local dates at most");
         assert_eq!(month.iter().map(|d| d.count).sum::<u64>(), 1);
 
@@ -687,7 +708,7 @@ mod tests {
             from: Some(now - 10 * year),
             to: Some(now),
         };
-        assert!(compute(&scrobbles, wide).daily.len() <= CALENDAR_MAX_DAYS as usize + 1);
+        assert!(compute_now(&scrobbles, wide).daily.len() <= CALENDAR_MAX_DAYS as usize + 1);
     }
 
     #[test]
@@ -736,9 +757,9 @@ mod tests {
         let midnight = base - 12 * 3_600;
         let query =
             StatsQuery { range: StatsRange::Custom, from: Some(midnight), to: Some(midnight + day) };
-        let s = compute(&scrobbles, query);
+        let s = compute_now(&scrobbles, query);
         assert_eq!(s.total_plays, 1);
-        assert_eq!(s.top_tracks[0].name, "inside");
+        assert_eq!(s.top_songs[0].name, "inside");
         // A one-day window keeps hourly resolution without a trailing empty day.
         assert_eq!(s.timeline.len(), 24);
         assert_eq!(s.timeline.iter().map(|p| p.count).sum::<u64>(), 1);
@@ -750,7 +771,7 @@ mod tests {
         let scrobbles = vec![scrobble(now - 2 * 86_400, "A", "one")];
         let reversed =
             StatsQuery { range: StatsRange::Custom, from: Some(now), to: Some(now - 5 * 86_400) };
-        assert_eq!(compute(&scrobbles, reversed).total_plays, 1);
+        assert_eq!(compute_now(&scrobbles, reversed).total_plays, 1);
     }
 
     #[test]
@@ -760,10 +781,179 @@ mod tests {
         let scrobbles = vec![scrobble(now - year, "A", "one"), scrobble(now - 100, "B", "two")];
         let query =
             StatsQuery { range: StatsRange::Custom, from: Some(now - 10 * year), to: Some(now) };
-        let s = compute(&scrobbles, query);
+        let s = compute_now(&scrobbles, query);
         assert_eq!(s.total_plays, 2);
         // Yearly buckets over a decade — 11 calendar years at most.
         assert!(s.timeline.len() <= 11, "got {} points", s.timeline.len());
         assert_eq!(s.timeline.iter().map(|p| p.count).sum::<u64>(), 2);
+    }
+
+    /// 2024-03-01 12:00 UTC: noon, so the local date is the same in every
+    /// plausible zone.
+    fn fixed_now() -> DateTime<Local> {
+        Local.timestamp_opt(1_709_294_400, 0).unwrap()
+    }
+
+    /// `scrobble` on `album`.
+    fn on_album(mut scrobble: StatScrobble, album: &str) -> StatScrobble {
+        scrobble.album = Some(album.into());
+        scrobble
+    }
+
+    /// Scrobbles of versions and credits a Library match merges, each a
+    /// minute apart, ending just before [`fixed_now`].
+    fn merge_candidates() -> Vec<StatScrobble> {
+        let now = fixed_now().timestamp();
+        let mut scrobbles = vec![
+            on_album(scrobble(0, "Artist", "Song"), "Album"),
+            on_album(scrobble(0, "Artist", "Song - 2011 Remaster"), "Album"),
+            on_album(scrobble(0, "Artist feat. Guest", "Duet"), "Album"),
+            on_album(scrobble(0, "X", "First"), "Hits"),
+            on_album(scrobble(0, "Y", "Second"), "Hits"),
+        ];
+        let count = scrobbles.len() as i64;
+        for (i, s) in scrobbles.iter_mut().enumerate() {
+            s.ts = now - 60 * (count - i as i64);
+        }
+        scrobbles
+    }
+
+    fn names(entries: &[TopEntry]) -> Vec<(&str, Option<&str>, u64)> {
+        entries.iter().map(|e| (e.name.as_str(), e.artist.as_deref(), e.count)).collect()
+    }
+
+    #[test]
+    fn without_an_index_everything_groups_by_name() {
+        let s = compute(&merge_candidates(), None, preset(StatsRange::All), fixed_now());
+
+        assert!(!s.library_available);
+        assert_eq!(
+            names(&s.top_artists),
+            [("Artist", None, 2), ("Artist feat. Guest", None, 1), ("X", None, 1), ("Y", None, 1)]
+        );
+        assert_eq!(
+            names(&s.top_songs),
+            [
+                ("Duet", Some("Artist feat. Guest"), 1),
+                ("First", Some("X"), 1),
+                ("Second", Some("Y"), 1),
+                ("Song", Some("Artist"), 1),
+                ("Song - 2011 Remaster", Some("Artist"), 1),
+            ]
+        );
+        assert_eq!(
+            names(&s.top_albums),
+            [
+                ("Album", Some("Artist"), 2),
+                ("Album", Some("Artist feat. Guest"), 1),
+                ("Hits", Some("X"), 1),
+                ("Hits", Some("Y"), 1),
+            ]
+        );
+        let all = s.top_artists.iter().chain(&s.top_songs).chain(&s.top_albums);
+        assert!(all.into_iter().all(|e| e.id.is_none() && e.cover_art.is_none()));
+    }
+
+    /// The library [`merge_candidates`] match: one album "Album" by Artist
+    /// (in the artist listing, with art) and the compilation "Hits".
+    fn merge_library() -> LibraryIndex {
+        let songs = vec![
+            library::on_album(library::song("s1", "Artist", "Song - 2011 Remaster"), "al1", "Album"),
+            library::on_album(library::song("s2", "Artist", "Duet"), "al1", "Album"),
+            library::on_album(library::song("s3", "X", "First"), "comp", "Hits"),
+            library::on_album(library::song("s4", "Y", "Second"), "comp", "Hits"),
+        ];
+        LibraryIndex::new(songs, vec![library::artist("a", "Artist")])
+    }
+
+    fn entry<'a>(entries: &'a [TopEntry], name: &str) -> &'a TopEntry {
+        entries.iter().find(|e| e.name == name).unwrap_or_else(|| panic!("no entry {name}"))
+    }
+
+    #[test]
+    fn a_feat_credit_counts_for_its_library_artist() {
+        let library = merge_library();
+        let s = compute(&merge_candidates(), Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert!(s.library_available);
+        let artist = entry(&s.top_artists, "Artist");
+        assert_eq!(artist.count, 3);
+        assert_eq!(artist.id.as_deref(), Some("a"));
+        assert_eq!(artist.cover_art.as_deref(), Some("ar-a"));
+        assert!(s.top_artists.iter().all(|e| e.name != "Artist feat. Guest"));
+    }
+
+    #[test]
+    fn a_remaster_counts_as_the_song_it_matches() {
+        let library = merge_library();
+        let s = compute(&merge_candidates(), Some(&library), preset(StatsRange::All), fixed_now());
+
+        let song = entry(&s.top_songs, "Song - 2011 Remaster");
+        assert_eq!((song.artist.as_deref(), song.count), (Some("Artist"), 2));
+        assert_eq!(song.id.as_deref(), Some("s1"));
+        assert_eq!(song.cover_art.as_deref(), Some("al-al1"));
+        assert!(s.top_songs.iter().all(|e| e.name != "Song"));
+        assert_eq!(s.unique_songs, 4);
+    }
+
+    #[test]
+    fn a_compilation_counts_as_one_album() {
+        let library = merge_library();
+        let s = compute(&merge_candidates(), Some(&library), preset(StatsRange::All), fixed_now());
+
+        let hits = entry(&s.top_albums, "Hits");
+        assert_eq!(hits.count, 2);
+        assert_eq!(hits.id.as_deref(), Some("comp"));
+        assert_eq!(hits.cover_art.as_deref(), Some("al-comp"));
+        // Its Songs are by different artists, so it names none of them.
+        assert_eq!(hits.artist, None);
+        // "Artist feat. Guest" is on Artist's album too.
+        let album = entry(&s.top_albums, "Album");
+        assert_eq!((album.artist.as_deref(), album.count), (Some("Artist"), 3));
+        assert_eq!(s.unique_albums, 2);
+    }
+
+    #[test]
+    fn a_duo_the_library_lists_stays_whole() {
+        let artists = vec![library::artist("sg", "Simon & Garfunkel"), library::artist("s", "Simon")];
+        let library = LibraryIndex::new(Vec::new(), artists);
+        let now = fixed_now().timestamp();
+        let scrobbles = vec![
+            scrobble(now - 180, "Simon & Garfunkel", "The Boxer"),
+            scrobble(now - 120, "Simon & Garfunkel", "Cecilia"),
+            scrobble(now - 60, "Simon", "Solo"),
+        ];
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        let artists: Vec<(&str, Option<&str>, u64)> =
+            s.top_artists.iter().map(|e| (e.name.as_str(), e.id.as_deref(), e.count)).collect();
+        assert_eq!(artists, [("Simon & Garfunkel", Some("sg"), 2), ("Simon", Some("s"), 1)]);
+    }
+
+    #[test]
+    fn unmatched_scrobbles_group_by_name_without_ids() {
+        let library = merge_library();
+        let now = fixed_now().timestamp();
+        let scrobbles = vec![
+            scrobble(now - 180, "Stranger", "Unknown"),
+            scrobble(now - 120, "Stranger", "Unknown"),
+            scrobble(now - 60, "Artist", "Unreleased"),
+        ];
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert_eq!(
+            names(&s.top_songs),
+            [("Unknown", Some("Stranger"), 2), ("Unreleased", Some("Artist"), 1)]
+        );
+        assert_eq!(
+            names(&s.top_albums),
+            [("Stranger album", Some("Stranger"), 2), ("Artist album", Some("Artist"), 1)]
+        );
+        let stranger = entry(&s.top_artists, "Stranger");
+        assert_eq!((stranger.id.as_deref(), stranger.cover_art.as_deref()), (None, None));
+        let unmatched = s.top_songs.iter().chain(&s.top_albums);
+        assert!(unmatched.into_iter().all(|e| e.id.is_none() && e.cover_art.is_none()));
+        // The artist is in the library even though this Song isn't.
+        assert_eq!(entry(&s.top_artists, "Artist").id.as_deref(), Some("a"));
     }
 }

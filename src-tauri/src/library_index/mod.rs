@@ -60,7 +60,6 @@ pub async fn refresh(app: &AppHandle) -> Result<Arc<LibraryIndex>, ReverbError> 
 /// The signed-in account's index as it stands, without waiting: `None`
 /// until its first one is ready. When it's missing or from an earlier day, a
 /// build starts in the background and [`READY_EVENT`] tells when it's done.
-#[expect(dead_code, reason = "the stats aggregation reads the index this way")]
 pub fn current(app: &AppHandle) -> Option<Arc<LibraryIndex>> {
     let state = app.state::<AppState>();
     let account = state.account()?;

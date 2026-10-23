@@ -164,6 +164,15 @@ impl<'a> LibrarySong<'a> {
         &self.song.id
     }
 
+    pub fn title(&self) -> &'a str {
+        &self.song.title
+    }
+
+    /// The whole artist credit, as the library shows it.
+    pub fn artist(&self) -> Option<&'a str> {
+        self.song.display_artist.as_deref().or(self.song.artist.as_deref())
+    }
+
     pub fn cover_art(&self) -> Option<&'a str> {
         self.song.cover_art.as_deref()
     }

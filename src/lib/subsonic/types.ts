@@ -488,6 +488,16 @@ export interface TopEntry extends StatsItem {
   count: number;
 }
 
+/** The Period's #1 artist, album and Song. */
+export interface StatsHero {
+  artist: TopEntry;
+  /** The artist's share of the Period's plays, from 0 to 1. */
+  share: number;
+  /** Absent with no album tags, or when the Period has a single Song. */
+  album?: TopEntry | null;
+  song?: TopEntry | null;
+}
+
 export interface TimelinePoint {
   label: string;
   count: number;
@@ -541,6 +551,8 @@ export interface StatsSummary {
   firstTs?: number | null;
   lastTs?: number | null;
   playsPerDay: number;
+  /** Absent when the Period has no plays. */
+  hero?: StatsHero | null;
   topArtists: TopEntry[];
   topSongs: TopEntry[];
   topAlbums: TopEntry[];

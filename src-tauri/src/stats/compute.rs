@@ -50,6 +50,8 @@ pub struct StatsSummary {
     pub first_ts: Option<i64>,
     pub last_ts: Option<i64>,
     pub plays_per_day: f64,
+    /// The Period at a glance. Absent when it has no plays.
+    pub hero: Option<Hero>,
     pub top_artists: Vec<TopEntry>,
     pub top_songs: Vec<TopEntry>,
     pub top_albums: Vec<TopEntry>,
@@ -76,6 +78,17 @@ pub struct StatsSummary {
     /// Whether the Library index was there to match Scrobbles against. Until
     /// it is, everything is grouped by name and nothing has art.
     pub library_available: bool,
+}
+
+/// The Period's #1 artist, album and Song.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Hero {
+    pub artist: TopEntry,
+    /// The artist's share of the Period's plays, from 0 to 1.
+    pub share: f64,
+    pub album: Option<TopEntry>,
+    pub song: Option<TopEntry>,
 }
 
 /// Listening broken into sittings — runs of plays with no long gap. Scrobbles
@@ -379,17 +392,30 @@ pub fn compute(
         _ => 1.0,
     };
 
+    let (unique_artists, unique_songs, unique_albums) = (artists.len(), songs.len(), albums.len());
+    let top_artists = top(artists);
+    let top_songs = top(songs);
+    let top_albums = top(albums);
+    let hero = top_artists.first().map(|artist| Hero {
+        artist: artist.clone(),
+        share: artist.count as f64 / filtered.len() as f64,
+        // A single Song's album would only show its cover again.
+        album: top_albums.first().filter(|_| unique_songs > 1).cloned(),
+        song: top_songs.first().cloned(),
+    });
+
     StatsSummary {
         total_plays: filtered.len() as u64,
-        unique_artists: artists.len() as u64,
-        unique_songs: songs.len() as u64,
-        unique_albums: albums.len() as u64,
+        unique_artists: unique_artists as u64,
+        unique_songs: unique_songs as u64,
+        unique_albums: unique_albums as u64,
         first_ts,
         last_ts,
         plays_per_day: filtered.len() as f64 / span_days,
-        top_artists: top(artists),
-        top_songs: top(songs),
-        top_albums: top(albums),
+        hero,
+        top_artists,
+        top_songs,
+        top_albums,
         by_hour,
         by_weekday,
         timeline,
@@ -911,6 +937,55 @@ mod tests {
         let album = entry(&s.top_albums, "Album");
         assert_eq!((album.artist.as_deref(), album.count), (Some("Artist"), 3));
         assert_eq!(s.unique_albums, 2);
+    }
+
+    #[test]
+    fn the_hero_is_the_periods_number_one_artist_album_and_song() {
+        let library = merge_library();
+        let s = compute(&merge_candidates(), Some(&library), preset(StatsRange::All), fixed_now());
+
+        let hero = s.hero.expect("a Period with plays has a hero");
+        let artist = &hero.artist;
+        assert_eq!((artist.name.as_str(), artist.count), ("Artist", 3));
+        assert_eq!((artist.id.as_deref(), artist.cover_art.as_deref()), (Some("a"), Some("ar-a")));
+        // 3 of the Period's 5 plays.
+        assert_eq!(hero.share, 0.6);
+        let album = hero.album.expect("the Scrobbles name albums");
+        assert_eq!(
+            (album.name.as_str(), album.id.as_deref(), album.count),
+            ("Album", Some("al1"), 3)
+        );
+        let song = hero.song.expect("the Period has Songs");
+        assert_eq!(
+            (song.name.as_str(), song.id.as_deref(), song.count),
+            ("Song - 2011 Remaster", Some("s1"), 2)
+        );
+    }
+
+    #[test]
+    fn a_hero_slot_with_nothing_to_show_collapses() {
+        let now = fixed_now().timestamp();
+        let untagged = |ts, track| StatScrobble { album: None, ..scrobble(ts, "Artist", track) };
+        let hero = |scrobbles: &[StatScrobble]| {
+            compute(scrobbles, None, preset(StatsRange::All), fixed_now()).hero
+        };
+
+        // No album tags: no album to show.
+        let no_albums = hero(&[untagged(now - 120, "one"), untagged(now - 60, "two")]).unwrap();
+        assert!(no_albums.album.is_none());
+        assert_eq!(no_albums.song.map(|s| s.name).as_deref(), Some("one"));
+
+        // A single Song: its album would only repeat it.
+        let single =
+            hero(&[scrobble(now - 120, "Artist", "one"), scrobble(now - 60, "Artist", "one")])
+                .unwrap();
+        assert!(single.album.is_none());
+        assert_eq!(single.song.map(|s| s.name).as_deref(), Some("one"));
+        // An artist with no Library match: the page shows a monogram.
+        assert_eq!((single.artist.id, single.artist.cover_art), (None, None));
+
+        // No plays, no hero.
+        assert!(hero(&[]).is_none());
     }
 
     #[test]

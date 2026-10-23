@@ -12,13 +12,18 @@ import {
 } from "../../components/stats/charts";
 import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
 import { HeadlineStrip } from "../../components/stats/HeadlineStrip";
-import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
+import {
+  Rank,
+  StatsEntry,
+  statsEntryKey,
+  type StatsEntryKind,
+} from "../../components/stats/StatsEntry";
 import { StatsHero } from "../../components/stats/StatsHero";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CenteredSpinner, Spinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
-import { formatCoverage, formatRelativeDate } from "../../lib/format";
+import { formatCoverage, formatRelativeDate, localDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import type {
   Breakdown,
@@ -106,13 +111,16 @@ function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry
   );
 }
 
-/** Stand-in for a section built from the library while Reverb reads it. */
-function ReadingLibrary() {
+/**
+ * Stand-in for a section built from the library while there's no Library
+ * index: a spinner while it's being built, else a word that it can't be had.
+ */
+function WithoutLibrary({ building }: { building: boolean }) {
   const t = useT();
   return (
     <div className="flex items-center gap-2 px-1 py-4 text-xs text-faint">
-      <Spinner className="size-3.5" />
-      {t("stats.readingLibrary")}
+      {building && <Spinner className="size-3.5" />}
+      {t(building ? "stats.readingLibrary" : "stats.libraryUnavailable")}
     </div>
   );
 }
@@ -130,12 +138,8 @@ function GenreList({ genres }: { genres: GenrePlays[] }) {
         <li key={genre.name}>
           <div className="flex items-baseline justify-between gap-3">
             <span className="min-w-0 truncate text-sm">
-              <span
-                className={`mr-1.5 text-xs tabular-nums ${
-                  i < 3 ? "font-semibold text-accent" : "text-faint"
-                }`}
-              >
-                {i + 1}.
+              <span className="mr-1.5 text-xs">
+                <Rank rank={i + 1} />
               </span>
               {genre.name}
             </span>
@@ -162,13 +166,17 @@ function coverageHint(breakdown: Breakdown<unknown> | null | undefined, t: T) {
 }
 
 /** Genres and decades of the Period's library Songs, side by side. */
-function GenresAndDecades({ genres, decades }: Pick<StatsSummary, "genres" | "decades">) {
+function GenresAndDecades({
+  genres,
+  decades,
+  libraryBuilding,
+}: Pick<StatsSummary, "genres" | "decades" | "libraryBuilding">) {
   const t = useT();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Section title={t("nav.genres")} hint={coverageHint(genres, t)}>
         {!genres ? (
-          <ReadingLibrary />
+          <WithoutLibrary building={libraryBuilding} />
         ) : genres.entries.length === 0 ? (
           <p className="px-1 py-4 text-xs text-faint">{t("stats.noGenres")}</p>
         ) : (
@@ -177,7 +185,7 @@ function GenresAndDecades({ genres, decades }: Pick<StatsSummary, "genres" | "de
       </Section>
       <Section title={t("stats.decades")} hint={coverageHint(decades, t)}>
         {!decades ? (
-          <ReadingLibrary />
+          <WithoutLibrary building={libraryBuilding} />
         ) : decades.entries.length === 0 ? (
           <p className="px-1 py-4 text-xs text-faint">{t("stats.noDecades")}</p>
         ) : (
@@ -217,7 +225,7 @@ function validDate(value: string | null): string | null {
 
 /** "Aug 2026" for a `YYYY-MM-DD` label. */
 function monthLabel(date: string, t: T): string {
-  return t.d(`${date}T00:00:00`, { month: "short", year: "numeric" });
+  return t.d(localDate(date), { month: "short", year: "numeric" });
 }
 
 function daysAgo(days: number): Date {
@@ -452,7 +460,7 @@ export function StatsView() {
                   summary.sessions.count > 0
                     ? t("stats.sessionsHint", {
                         sessions: t("count.sessions", { n: summary.sessions.count }),
-                        median: summary.sessions.medianTracks,
+                        median: summary.sessions.medianSongs,
                       })
                     : undefined
                 }
@@ -461,14 +469,12 @@ export function StatsView() {
               </Section>
               {summary.obsession && (
                 <Section title={t("stats.obsession")} hint={t("stats.obsessionHint")}>
-                  {/* `date` is a plain "2026-08-28", read at local midnight so
-                      the timezone can't shift it a day. */}
                   <StatsEntry
                     kind="song"
                     item={summary.obsession.song}
                     layout="hero"
                     count={summary.obsession.song.count}
-                    detail={t.d(`${summary.obsession.date}T00:00:00`, { dateStyle: "medium" })}
+                    detail={t.d(localDate(summary.obsession.date), { dateStyle: "medium" })}
                   />
                 </Section>
               )}
@@ -488,7 +494,11 @@ export function StatsView() {
               </Section>
             )}
 
-            <GenresAndDecades genres={summary.genres} decades={summary.decades} />
+            <GenresAndDecades
+              genres={summary.genres}
+              decades={summary.decades}
+              libraryBuilding={summary.libraryBuilding}
+            />
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}

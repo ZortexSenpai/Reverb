@@ -3,7 +3,7 @@
 // hero never shows an empty frame.
 
 import { useT } from "../../lib/i18n";
-import type { StatsHero as Hero } from "../../lib/subsonic/types";
+import type { Hero } from "../../lib/subsonic/types";
 import { StatsEntry } from "./StatsEntry";
 
 /** A soft accent glow behind the artist: the page's one hue, in any theme. */

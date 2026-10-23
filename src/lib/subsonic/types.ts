@@ -514,9 +514,9 @@ export interface HeadlineChanges {
 }
 
 /** The Period's #1 artist, album and Song. */
-export interface StatsHero {
+export interface Hero {
   artist: TopEntry;
-  /** The artist's share of the Period's plays, from 0 to 1. */
+  /** The artist's share of the Period's Scrobbles, from 0 to 1. */
   share: number;
   /** Absent with no album tags, or when the Period has a single Song. */
   album?: TopEntry | null;
@@ -545,21 +545,21 @@ export interface RecentPlay extends StatsItem {
 /** A run of plays with no long gap between them. */
 export interface ListeningSession {
   startTs: number;
-  tracks: number;
+  songs: number;
   spanMinutes: number;
   topArtist: string;
 }
 
 export interface SessionStats {
   count: number;
-  medianTracks: number;
+  medianSongs: number;
   /** Biggest first. */
   longest: ListeningSession[];
 }
 
 /** The Song played most on a single day of the Period. */
 export interface Obsession {
-  /** Its `count` is that day's plays. */
+  /** Its `count` is that day's Scrobbles of it. */
   song: TopEntry;
   /** The local date, `YYYY-MM-DD`. */
   date: string;
@@ -604,10 +604,12 @@ export interface DecadePlays {
 
 /** An estimate of the Period's listening time. */
 export interface ListeningTime {
+  /** 0 when no matched Song has a known length: nothing to estimate from. */
   secs: number;
   /**
-   * The share of the Period's Scrobbles whose library Song's length it adds,
-   * from 0 to 1. The rest count at the median of those.
+   * The share of the Period's Scrobbles that matched a library Song, from 0
+   * to 1. Every Scrobble without a known length counts at the median of those
+   * with one.
    */
   coverage: number;
 }
@@ -620,8 +622,8 @@ export interface StatsSummary {
   firstTs?: number | null;
   lastTs?: number | null;
   playsPerDay: number;
-  /** Absent when the Period has no plays. */
-  hero?: StatsHero | null;
+  /** Absent when the Period has no Scrobbles. */
+  hero?: Hero | null;
   topArtists: TopEntry[];
   topSongs: TopEntry[];
   topAlbums: TopEntry[];
@@ -641,7 +643,7 @@ export interface StatsSummary {
   /** One entry per day for the calendar; empty for short ranges. */
   daily: TimelinePoint[];
   sessions: SessionStats;
-  /** Absent when the Period has no plays. */
+  /** Absent when the Period has no Scrobbles. */
   obsession?: Obsession | null;
   /** Absent for the all-time range, where everything is "new". */
   discovery?: Discovery | null;
@@ -651,6 +653,11 @@ export interface StatsSummary {
    * is, entries are grouped by name and have no art.
    */
   libraryAvailable: boolean;
+  /**
+   * Without the Library index, whether it's being built, so the numbers that
+   * need it are on their way. When it isn't, they can't be had for now.
+   */
+  libraryBuilding: boolean;
   /** The ten most played genres. Absent until the Library index is there. */
   genres?: Breakdown<GenrePlays> | null;
   /** Plays per release decade, oldest first. Absent until the Library index is there. */

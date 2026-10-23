@@ -5,10 +5,9 @@
 
 use std::collections::HashMap;
 
-use super::compute::TopEntry;
+use super::compute::{LibraryMatch, TopEntry};
 use super::store::StatScrobble;
 use crate::library_index::index::{LibraryArtist, LibraryIndex, LibrarySong};
-use crate::library_index::matcher::credit_keys;
 
 /// An artist, album or Song entry a Scrobble counts toward.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,9 +15,21 @@ pub struct Group<'a> {
     pub name: &'a str,
     /// The artist, for album and Song entries.
     pub artist: Option<&'a str>,
-    /// The library item's id and cover-art id, for a Library match.
-    pub id: Option<&'a str>,
+    /// Absent without a Library match.
+    pub matched: Option<MatchRef<'a>>,
+}
+
+/// A [`LibraryMatch`] as the index holds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MatchRef<'a> {
+    pub id: &'a str,
     pub cover_art: Option<&'a str>,
+}
+
+impl From<MatchRef<'_>> for LibraryMatch {
+    fn from(matched: MatchRef<'_>) -> Self {
+        Self { id: matched.id.to_owned(), cover_art: matched.cover_art.map(str::to_owned) }
+    }
 }
 
 /// What a [`Group`] is counted under: its library item, else its names.
@@ -31,23 +42,28 @@ pub enum GroupKey<'a> {
 impl<'a> Group<'a> {
     /// An entry without a Library match.
     pub fn by_name(name: &'a str, artist: Option<&'a str>) -> Self {
-        Self { name, artist, id: None, cover_art: None }
+        Self { name, artist, matched: None }
     }
 
     pub fn key(&self) -> GroupKey<'a> {
-        match self.id {
-            Some(id) => GroupKey::Library(id),
+        match self.matched {
+            Some(matched) => GroupKey::Library(matched.id),
             None => GroupKey::Name(self.name, self.artist),
         }
     }
 }
 
 impl TopEntry {
-    /// What the entry was counted under, to pick out its Scrobbles again.
-    pub fn key(&self) -> GroupKey<'_> {
-        match &self.id {
-            Some(id) => GroupKey::Library(id),
-            None => GroupKey::Name(&self.name, self.artist.as_deref()),
+    /// The entry as the [`Group`] it was counted as, whose key picks out its
+    /// Scrobbles again.
+    pub fn group(&self) -> Group<'_> {
+        Group {
+            name: &self.name,
+            artist: self.artist.as_deref(),
+            matched: self.matched.as_ref().map(|m| MatchRef {
+                id: &m.id,
+                cover_art: m.cover_art.as_deref(),
+            }),
         }
     }
 }
@@ -57,14 +73,13 @@ impl TopEntry {
 pub struct Grouper<'a> {
     library: Option<&'a LibraryIndex>,
     artists: HashMap<&'a str, Option<&'a LibraryArtist>>,
-    credits: HashMap<&'a str, Vec<String>>,
     songs: HashMap<(&'a str, &'a str), Option<LibrarySong<'a>>>,
 }
 
 impl<'a> Grouper<'a> {
     /// Without a `library`, everything groups by name.
     pub fn new(library: Option<&'a LibraryIndex>) -> Self {
-        Self { library, artists: HashMap::new(), credits: HashMap::new(), songs: HashMap::new() }
+        Self { library, artists: HashMap::new(), songs: HashMap::new() }
     }
 
     /// The library Artist the credit matches, else the credit itself.
@@ -76,8 +91,7 @@ impl<'a> Grouper<'a> {
             Some(artist) => Group {
                 name: &artist.name,
                 artist: None,
-                id: Some(&artist.id),
-                cover_art: artist.cover_art.as_deref(),
+                matched: Some(MatchRef { id: &artist.id, cover_art: artist.cover_art.as_deref() }),
             },
             None => Group::by_name(credit, None),
         }
@@ -89,8 +103,7 @@ impl<'a> Grouper<'a> {
             Some(song) => Group {
                 name: song.title(),
                 artist: Some(song.artist().unwrap_or(&scrobble.artist)),
-                id: Some(song.id()),
-                cover_art: song.cover_art(),
+                matched: Some(MatchRef { id: song.id(), cover_art: song.cover_art() }),
             },
             None => Group::by_name(&scrobble.track, Some(&scrobble.artist)),
         }
@@ -106,8 +119,7 @@ impl<'a> Grouper<'a> {
         Some(Group {
             name: album.name,
             artist: Some(self.artist(scrobble).name),
-            id: Some(album.id),
-            cover_art: album.cover_art,
+            matched: Some(MatchRef { id: album.id, cover_art: album.cover_art }),
         })
     }
 
@@ -116,13 +128,7 @@ impl<'a> Grouper<'a> {
     pub fn library_song(&mut self, scrobble: &'a StatScrobble) -> Option<LibrarySong<'a>> {
         let library = self.library?;
         let (artist, title) = (scrobble.artist.as_str(), scrobble.track.as_str());
-        if let Some(&found) = self.songs.get(&(artist, title)) {
-            return found;
-        }
-        let keys = self.credits.entry(artist).or_insert_with(|| credit_keys(artist));
-        let found = library.match_song(keys, title).map(|at| library.song(at));
-        self.songs.insert((artist, title), found);
-        found
+        *self.songs.entry((artist, title)).or_insert_with(|| library.find_song(artist, title))
     }
 }
 
@@ -159,8 +165,7 @@ impl<'a> Tally<'a> {
             .map(|(group, count)| TopEntry {
                 name: group.name.to_owned(),
                 artist: group.artist.map(str::to_owned),
-                id: group.id.map(str::to_owned),
-                cover_art: group.cover_art.map(str::to_owned),
+                matched: group.matched.map(Into::into),
                 count,
                 movement: None,
             })

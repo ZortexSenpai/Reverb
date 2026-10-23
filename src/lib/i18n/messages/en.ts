@@ -640,6 +640,7 @@ export const en = {
   "stats.decade": "{decade}s",
   "stats.coverage": "from {share} of plays",
   "stats.readingLibrary": "Reading your library…",
+  "stats.libraryUnavailable": "Couldn't read your library.",
   "stats.noGenres": "No genres for this period's songs.",
   "stats.noDecades": "No release years for this period's songs.",
   "stats.topArtists": "Top artists",
@@ -654,7 +655,6 @@ export const en = {
   "stats.movementNewHint": "not played in the previous period",
   "stats.movementUp": "up {n, plural, one {# place} other {# places}} since the previous period",
   "stats.movementDown": "down {n, plural, one {# place} other {# places}} since the previous period",
-  "stats.movementSame": "same place as in the previous period",
   "stats.onThisDay": "On this day, {year}",
   "stats.recentScrobbles": "Recent scrobbles",
 

@@ -4,7 +4,7 @@
 
 import { Children, useLayoutEffect, useRef, useState } from "react";
 import { balancedColumns } from "../../lib/balancedColumns";
-import { formatChange, formatCoverage, formatListeningTime } from "../../lib/format";
+import { formatChange, formatCoverage, formatListeningTime, localDate } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import type { StatsSummary } from "../../lib/subsonic/types";
 import { Spinner } from "../ui/Spinner";
@@ -64,29 +64,34 @@ function changeBadge(value: number | null | undefined) {
 
 /**
  * An estimate from the library Songs' lengths, so it says how much of the
- * Period's plays it comes from.
+ * Period's Scrobbles it comes from.
  */
 function ListeningTimeTile({
   time,
+  building,
   change,
 }: {
   time: StatsSummary["listeningTime"];
+  /** Without `time`, whether the Library index it needs is being built. */
+  building: boolean;
   change?: React.ReactNode;
 }) {
   const t = useT();
   const label = t("stats.listeningTime");
-  // Absent until Reverb has read the library.
+  // Absent without the Library index: on its way, or not to be had for now.
   if (!time) {
-    return (
+    return building ? (
       <StatTile
         label={label}
         value={<Spinner className="my-1.5 size-5" />}
         hint={t("stats.readingLibrary")}
       />
+    ) : (
+      <StatTile label={label} value="—" hint={t("stats.libraryUnavailable")} />
     );
   }
   // Not one play with a known length: nothing to estimate from.
-  if (time.coverage === 0) return <StatTile label={label} value="—" />;
+  if (time.secs === 0) return <StatTile label={label} value="—" />;
   return (
     <StatTile
       label={label}
@@ -111,6 +116,7 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
       />
       <ListeningTimeTile
         time={summary.listeningTime}
+        building={summary.libraryBuilding}
         change={changeBadge(changes?.listeningTime)}
       />
       <StatTile
@@ -162,9 +168,7 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
         hint={
           summary.busiestDay
             ? t("stats.playsOn", {
-                // `label` is a plain "2026-08-28"; anchor it at local
-                // midnight so it is not shifted a day by the timezone.
-                date: t.d(`${summary.busiestDay.label}T00:00:00`, {
+                date: t.d(localDate(summary.busiestDay.label), {
                   dateStyle: "medium",
                 }),
               })

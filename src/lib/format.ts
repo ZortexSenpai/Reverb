@@ -28,6 +28,14 @@ export function formatLongDuration(totalSeconds: number, t: T): string {
   return t("format.minutes", { m: minutes });
 }
 
+/**
+ * A plain `YYYY-MM-DD` date, like the stats summary's day labels, at local
+ * midnight. Read as UTC, it would show as the day before west of Greenwich.
+ */
+export function localDate(date: string): Date {
+  return new Date(`${date}T00:00:00`);
+}
+
 /** "≈ 142 h": an estimated listening time, in minutes below an hour. */
 export function formatListeningTime(totalSeconds: number, t: T): string {
   const minutes = Math.round(totalSeconds / 60);
@@ -38,7 +46,7 @@ export function formatListeningTime(totalSeconds: number, t: T): string {
   return t("format.aboutHours", { n: t.n(hours, { maximumFractionDigits: digits }) });
 }
 
-/** "from 82% of plays": the share of the Period's plays a stat is based on. */
+/** "from 82% of plays": the share of the Period's Scrobbles a stat is based on. */
 export function formatCoverage(share: number, t: T): string {
   return t("stats.coverage", {
     share: t.n(share, { style: "percent", maximumFractionDigits: 0 }),
@@ -50,12 +58,29 @@ export function formatChange(change: number, t: T): string {
   return t.n(change, { style: "percent", signDisplay: "exceptZero", maximumFractionDigits: 0 });
 }
 
-/** "▲37", "▼3", "=" or "new": a top-list entry's places moved since the Previous period. */
-export function formatMovement(movement: RankMovement, t: T): string {
-  if (movement.kind === "new") return t("stats.movementNew");
+/** How a top-list entry shows its places moved since the Previous period. */
+export interface MovementMarker {
+  direction: "up" | "down" | "new";
+  /** "▲37", "▼3" or "new". */
+  text: string;
+  /** What it means, for a tooltip. */
+  title: string;
+}
+
+/** A top-list entry's marker for its places moved; none when it kept its place. */
+export function movementMarker(movement: RankMovement, t: T): MovementMarker | null {
+  if (movement.kind === "new") {
+    return { direction: "new", text: t("stats.movementNew"), title: t("stats.movementNewHint") };
+  }
   const { places } = movement;
-  if (places === 0) return "=";
-  return `${places > 0 ? "▲" : "▼"}${t.n(Math.abs(places))}`;
+  const n = Math.abs(places);
+  if (places > 0) {
+    return { direction: "up", text: `▲${t.n(n)}`, title: t("stats.movementUp", { n }) };
+  }
+  if (places < 0) {
+    return { direction: "down", text: `▼${t.n(n)}`, title: t("stats.movementDown", { n }) };
+  }
+  return null;
 }
 
 /** "44.1 kHz" — sample rates are quoted in kHz everywhere in the UI. */

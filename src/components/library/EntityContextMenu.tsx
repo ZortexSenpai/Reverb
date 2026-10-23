@@ -16,7 +16,7 @@ import { usePlaylists, useStarMutation } from "../../lib/subsonic/queries";
 import { usePlayerStore } from "../../stores/playerStore";
 import { useUiStore } from "../../stores/uiStore";
 
-const itemClass =
+export const menuItemClass =
   "flex cursor-pointer items-center gap-2.5 rounded px-2.5 py-1.5 text-sm text-text outline-none select-none data-highlighted:bg-surface-2";
 export const menuContentClass =
   "z-50 min-w-52 rounded-lg border border-edge bg-surface p-1 shadow-xl";
@@ -116,33 +116,33 @@ function EntityItems({
 
   return (
     <>
-      <Menu.Item className={itemClass} onSelect={actions.play}>
+      <Menu.Item className={menuItemClass} onSelect={actions.play}>
         <Play className="size-4 text-dim" /> {t("menu.playNow")}
       </Menu.Item>
-      <Menu.Item className={itemClass} onSelect={actions.shuffle}>
+      <Menu.Item className={menuItemClass} onSelect={actions.shuffle}>
         <Shuffle className="size-4 text-dim" /> {t("common.shuffle")}
       </Menu.Item>
-      <Menu.Item className={itemClass} onSelect={actions.playNext}>
+      <Menu.Item className={menuItemClass} onSelect={actions.playNext}>
         <ListEnd className="size-4 text-dim" /> {t("menu.playNext")}
       </Menu.Item>
-      <Menu.Item className={itemClass} onSelect={actions.addToQueue}>
+      <Menu.Item className={menuItemClass} onSelect={actions.addToQueue}>
         <ListPlus className="size-4 text-dim" /> {t("menu.addToQueue")}
       </Menu.Item>
       <Menu.Separator className="my-1 h-px bg-edge" />
       <Menu.Sub>
-        <Menu.SubTrigger className={itemClass}>
+        <Menu.SubTrigger className={menuItemClass}>
           <ListMusic className="size-4 text-dim" /> {t("menu.addToPlaylist")}
         </Menu.SubTrigger>
         <Menu.Portal>
           <Menu.SubContent className="z-50 max-h-80 min-w-48 overflow-y-auto rounded-lg border border-edge bg-surface p-1 shadow-xl">
-            <Menu.Item className={itemClass} onSelect={actions.newPlaylist}>
+            <Menu.Item className={menuItemClass} onSelect={actions.newPlaylist}>
               <Plus className="size-4 text-dim" /> {t("menu.newPlaylist")}
             </Menu.Item>
             {(playlists ?? []).length > 0 && <Menu.Separator className="my-1 h-px bg-edge" />}
             {(playlists ?? []).map((playlist) => (
               <Menu.Item
                 key={playlist.id}
-                className={itemClass}
+                className={menuItemClass}
                 onSelect={() => actions.addToPlaylist(playlist.id, playlist.name)}
               >
                 <span className="truncate">{playlist.name}</span>
@@ -153,7 +153,7 @@ function EntityItems({
       </Menu.Sub>
       {navigateItems}
       <Menu.Separator className="my-1 h-px bg-edge" />
-      <Menu.Item className={itemClass} onSelect={actions.toggleStar}>
+      <Menu.Item className={menuItemClass} onSelect={actions.toggleStar}>
         <Heart className={`size-4 ${actions.isStarred ? "fill-accent text-accent" : "text-dim"}`} />
         {actions.isStarred ? t("favourite.remove") : t("favourite.add")}
       </Menu.Item>
@@ -187,14 +187,14 @@ export function AlbumMenuItems({ album }: { album: Album }) {
         <>
           <ContextMenu.Separator className="my-1 h-px bg-edge" />
           <ContextMenu.Item
-            className={itemClass}
+            className={menuItemClass}
             onSelect={() => navigate(`/albums/${album.id}`)}
           >
             <Disc3 className="size-4 text-dim" /> {t("menu.goToAlbum")}
           </ContextMenu.Item>
           {artists.length === 1 && (
             <ContextMenu.Item
-              className={itemClass}
+              className={menuItemClass}
               onSelect={() => navigate(`/artists/${artists[0].id}`)}
             >
               <User className="size-4 text-dim" /> {t("menu.goToArtist")}
@@ -203,7 +203,7 @@ export function AlbumMenuItems({ album }: { album: Album }) {
           {/* Several credited album artists: pick which one to open. */}
           {artists.length > 1 && (
             <ContextMenu.Sub>
-              <ContextMenu.SubTrigger className={itemClass}>
+              <ContextMenu.SubTrigger className={menuItemClass}>
                 <User className="size-4 text-dim" /> {t("menu.goToArtist")}
               </ContextMenu.SubTrigger>
               <ContextMenu.Portal>
@@ -211,7 +211,7 @@ export function AlbumMenuItems({ album }: { album: Album }) {
                   {artists.map((artist) => (
                     <ContextMenu.Item
                       key={artist.id}
-                      className={itemClass}
+                      className={menuItemClass}
                       onSelect={() => navigate(`/artists/${artist.id}`)}
                     >
                       <span className="truncate">{artist.name}</span>
@@ -252,7 +252,7 @@ export function ArtistMenuItems({ artist }: { artist: Artist }) {
         <>
           <ContextMenu.Separator className="my-1 h-px bg-edge" />
           <ContextMenu.Item
-            className={itemClass}
+            className={menuItemClass}
             onSelect={() => navigate(`/artists/${artist.id}`)}
           >
             <User className="size-4 text-dim" /> {t("menu.goToArtist")}

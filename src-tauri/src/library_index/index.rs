@@ -1,9 +1,6 @@
 //! The Library index itself: the account's library Songs and Artists,
 //! indexed by name so Scrobbles find their Library match.
 
-// Mixes only match Songs; the rest is for the stats aggregation.
-#![cfg_attr(not(test), expect(dead_code, reason = "the stats aggregation reads the lookups"))]
-
 use std::collections::{HashMap, HashSet};
 
 use reverb_core::subsonic::models::{ArtistId3, Child};
@@ -25,7 +22,8 @@ pub struct LibraryIndex {
     artist_names: HashMap<String, usize>,
 }
 
-/// A library Artist. Only those in the artist listing have art.
+/// A library Artist, with the cover-art id of whatever art the server has
+/// for them.
 #[derive(Debug, Clone)]
 pub struct LibraryArtist {
     pub id: String,
@@ -53,10 +51,12 @@ impl LibraryIndex {
             index.add_artist(LibraryArtist { id: a.id, name: a.name, cover_art: a.cover_art });
         }
         // Featured artists often have no album of their own, so the artist
-        // listing leaves them out.
+        // listing leaves them out. The server still has art for them, under
+        // its cover-art id for an artist.
         for (name, id) in songs.iter().flat_map(credited_artists) {
             if let Some(id) = id {
-                index.add_artist(LibraryArtist { id, name, cover_art: None });
+                let cover_art = Some(format!("ar-{id}"));
+                index.add_artist(LibraryArtist { id, name, cover_art });
             }
         }
 
@@ -128,19 +128,10 @@ impl LibraryIndex {
         artist_keys.iter().find_map(|a| self.loose.get(&name_key(a, &loose_title)).copied())
     }
 
-    /// The Song at `at` in [`Self::songs`].
-    pub fn song(&self, at: usize) -> LibrarySong<'_> {
-        LibrarySong { index: self, song: &self.songs[at] }
-    }
-
     /// The library Song a Scrobble of `title` by `artist` matches.
     pub fn find_song(&self, artist: &str, title: &str) -> Option<LibrarySong<'_>> {
-        self.match_song(&credit_keys(artist), title).map(|at| self.song(at))
-    }
-
-    /// The library Album of the Song a Scrobble matches.
-    pub fn find_album(&self, artist: &str, title: &str) -> Option<LibraryAlbum<'_>> {
-        self.find_song(artist, title)?.album()
+        let at = self.match_song(&credit_keys(artist), title)?;
+        Some(LibrarySong { song: &self.songs[at] })
     }
 }
 
@@ -155,7 +146,6 @@ pub struct LibraryAlbum<'a> {
 /// A library Song, with what stats read from it.
 #[derive(Clone, Copy)]
 pub struct LibrarySong<'a> {
-    index: &'a LibraryIndex,
     song: &'a Child,
 }
 
@@ -205,15 +195,6 @@ impl<'a> LibrarySong<'a> {
             name: self.song.album.as_deref().unwrap_or_default(),
             cover_art: self.cover_art(),
         })
-    }
-
-    /// Every credited Artist, in credit order.
-    pub fn artists(&self) -> Vec<&'a LibraryArtist> {
-        let index = self.index;
-        credited_artists(self.song)
-            .into_iter()
-            .filter_map(|(_, id)| index.artist_ids.get(&id?).map(|&at| &index.artists[at]))
-            .collect()
     }
 }
 
@@ -267,25 +248,20 @@ mod tests {
     }
 
     #[test]
-    fn songs_name_their_credited_artists() {
+    fn artists_credited_on_songs_are_in_the_index() {
         let mut duet = song("s1", "Main feat. Guest", "Duet");
         duet.artists = vec![
             ArtistRef { id: "m".into(), name: "Main".into() },
             ArtistRef { id: "g".into(), name: "Guest".into() },
         ];
         let index = LibraryIndex::new(vec![duet], vec![artist("m", "Main")]);
+        let found = |credit: &str| {
+            index.find_artist(credit).map(|a| (a.id.as_str(), a.cover_art.as_deref()))
+        };
 
-        let credited: Vec<(&str, Option<&str>)> = index
-            .find_song("Main", "Duet")
-            .expect("matched")
-            .artists()
-            .into_iter()
-            .map(|a| (a.id.as_str(), a.cover_art.as_deref()))
-            .collect();
-        // Only the artist listing has art.
-        assert_eq!(credited, [("m", Some("ar-m")), ("g", None)]);
-        let guest = index.find_artist("Guest").expect("credited on a Song");
-        assert_eq!(guest.id, "g");
+        assert_eq!(found("Main"), Some(("m", Some("ar-m"))));
+        // Not in the artist listing, but the server has art for them too.
+        assert_eq!(found("Guest"), Some(("g", Some("ar-g"))));
     }
 
     #[test]
@@ -297,7 +273,8 @@ mod tests {
         ];
         let index = LibraryIndex::new(songs, Vec::new());
         let album = |artist: &str, title: &str| {
-            index.find_album(artist, title).map(|a| (a.id, a.name, a.cover_art))
+            let album = index.find_song(artist, title)?.album()?;
+            Some((album.id, album.name, album.cover_art))
         };
 
         // A compilation is one album whoever its Songs are by.

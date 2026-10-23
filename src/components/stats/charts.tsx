@@ -7,6 +7,7 @@
 // Top lists are entries with art, not charts (StatsEntry).
 
 import { useId, useMemo, useRef, useState } from "react";
+import { localDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import type { ListeningSession, TimelinePoint } from "../../lib/subsonic/types";
 
@@ -390,7 +391,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
 
   const { cells, columns, lead, thresholds, titles } = useMemo(() => {
     // Pad so every column is a full Mon–Sun week.
-    const lead = (new Date(`${days[0]?.label}T00:00:00`).getDay() + 6) % 7;
+    const lead = days.length > 0 ? (localDate(days[0].label).getDay() + 6) % 7 : 0;
     const cells: (TimelinePoint | null)[] = [...Array(lead).fill(null), ...days];
     const columns: (TimelinePoint | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) columns.push(cells.slice(i, i + 7));
@@ -404,7 +405,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
       cell === null
         ? ""
         : t("chart.playsWithLabel", {
-            label: t.d(`${cell.label}T00:00:00`, { dateStyle: "medium" }),
+            label: t.d(localDate(cell.label), { dateStyle: "medium" }),
             n: cell.count,
           }),
     );
@@ -492,7 +493,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
         <span className="tabular-nums">
           {hovered
             ? t("chart.playsWithLabel", {
-                label: t.d(`${hovered.label}T00:00:00`, { dateStyle: "medium" }),
+                label: t.d(localDate(hovered.label), { dateStyle: "medium" }),
                 n: hovered.count,
               })
             : t("count.days", { n: days.length })}
@@ -546,7 +547,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
             onMouseLeave={() => setHover(null)}
             title={t("chart.sessionTitle", {
               date: t.d(start, { dateStyle: "medium", timeStyle: "short" }),
-              n: session.tracks,
+              n: session.songs,
               span: formatSpan(session.spanMinutes, t),
             })}
           >
@@ -572,7 +573,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
               />
             </div>
             <span className="text-right whitespace-nowrap tabular-nums text-dim">
-              {t("count.songs", { n: session.tracks })}
+              {t("count.songs", { n: session.songs })}
               <span className="text-faint"> · {formatSpan(session.spanMinutes, t)}</span>
             </span>
           </div>

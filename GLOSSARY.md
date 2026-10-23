@@ -34,6 +34,9 @@ _Avoid_: Play (for plays recorded elsewhere)
 The library Song, Album or Artist a Scrobble is recognised as, matched by name. A Scrobble of music not in the library has none.
 _Avoid_: Lookup, mapping
 
+**Library index**:
+The signed-in account's record of its library's Songs, Albums and Artists, which Scrobbles are matched against to find their Library match. It's kept for each account and shared by stats and mixes.
+
 **Period**:
 The span of time the stats page summarises: the last day, week, month or year, a custom date range, or all time.
 _Avoid_: Range, window

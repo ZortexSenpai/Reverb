@@ -611,6 +611,7 @@ export const fr: Messages = {
   "stats.decade": "Années {decade}",
   "stats.coverage": "d'après {share} des écoutes",
   "stats.readingLibrary": "Lecture de votre bibliothèque…",
+  "stats.libraryUnavailable": "Impossible de lire votre bibliothèque.",
   "stats.noGenres": "Aucun genre pour les morceaux de cette période.",
   "stats.noDecades": "Aucune année de sortie pour les morceaux de cette période.",
   "stats.topArtists": "Artistes les plus écoutés",
@@ -625,7 +626,6 @@ export const fr: Messages = {
   "stats.movementNewHint": "pas écouté pendant la période précédente",
   "stats.movementUp": "monte de {n, plural, one {# place} other {# places}} par rapport à la période précédente",
   "stats.movementDown": "descend de {n, plural, one {# place} other {# places}} par rapport à la période précédente",
-  "stats.movementSame": "même place que pendant la période précédente",
   "stats.onThisDay": "Ce jour-là, en {year}",
   "stats.recentScrobbles": "Scrobbles récents",
 

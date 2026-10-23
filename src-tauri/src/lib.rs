@@ -108,6 +108,7 @@ pub fn run() {
             });
 
             events::spawn_forwarder(app.handle().clone(), event_rx, player, subsonic);
+            library_index::load_saved(app.handle().clone());
 
             // Shortly after startup, ready the Library index and pull fresh
             // scrobbles from connected stats sources side by side, then build

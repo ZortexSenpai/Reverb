@@ -611,6 +611,7 @@ export const de: Messages = {
   "stats.decade": "{decade}er",
   "stats.coverage": "basierend auf {share} der Wiedergaben",
   "stats.readingLibrary": "Bibliothek wird gelesen…",
+  "stats.libraryUnavailable": "Deine Bibliothek konnte nicht gelesen werden.",
   "stats.noGenres": "Keine Genres zu den Titeln dieses Zeitraums.",
   "stats.noDecades": "Keine Erscheinungsjahre zu den Titeln dieses Zeitraums.",
   "stats.topArtists": "Top-Interpreten",
@@ -625,7 +626,6 @@ export const de: Messages = {
   "stats.movementNewHint": "im vorherigen Zeitraum nicht gehört",
   "stats.movementUp": "{n, plural, one {# Platz} other {# Plätze}} höher als im vorherigen Zeitraum",
   "stats.movementDown": "{n, plural, one {# Platz} other {# Plätze}} tiefer als im vorherigen Zeitraum",
-  "stats.movementSame": "gleicher Platz wie im vorherigen Zeitraum",
   "stats.onThisDay": "An diesem Tag, {year}",
   "stats.recentScrobbles": "Letzte Scrobbles",
 

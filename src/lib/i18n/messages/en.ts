@@ -654,7 +654,6 @@ export const en = {
   "stats.movementNewHint": "not played in the previous period",
   "stats.movementUp": "up {n, plural, one {# place} other {# places}} since the previous period",
   "stats.movementDown": "down {n, plural, one {# place} other {# places}} since the previous period",
-  "stats.movementSame": "same place as in the previous period",
   "stats.onThisDay": "On this day, {year}",
   "stats.recentScrobbles": "Recent scrobbles",
 

@@ -3,7 +3,7 @@
 // that lists entries uses it, so they all look and behave alike.
 
 import { CoverImage } from "../library/CoverImage";
-import { formatMovement } from "../../lib/format";
+import { movementMarker, type MovementMarker } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { initials } from "../../lib/initials";
 import type { StatsEntryKind } from "../../lib/statsEntryAction";
@@ -101,30 +101,18 @@ function Rank({ rank }: { rank: number }) {
   );
 }
 
-/** Places moved since the Previous period: rises in the accent, "new" as a tag. */
-function Movement({ movement }: { movement: RankMovement }) {
-  const t = useT();
-  const text = formatMovement(movement, t);
-  if (movement.kind === "new") {
-    return (
-      <span
-        title={t("stats.movementNewHint")}
-        className="rounded bg-accent/15 px-1 text-[10px] font-semibold tracking-wide text-accent uppercase"
-      >
-        {text}
-      </span>
-    );
-  }
-  const { places } = movement;
-  const [title, tone] =
-    places > 0
-      ? [t("stats.movementUp", { n: places }), "text-accent"]
-      : places < 0
-        ? [t("stats.movementDown", { n: -places }), "text-dim"]
-        : [t("stats.movementSame"), "text-faint"];
+/** Rises in the accent, falls dimmed, "new" as a tag. */
+const MARKER_CLASS: Record<MovementMarker["direction"], string> = {
+  up: "tabular-nums text-accent",
+  down: "tabular-nums text-dim",
+  new: "rounded bg-accent/15 px-1 text-[10px] font-semibold tracking-wide text-accent uppercase",
+};
+
+/** Places moved since the Previous period. */
+function Movement({ marker }: { marker: MovementMarker }) {
   return (
-    <span title={title} className={`tabular-nums ${tone}`}>
-      {text}
+    <span title={marker.title} className={MARKER_CLASS[marker.direction]}>
+      {marker.text}
     </span>
   );
 }
@@ -172,6 +160,7 @@ export function StatsEntry({
 }) {
   const t = useT();
   const plays = count !== undefined ? t("count.plays", { n: count }) : null;
+  const marker = movement ? movementMarker(movement, t) : null;
   const secondary = (
     <>
       {plays}
@@ -237,10 +226,10 @@ export function StatsEntry({
           {!artist && <div className="truncate text-xs text-dim">{item.artist || " "}</div>}
           <div className="truncate text-xs text-faint tabular-nums">
             {secondary}
-            {movement && (
+            {marker && (
               <>
                 {" · "}
-                <Movement movement={movement} />
+                <Movement marker={marker} />
               </>
             )}
           </div>
@@ -280,10 +269,11 @@ export function StatsEntry({
           )}
         </div>
         <span className="shrink-0 text-xs tabular-nums text-faint">{secondary}</span>
-        {/* Its own column, so the markers line up down the list. */}
+        {/* Its own column, so the markers line up down the list, also past
+            an entry that kept its place and shows none. */}
         {movement && (
           <span className="min-w-8 shrink-0 text-right text-xs">
-            <Movement movement={movement} />
+            {marker && <Movement marker={marker} />}
           </span>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatChange, formatListeningTime, formatMovement } from "./format";
+import { formatChange, formatListeningTime, movementMarker } from "./format";
 import { translator } from "./i18n/core";
 
 const t = translator("en");
@@ -45,18 +45,30 @@ describe("formatChange", () => {
   });
 });
 
-describe("formatMovement", () => {
+describe("movementMarker", () => {
   it("points up or down by the places moved", () => {
-    expect(formatMovement({ kind: "moved", places: 37 }, t)).toBe("▲37");
-    expect(formatMovement({ kind: "moved", places: -3 }, t)).toBe("▼3");
+    expect(movementMarker({ kind: "moved", places: 37 }, t)).toEqual({
+      direction: "up",
+      text: "▲37",
+      title: "up 37 places since the previous period",
+    });
+    expect(movementMarker({ kind: "moved", places: -1 }, t)).toEqual({
+      direction: "down",
+      text: "▼1",
+      title: "down 1 place since the previous period",
+    });
   });
 
-  it("marks an entry that kept its place", () => {
-    expect(formatMovement({ kind: "moved", places: 0 }, t)).toBe("=");
+  it("shows nothing for an entry that kept its place", () => {
+    expect(movementMarker({ kind: "moved", places: 0 }, t)).toBeNull();
   });
 
   it("marks an entry the Previous period didn't have as new", () => {
-    expect(formatMovement({ kind: "new" }, t)).toBe("new");
-    expect(formatMovement({ kind: "new" }, translator("de"))).toBe("neu");
+    expect(movementMarker({ kind: "new" }, t)).toEqual({
+      direction: "new",
+      text: "new",
+      title: "not played in the previous period",
+    });
+    expect(movementMarker({ kind: "new" }, translator("de"))?.text).toBe("neu");
   });
 });

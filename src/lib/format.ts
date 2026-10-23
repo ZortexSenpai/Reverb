@@ -50,12 +50,29 @@ export function formatChange(change: number, t: T): string {
   return t.n(change, { style: "percent", signDisplay: "exceptZero", maximumFractionDigits: 0 });
 }
 
-/** "▲37", "▼3", "=" or "new": a top-list entry's places moved since the Previous period. */
-export function formatMovement(movement: RankMovement, t: T): string {
-  if (movement.kind === "new") return t("stats.movementNew");
+/** How a top-list entry shows its places moved since the Previous period. */
+export interface MovementMarker {
+  direction: "up" | "down" | "new";
+  /** "▲37", "▼3" or "new". */
+  text: string;
+  /** What it means, for a tooltip. */
+  title: string;
+}
+
+/** A top-list entry's marker for its places moved; none when it kept its place. */
+export function movementMarker(movement: RankMovement, t: T): MovementMarker | null {
+  if (movement.kind === "new") {
+    return { direction: "new", text: t("stats.movementNew"), title: t("stats.movementNewHint") };
+  }
   const { places } = movement;
-  if (places === 0) return "=";
-  return `${places > 0 ? "▲" : "▼"}${t.n(Math.abs(places))}`;
+  const n = Math.abs(places);
+  if (places > 0) {
+    return { direction: "up", text: `▲${t.n(n)}`, title: t("stats.movementUp", { n }) };
+  }
+  if (places < 0) {
+    return { direction: "down", text: `▼${t.n(n)}`, title: t("stats.movementDown", { n }) };
+  }
+  return null;
 }
 
 /** "44.1 kHz" — sample rates are quoted in kHz everywhere in the UI. */

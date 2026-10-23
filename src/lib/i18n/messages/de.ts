@@ -625,7 +625,6 @@ export const de: Messages = {
   "stats.movementNewHint": "im vorherigen Zeitraum nicht gehört",
   "stats.movementUp": "{n, plural, one {# Platz} other {# Plätze}} höher als im vorherigen Zeitraum",
   "stats.movementDown": "{n, plural, one {# Platz} other {# Plätze}} tiefer als im vorherigen Zeitraum",
-  "stats.movementSame": "gleicher Platz wie im vorherigen Zeitraum",
   "stats.onThisDay": "An diesem Tag, {year}",
   "stats.recentScrobbles": "Letzte Scrobbles",
 

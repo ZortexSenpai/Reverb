@@ -290,31 +290,45 @@ pub struct StatsQuery {
     pub to: Option<i64>,
 }
 
+/// A half-open `[from, to)` span of unix seconds; `None` is unbounded.
+#[derive(Debug, Clone, Copy)]
+struct Span {
+    from: Option<i64>,
+    to: Option<i64>,
+}
+
+impl Span {
+    fn contains(self, ts: i64) -> bool {
+        self.from.is_none_or(|from| ts >= from) && self.to.is_none_or(|to| ts < to)
+    }
+}
+
 impl StatsQuery {
-    /// The Period's half-open `[from, to)` in unix seconds; `None` is
-    /// unbounded.
-    fn period(self, now: i64) -> (Option<i64>, Option<i64>) {
+    /// The Period's span.
+    fn period(self, now: i64) -> Span {
         const DAY: i64 = 86_400;
+        let since = |secs| Span { from: Some(now - secs), to: None };
         match self.range {
-            StatsRange::Day => (Some(now - DAY), None),
-            StatsRange::Week => (Some(now - 7 * DAY), None),
-            StatsRange::Month => (Some(now - 30 * DAY), None),
-            StatsRange::Year => (Some(now - 365 * DAY), None),
-            StatsRange::All => (None, None),
+            StatsRange::Day => since(DAY),
+            StatsRange::Week => since(7 * DAY),
+            StatsRange::Month => since(30 * DAY),
+            StatsRange::Year => since(365 * DAY),
+            StatsRange::All => Span { from: None, to: None },
             // Tolerate reversed pickers rather than reporting an empty range.
             StatsRange::Custom => match (self.from, self.to) {
-                (Some(a), Some(b)) if a > b => (Some(b), Some(a)),
-                bounds => bounds,
+                (Some(a), Some(b)) if a > b => Span { from: Some(b), to: Some(a) },
+                (from, to) => Span { from, to },
             },
         }
     }
 
-    /// The Previous period's `[from, to)`: as long as the Period, ending
-    /// where it starts. None for all time.
-    fn previous_period(self, now: i64) -> Option<(i64, i64)> {
-        let (from, to) = self.period(now);
-        let from = from?;
-        Some((from - (to.unwrap_or(now) - from), from))
+    /// The Previous period's span: as long as the Period, ending where it
+    /// starts. None for all time.
+    fn previous_period(self, now: i64) -> Option<Span> {
+        let period = self.period(now);
+        let from = period.from?;
+        let length = period.to.unwrap_or(now) - from;
+        Some(Span { from: Some(from - length), to: Some(from) })
     }
 }
 
@@ -431,16 +445,13 @@ pub fn compute(
     query: StatsQuery,
     now: DateTime<Local>,
 ) -> StatsSummary {
-    let (from, to) = query.period(now.timestamp());
-    let filtered: Vec<&StatScrobble> = scrobbles
-        .iter()
-        .filter(|s| from.is_none_or(|f| s.ts >= f) && to.is_none_or(|t| s.ts < t))
-        .collect();
+    let period = query.period(now.timestamp());
+    let filtered: Vec<&StatScrobble> = scrobbles.iter().filter(|s| period.contains(s.ts)).collect();
 
     // Timeline span: the requested window, falling back to the data's own
     // extent when a bound is open ("all time", or any preset's open end).
-    let start = from.or_else(|| filtered.first().map(|s| s.ts)).unwrap_or(now.timestamp());
-    let end = to.unwrap_or(now.timestamp()).min(now.timestamp()).max(start + 1);
+    let start = period.from.or_else(|| filtered.first().map(|s| s.ts)).unwrap_or(now.timestamp());
+    let end = period.to.unwrap_or(now.timestamp()).min(now.timestamp()).max(start + 1);
     let bucket = Bucket::for_span(end - start);
 
     let mut grouper = Grouper::new(library);
@@ -521,7 +532,7 @@ pub fn compute(
     // through the same Library matches.
     let previous = query
         .previous_period(now.timestamp())
-        .map(|bounds| Previous::of(scrobbles, &mut grouper, bounds));
+        .map(|span| Previous::of(scrobbles, &mut grouper, span));
 
     // The leading artists are only known once everything is counted, so
     // their plays are bucketed in a second pass.
@@ -564,7 +575,7 @@ pub fn compute(
     }
 
     let sessions = sessionize(&filtered);
-    let discovery = from.map(|start| discover(scrobbles, &mut grouper, start, to));
+    let discovery = period.from.map(|_| discover(scrobbles, &mut grouper, period));
     let on_this_day = on_this_day(scrobbles, &mut grouper, now.date_naive());
 
     let top_songs = top(songs, previous.as_ref().map(|p| &p.songs[..]));
@@ -729,14 +740,10 @@ struct Previous {
 }
 
 impl Previous {
-    /// The Scrobbles in the Previous period `[from, to)`, grouped like the
+    /// The Scrobbles in the Previous period `span`, grouped like the
     /// Period's.
-    fn of<'a>(
-        all: &'a [StatScrobble],
-        grouper: &mut Grouper<'a>,
-        (from, to): (i64, i64),
-    ) -> Self {
-        let plays: Vec<&StatScrobble> = all.iter().filter(|s| s.ts >= from && s.ts < to).collect();
+    fn of<'a>(all: &'a [StatScrobble], grouper: &mut Grouper<'a>, span: Span) -> Self {
+        let plays: Vec<&StatScrobble> = all.iter().filter(|s| span.contains(s.ts)).collect();
         let counted = Counted::of(&plays, grouper);
         Self {
             headline: counted.headline(&plays),
@@ -814,15 +821,9 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
     SessionStats { count, median_songs, longest: sessions }
 }
 
-/// Artists and Songs whose *first ever* Scrobble falls inside the Period, grouped
-/// like the top lists: "A feat. B" is nothing new once A is known.
-fn discover<'a>(
-    all: &'a [StatScrobble],
-    grouper: &mut Grouper<'a>,
-    from: i64,
-    to: Option<i64>,
-) -> Discovery {
-    let in_period = |ts: i64| ts >= from && to.is_none_or(|t| ts < t);
+/// Artists and Songs whose *first ever* Scrobble falls inside the Period,
+/// grouped like the top lists: "A feat. B" is nothing new once A is known.
+fn discover<'a>(all: &'a [StatScrobble], grouper: &mut Grouper<'a>, period: Span) -> Discovery {
     // Each artist's entry, first Scrobble and Scrobbles in the Period.
     let mut first_artist: HashMap<GroupKey, (Group, i64, u64)> = HashMap::new();
     let mut first_song: HashMap<GroupKey, i64> = HashMap::new();
@@ -830,7 +831,7 @@ fn discover<'a>(
     for s in all {
         let artist = grouper.artist(s);
         let (_, _, plays) = first_artist.entry(artist.key()).or_insert((artist, s.ts, 0));
-        if in_period(s.ts) {
+        if period.contains(s.ts) {
             *plays += 1;
         }
         first_song.entry(grouper.song(s).key()).or_insert(s.ts);
@@ -838,7 +839,7 @@ fn discover<'a>(
 
     let mut first_artists: Vec<FirstHeard> = first_artist
         .into_values()
-        .filter(|(_, ts, _)| in_period(*ts))
+        .filter(|(_, ts, _)| period.contains(*ts))
         .map(|(artist, ts, plays)| FirstHeard {
             name: artist.name.to_owned(),
             matched: artist.matched.map(Into::into),
@@ -854,7 +855,7 @@ fn discover<'a>(
 
     Discovery {
         new_artists,
-        new_songs: first_song.values().filter(|ts| in_period(**ts)).count() as u64,
+        new_songs: first_song.values().filter(|ts| period.contains(**ts)).count() as u64,
         first_artists,
     }
 }

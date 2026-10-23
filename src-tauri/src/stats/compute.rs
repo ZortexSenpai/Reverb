@@ -1,7 +1,7 @@
 //! Aggregation for the stats page: top lists, clock/weekday distributions,
 //! and a play-count timeline, computed over the imported scrobbles.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use chrono::{
     DateTime, Datelike, Duration, Local, Months, NaiveDate, NaiveDateTime, TimeZone, Timelike,
@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use super::grouping::{Group, Grouper, Tally};
 use super::store::StatScrobble;
-use crate::library_index::index::LibraryIndex;
+use crate::library_index::index::{LibraryIndex, LibrarySong};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,6 +76,12 @@ pub struct StatsSummary {
     /// Whether the Library index was there to match Scrobbles against. Until
     /// it is, everything is grouped by name and nothing has art.
     pub library_available: bool,
+    /// The [`TOP_N`] genres of the Period's library Songs, most played
+    /// first. Absent without a Library index.
+    pub genres: Option<Breakdown<GenrePlays>>,
+    /// Plays per release decade of the Period's library Songs, oldest first.
+    /// Absent without a Library index.
+    pub decades: Option<Breakdown<DecadePlays>>,
 }
 
 /// Listening broken into sittings — runs of plays with no long gap. Scrobbles
@@ -125,6 +131,31 @@ pub struct OnThisDay {
     pub year: i32,
     pub plays: u64,
     pub tracks: Vec<TopEntry>,
+}
+
+/// Plays split by what only the Library match knows about their Songs, like
+/// genres or release years.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Breakdown<T> {
+    pub entries: Vec<T>,
+    /// The share of the Period's Scrobbles it's based on, from 0 to 1.
+    pub coverage: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenrePlays {
+    pub name: String,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecadePlays {
+    /// Its first year: 1980 for the 1980s.
+    pub decade: i32,
+    pub count: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
@@ -285,6 +316,7 @@ pub fn compute(
     let mut artists = Tally::default();
     let mut songs = Tally::default();
     let mut albums = Tally::default();
+    let mut from_library = FromLibrary::default();
     let mut by_hour = vec![0u64; 24];
     let mut by_weekday = vec![0u64; 7];
     let mut buckets: HashMap<String, u64> = HashMap::new();
@@ -296,6 +328,7 @@ pub fn compute(
         if let Some(album) = grouper.album(s) {
             albums.add(album);
         }
+        from_library.add(grouper.library_song(s));
         if let Some(local) = Local.timestamp_opt(s.ts, 0).single() {
             by_hour[local.hour() as usize] += 1;
             by_weekday[local.weekday().num_days_from_monday() as usize] += 1;
@@ -401,6 +434,8 @@ pub fn compute(
         discovery,
         on_this_day,
         library_available: library.is_some(),
+        genres: library.map(|_| from_library.genres()),
+        decades: library.map(|_| from_library.decades()),
     }
 }
 
@@ -541,6 +576,61 @@ fn on_this_day(all: &[StatScrobble], today: NaiveDate) -> Vec<OnThisDay> {
     out.sort_by_key(|day| std::cmp::Reverse(day.year));
     out.truncate(ON_THIS_DAY_YEARS);
     out
+}
+
+/// Plays per genre and per release decade of the Scrobbles' library Songs,
+/// still being tallied.
+#[derive(Default)]
+struct FromLibrary<'a> {
+    plays: u64,
+    genres: HashMap<&'a str, u64>,
+    /// Plays of a Song with at least one genre.
+    with_genre: u64,
+    decades: BTreeMap<i32, u64>,
+}
+
+impl<'a> FromLibrary<'a> {
+    /// Count a Scrobble with Library match `song`, if any.
+    fn add(&mut self, song: Option<LibrarySong<'a>>) {
+        self.plays += 1;
+        let Some(song) = song else { return };
+        let genres = song.genres();
+        if !genres.is_empty() {
+            self.with_genre += 1;
+        }
+        for genre in genres {
+            *self.genres.entry(genre).or_default() += 1;
+        }
+        if let Some(year) = song.year() {
+            *self.decades.entry(year - year.rem_euclid(10)).or_default() += 1;
+        }
+    }
+
+    /// `plays` as a share of every play counted.
+    fn share(&self, plays: u64) -> f64 {
+        if self.plays == 0 {
+            return 0.0;
+        }
+        plays as f64 / self.plays as f64
+    }
+
+    fn genres(&self) -> Breakdown<GenrePlays> {
+        let mut entries: Vec<GenrePlays> = self
+            .genres
+            .iter()
+            .map(|(&name, &count)| GenrePlays { name: name.to_owned(), count })
+            .collect();
+        entries.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.name.cmp(&b.name)));
+        entries.truncate(TOP_N);
+        Breakdown { entries, coverage: self.share(self.with_genre) }
+    }
+
+    fn decades(&self) -> Breakdown<DecadePlays> {
+        let entries =
+            self.decades.iter().map(|(&decade, &count)| DecadePlays { decade, count }).collect();
+        // A Song has one year, so every play of a dated Song is in one decade.
+        Breakdown { entries, coverage: self.share(self.decades.values().sum()) }
+    }
 }
 
 #[cfg(test)]
@@ -955,5 +1045,141 @@ mod tests {
         assert!(unmatched.into_iter().all(|e| e.id.is_none() && e.cover_art.is_none()));
         // The artist is in the library even though this Song isn't.
         assert_eq!(entry(&s.top_artists, "Artist").id.as_deref(), Some("a"));
+    }
+
+    /// A library Song by "Artist" with a genre list, as OpenSubsonic sends it.
+    fn tagged(id: &str, title: &str, genres: &[&str]) -> reverb_core::subsonic::models::Child {
+        let mut song = library::song(id, "Artist", title);
+        song.genres = genres
+            .iter()
+            .map(|&name| reverb_core::subsonic::models::GenreRef { name: name.into() })
+            .collect();
+        song
+    }
+
+    /// Scrobbles by "Artist" of `titles`, a minute apart, ending just before
+    /// [`fixed_now`].
+    fn plays_of(titles: &[&str]) -> Vec<StatScrobble> {
+        let now = fixed_now().timestamp();
+        let count = titles.len() as i64;
+        (0..count).map(|i| scrobble(now - 60 * (count - i), "Artist", titles[i as usize])).collect()
+    }
+
+    fn genre_counts(s: &StatsSummary) -> Vec<(&str, u64)> {
+        let genres = s.genres.as_ref().expect("genres with an index");
+        genres.entries.iter().map(|g| (g.name.as_str(), g.count)).collect()
+    }
+
+    #[test]
+    fn a_song_with_several_genres_counts_toward_each() {
+        let library = LibraryIndex::new(
+            vec![tagged("s1", "Anthem", &["Rock", "Pop"]), tagged("s2", "Riff", &["Rock"])],
+            Vec::new(),
+        );
+        let scrobbles = plays_of(&["Anthem", "Riff", "Anthem"]);
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert_eq!(genre_counts(&s), [("Rock", 3), ("Pop", 2)]);
+    }
+
+    #[test]
+    fn a_song_without_a_genre_list_counts_toward_its_single_genre() {
+        let mut ballad = library::song("s1", "Artist", "Ballad");
+        ballad.genre = Some("Jazz".into());
+        let songs = vec![ballad, tagged("s2", "Anthem", &["Rock"])];
+        let library = LibraryIndex::new(songs, Vec::new());
+        let scrobbles = plays_of(&["Ballad", "Ballad", "Anthem"]);
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert_eq!(genre_counts(&s), [("Jazz", 2), ("Rock", 1)]);
+    }
+
+    #[test]
+    fn genres_keep_the_ten_most_played() {
+        // Twelve Songs, one genre each: G01 played 12 times down to G12 once.
+        let genres: Vec<String> = (1..=12).map(|n| format!("G{n:02}")).collect();
+        let songs = genres.iter().map(|g| tagged(g, g, &[g.as_str()])).collect();
+        let library = LibraryIndex::new(songs, Vec::new());
+        let titles: Vec<&str> =
+            genres.iter().enumerate().flat_map(|(i, g)| vec![g.as_str(); 12 - i]).collect();
+        let s = compute(&plays_of(&titles), Some(&library), preset(StatsRange::All), fixed_now());
+
+        let expected: Vec<(&str, u64)> =
+            genres.iter().take(10).zip((3..=12).rev()).map(|(g, n)| (g.as_str(), n)).collect();
+        assert_eq!(genre_counts(&s), expected);
+    }
+
+    #[test]
+    fn genres_say_what_share_of_the_periods_plays_they_cover() {
+        let library = LibraryIndex::new(
+            vec![
+                tagged("s1", "Anthem", &["Rock", "Pop"]),
+                tagged("s2", "Riff", &["Rock"]),
+                tagged("s3", "Untagged", &[]),
+            ],
+            Vec::new(),
+        );
+        let mut scrobbles = plays_of(&["Anthem", "Anthem", "Riff", "Untagged", "Unreleased"]);
+        // Before the week: not part of the share.
+        scrobbles.insert(0, scrobble(fixed_now().timestamp() - 30 * 86_400, "Artist", "Anthem"));
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
+
+        // Three of the week's five plays are of a Song with a genre.
+        assert_eq!(s.genres.expect("genres with an index").coverage, 0.6);
+    }
+
+    /// Library Songs by "Artist", newest first, and one without a year.
+    fn dated_library() -> LibraryIndex {
+        let years = [
+            ("Now", Some(2003)),
+            ("Middle", Some(1985)),
+            ("Then", Some(1979)),
+            ("Before", Some(1971)),
+            ("Undated", None),
+        ];
+        let songs = years
+            .into_iter()
+            .map(|(title, year)| {
+                let mut song = library::song(title, "Artist", title);
+                song.year = year;
+                song
+            })
+            .collect();
+        LibraryIndex::new(songs, Vec::new())
+    }
+
+    fn decade_counts(s: &StatsSummary) -> Vec<(i32, u64)> {
+        let decades = s.decades.as_ref().expect("decades with an index");
+        decades.entries.iter().map(|d| (d.decade, d.count)).collect()
+    }
+
+    #[test]
+    fn decades_run_oldest_first_and_leave_out_songs_without_a_year() {
+        let library = dated_library();
+        let scrobbles = plays_of(&["Now", "Middle", "Then", "Before", "Undated"]);
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert_eq!(decade_counts(&s), [(1970, 2), (1980, 1), (2000, 1)]);
+    }
+
+    #[test]
+    fn decades_say_what_share_of_the_periods_plays_they_cover() {
+        let library = dated_library();
+        let mut scrobbles = plays_of(&["Now", "Then", "Then", "Undated", "Unreleased"]);
+        // Before the week: not part of the share.
+        scrobbles.insert(0, scrobble(fixed_now().timestamp() - 30 * 86_400, "Artist", "Now"));
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
+
+        // Three of the week's five plays are of a Song with a year.
+        assert_eq!(s.decades.expect("decades with an index").coverage, 0.6);
+    }
+
+    #[test]
+    fn genres_and_decades_wait_for_the_index() {
+        let scrobbles = plays_of(&["Now", "Then"]);
+        let s = compute(&scrobbles, None, preset(StatsRange::All), fixed_now());
+
+        assert!(s.genres.is_none());
+        assert!(s.decades.is_none());
     }
 }

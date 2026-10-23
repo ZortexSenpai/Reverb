@@ -93,6 +93,7 @@ export function StatsEntry({
   rank,
   count,
   detail,
+  album,
 }: {
   kind: StatsEntryKind;
   item: StatsItem;
@@ -103,6 +104,8 @@ export function StatsEntry({
   count?: number;
   /** Anything else to say about it, after the plays. */
   detail?: React.ReactNode;
+  /** A Song row's album, after its artist. */
+  album?: string | null;
 }) {
   const t = useT();
   const plays = count !== undefined ? t("count.plays", { n: count }) : null;
@@ -153,7 +156,17 @@ export function StatsEntry({
         <div className="truncate text-sm" title={item.name}>
           {item.name}
         </div>
-        {item.artist && <div className="truncate text-xs text-dim">{item.artist}</div>}
+        {(item.artist || album) && (
+          <div className="truncate text-xs text-dim">
+            {item.artist}
+            {album && (
+              <span className="text-faint">
+                {item.artist ? " · " : null}
+                {album}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <span className="shrink-0 text-xs tabular-nums text-faint">{secondary}</span>
     </div>

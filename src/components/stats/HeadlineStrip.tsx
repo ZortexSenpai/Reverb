@@ -68,21 +68,26 @@ function changeBadge(value: number | null | undefined) {
  */
 function ListeningTimeTile({
   time,
+  building,
   change,
 }: {
   time: StatsSummary["listeningTime"];
+  /** Without `time`, whether the Library index it needs is being built. */
+  building: boolean;
   change?: React.ReactNode;
 }) {
   const t = useT();
   const label = t("stats.listeningTime");
-  // Absent until Reverb has read the library.
+  // Absent without the Library index: on its way, or not to be had for now.
   if (!time) {
-    return (
+    return building ? (
       <StatTile
         label={label}
         value={<Spinner className="my-1.5 size-5" />}
         hint={t("stats.readingLibrary")}
       />
+    ) : (
+      <StatTile label={label} value="—" hint={t("stats.libraryUnavailable")} />
     );
   }
   // Not one play with a known length: nothing to estimate from.
@@ -111,6 +116,7 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
       />
       <ListeningTimeTile
         time={summary.listeningTime}
+        building={summary.libraryBuilding}
         change={changeBadge(changes?.listeningTime)}
       />
       <StatTile

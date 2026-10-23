@@ -22,13 +22,21 @@ use reverb_core::subsonic::{SubsonicClient, SubsonicError};
 use tauri::{AppHandle, Emitter, Manager};
 
 use self::index::LibraryIndex;
-use self::store::Listings;
+use self::store::{Built, Listings};
 use crate::error::ReverbError;
 use crate::state::AppState;
 
 /// Told to the UI whenever a new index is built. A saved one needs no
 /// telling: [`current`] reads it before answering.
 pub const READY_EVENT: &str = "library:index-ready";
+/// Told to the UI when a build fails, so a page waiting for the index stops.
+pub const FAILED_EVENT: &str = "library:index-failed";
+
+/// After a failed build, [`current`] waits this long before starting
+/// another, twice as long after each further failure in a row, up to
+/// [`MAX_RETRY_PAUSE`]. A sign-in, a scan or mixes still build at once.
+const RETRY_PAUSE: Duration = Duration::from_secs(60);
+const MAX_RETRY_PAUSE: Duration = Duration::from_secs(60 * 60);
 
 const LIBRARY_PAGE: u32 = 1000;
 /// Past this, the song listing stops (and the index holds what was read).
@@ -60,20 +68,55 @@ pub async fn refresh(app: &AppHandle) -> Result<Arc<LibraryIndex>, ReverbError> 
     ensure(app, Need::Fresh).await
 }
 
-/// The signed-in account's index as it stands, without waiting for a build:
-/// its saved one (yesterday's too), else `None` until its first one is
-/// built. When it's missing or from an earlier day, a build starts in the
-/// background and [`READY_EVENT`] tells when it's done. Blocking: the saved
+/// The signed-in account's index, as [`current`] finds it.
+pub enum Current {
+    /// Its saved one or a newer one; yesterday's too while today's is built.
+    Ready(Arc<LibraryIndex>),
+    /// None yet, but one is being built: [`READY_EVENT`] or [`FAILED_EVENT`]
+    /// tells when it's done.
+    Building,
+    /// None, and none on its way: signed out, or the last build failed and
+    /// it's too soon to try again.
+    Unavailable,
+}
+
+impl Current {
+    pub fn index(&self) -> Option<&LibraryIndex> {
+        match self {
+            Current::Ready(index) => Some(index),
+            Current::Building | Current::Unavailable => None,
+        }
+    }
+}
+
+/// The signed-in account's index as it stands, without waiting for a build.
+/// When it's missing or from an earlier day, a build starts in the
+/// background, unless the last one failed too recently. Blocking: the saved
 /// index is read from disk the first time it's asked for.
-pub fn current(app: &AppHandle) -> Option<Arc<LibraryIndex>> {
+pub fn current(app: &AppHandle) -> Current {
     let state = app.state::<AppState>();
-    let account = state.account()?;
+    let Some(account) = state.account() else { return Current::Unavailable };
     let built = state.library_index.get(&account);
     let stale = built.as_ref().is_none_or(|built| built.date != today());
-    if stale && state.library_index.building.try_lock().is_ok() {
+    let mut building = state.library_index.building.try_lock().is_err();
+    if stale && !building && may_retry(&state) {
         tauri::async_runtime::spawn(warm_up(app.clone()));
+        building = true;
     }
-    built.map(|built| built.index)
+    match built {
+        Some(built) => Current::Ready(built.index),
+        None if building => Current::Building,
+        None => Current::Unavailable,
+    }
+}
+
+/// Whether [`current`] may start a build: not too soon after a failed one.
+fn may_retry(state: &AppState) -> bool {
+    state.library_index.failures().is_none_or(|failures| {
+        let doublings = failures.count.saturating_sub(1).min(6);
+        let pause = (RETRY_PAUSE * 2u32.pow(doublings)).min(MAX_RETRY_PAUSE);
+        failures.last.elapsed() >= pause
+    })
 }
 
 /// Read the signed-in account's saved index at startup, in the background,
@@ -147,6 +190,29 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
         return Ok(built.index);
     }
 
+    match build(app, sign_ins, account, date).await {
+        Ok(built) => {
+            log::info!("library index: {} songs", built.index.songs().len());
+            let _ = app.emit(READY_EVENT, ());
+            Ok(built.index)
+        }
+        Err(e) => {
+            state.library_index.failed();
+            let _ = app.emit(FAILED_EVENT, ());
+            Err(e)
+        }
+    }
+}
+
+/// Read `account`'s listings and save their index as of `date`, unless the
+/// sign-in changed from `sign_ins` meanwhile.
+async fn build(
+    app: &AppHandle,
+    sign_ins: u64,
+    account: String,
+    date: String,
+) -> Result<Built, ReverbError> {
+    let state = app.state::<AppState>();
     let songs = fetch_songs(&state.subsonic).await?;
     let artists = fetch_artists(&state.subsonic).await;
     // Signed in anew meanwhile, some pages may be another account's. The
@@ -156,14 +222,7 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
     }
     let listings = Listings { account, date, songs, artists };
     let handle = app.clone();
-    let built = blocking(move || handle.state::<AppState>().library_index.save(listings)).await??;
-    log::info!("library index: {} songs", built.index.songs().len());
-    announce(app);
-    Ok(built.index)
-}
-
-fn announce(app: &AppHandle) {
-    let _ = app.emit(READY_EVENT, ());
+    blocking(move || handle.state::<AppState>().library_index.save(listings)).await?
 }
 
 fn today() -> String {

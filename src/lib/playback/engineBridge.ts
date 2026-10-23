@@ -95,8 +95,11 @@ export function initEngineBridge() {
   });
 
   // Stats render by name until the Library index is ready, then regroup by
-  // Library match and fill in art.
+  // Library match and fill in art. A failed build ends their wait too.
   void on("library:index-ready", () => {
+    void queryClient.invalidateQueries({ queryKey: ["stats"] });
+  });
+  void on("library:index-failed", () => {
     void queryClient.invalidateQueries({ queryKey: ["stats"] });
   });
 

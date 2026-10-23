@@ -640,6 +640,7 @@ export const en = {
   "stats.decade": "{decade}s",
   "stats.coverage": "from {share} of plays",
   "stats.readingLibrary": "Reading your library…",
+  "stats.libraryUnavailable": "Couldn't read your library.",
   "stats.noGenres": "No genres for this period's songs.",
   "stats.noDecades": "No release years for this period's songs.",
   "stats.topArtists": "Top artists",

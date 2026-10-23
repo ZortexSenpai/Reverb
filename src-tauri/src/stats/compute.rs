@@ -112,6 +112,10 @@ pub struct StatsSummary {
     /// Whether the Library index was there to match Scrobbles against. Until
     /// it is, everything is grouped by name and nothing has art.
     pub library_available: bool,
+    /// Without the index, whether it's being built, so the numbers that need
+    /// it are on their way. When it isn't, they can't be had for now. Set by
+    /// the caller, which knows; the aggregation leaves it false.
+    pub library_building: bool,
     /// The [`TOP_N`] genres of the Period's library Songs, most played
     /// first. Absent without a Library index.
     pub genres: Option<Breakdown<GenrePlays>>,
@@ -618,6 +622,7 @@ pub fn compute(
         discovery,
         on_this_day,
         library_available: library.is_some(),
+        library_building: false,
         genres: library.map(|_| from_library.genres()),
         decades: library.map(|_| from_library.decades()),
         listening_time: library.map(|_| from_library.listening_time()),

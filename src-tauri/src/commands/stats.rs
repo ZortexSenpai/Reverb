@@ -208,9 +208,9 @@ pub fn stats_import(source: String, app: AppHandle) {
 
 /// `from`/`to` are unix seconds and only used for the custom range; `to` is
 /// exclusive. Never waits for a Library index build: until the first one is
-/// done, entries are grouped by name and the page refetches on its ready
-/// event. Runs off the main thread, since reading the account's saved index
-/// and adding up every Scrobble can take a moment.
+/// done, entries are grouped by name and the page refetches once it's ready
+/// or has failed. Runs off the main thread, since reading the account's
+/// saved index and adding up every Scrobble can take a moment.
 #[tauri::command]
 pub async fn stats_get(
     range: StatsRange,
@@ -221,7 +221,10 @@ pub async fn stats_get(
     tauri::async_runtime::spawn_blocking(move || {
         let scrobbles = app.state::<AppState>().stats.all_scrobbles()?;
         let library = library_index::current(&app);
-        Ok(compute(&scrobbles, library.as_deref(), StatsQuery { range, from, to }, Local::now()))
+        let query = StatsQuery { range, from, to };
+        let summary = compute(&scrobbles, library.index(), query, Local::now());
+        let library_building = matches!(library, library_index::Current::Building);
+        Ok(StatsSummary { library_building, ..summary })
     })
     .await
     .map_err(|e| ReverbError::State(e.to_string()))?

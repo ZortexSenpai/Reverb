@@ -611,6 +611,7 @@ export const de: Messages = {
   "stats.decade": "{decade}er",
   "stats.coverage": "basierend auf {share} der Wiedergaben",
   "stats.readingLibrary": "Bibliothek wird gelesen…",
+  "stats.libraryUnavailable": "Deine Bibliothek konnte nicht gelesen werden.",
   "stats.noGenres": "Keine Genres zu den Titeln dieses Zeitraums.",
   "stats.noDecades": "Keine Erscheinungsjahre zu den Titeln dieses Zeitraums.",
   "stats.topArtists": "Top-Interpreten",

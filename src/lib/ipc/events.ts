@@ -46,6 +46,8 @@ export interface EventMap {
    * from Reverb, or for another account.
    */
   "library:index-ready": null;
+  /** Building the Library index failed; it's retried later. */
+  "library:index-failed": null;
 }
 
 export function on<K extends keyof EventMap>(

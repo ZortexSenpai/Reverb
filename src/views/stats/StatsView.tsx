@@ -106,13 +106,16 @@ function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry
   );
 }
 
-/** Stand-in for a section built from the library while Reverb reads it. */
-function ReadingLibrary() {
+/**
+ * Stand-in for a section built from the library while there's no Library
+ * index: a spinner while it's being built, else a word that it can't be had.
+ */
+function WithoutLibrary({ building }: { building: boolean }) {
   const t = useT();
   return (
     <div className="flex items-center gap-2 px-1 py-4 text-xs text-faint">
-      <Spinner className="size-3.5" />
-      {t("stats.readingLibrary")}
+      {building && <Spinner className="size-3.5" />}
+      {t(building ? "stats.readingLibrary" : "stats.libraryUnavailable")}
     </div>
   );
 }
@@ -162,13 +165,17 @@ function coverageHint(breakdown: Breakdown<unknown> | null | undefined, t: T) {
 }
 
 /** Genres and decades of the Period's library Songs, side by side. */
-function GenresAndDecades({ genres, decades }: Pick<StatsSummary, "genres" | "decades">) {
+function GenresAndDecades({
+  genres,
+  decades,
+  libraryBuilding,
+}: Pick<StatsSummary, "genres" | "decades" | "libraryBuilding">) {
   const t = useT();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Section title={t("nav.genres")} hint={coverageHint(genres, t)}>
         {!genres ? (
-          <ReadingLibrary />
+          <WithoutLibrary building={libraryBuilding} />
         ) : genres.entries.length === 0 ? (
           <p className="px-1 py-4 text-xs text-faint">{t("stats.noGenres")}</p>
         ) : (
@@ -177,7 +184,7 @@ function GenresAndDecades({ genres, decades }: Pick<StatsSummary, "genres" | "de
       </Section>
       <Section title={t("stats.decades")} hint={coverageHint(decades, t)}>
         {!decades ? (
-          <ReadingLibrary />
+          <WithoutLibrary building={libraryBuilding} />
         ) : decades.entries.length === 0 ? (
           <p className="px-1 py-4 text-xs text-faint">{t("stats.noDecades")}</p>
         ) : (
@@ -488,7 +495,11 @@ export function StatsView() {
               </Section>
             )}
 
-            <GenresAndDecades genres={summary.genres} decades={summary.decades} />
+            <GenresAndDecades
+              genres={summary.genres}
+              decades={summary.decades}
+              libraryBuilding={summary.libraryBuilding}
+            />
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}

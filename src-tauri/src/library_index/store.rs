@@ -7,6 +7,7 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use reverb_core::subsonic::models::{ArtistId3, Child};
 use serde::{Deserialize, Serialize};
@@ -59,6 +60,15 @@ pub struct LibraryIndexStore {
     builds: AtomicU64,
     /// A scan started from Reverb is being watched, to rebuild after it.
     pub watching_scan: AtomicBool,
+    failures: Mutex<Option<Failures>>,
+}
+
+/// Builds that failed in a row.
+#[derive(Clone, Copy)]
+pub struct Failures {
+    pub count: u32,
+    /// When the last one did.
+    pub last: Instant,
 }
 
 impl LibraryIndexStore {
@@ -69,11 +79,24 @@ impl LibraryIndexStore {
             building: Default::default(),
             builds: AtomicU64::new(0),
             watching_scan: AtomicBool::new(false),
+            failures: Mutex::new(None),
         }
     }
 
     pub fn builds(&self) -> u64 {
         self.builds.load(Ordering::SeqCst)
+    }
+
+    /// The builds that failed since the last one that didn't.
+    pub fn failures(&self) -> Option<Failures> {
+        *self.failures.lock().unwrap()
+    }
+
+    /// Count a failed build. The next saved one clears the count.
+    pub fn failed(&self) {
+        let mut failures = self.failures.lock().unwrap();
+        let count = failures.map_or(0, |f| f.count) + 1;
+        *failures = Some(Failures { count, last: Instant::now() });
     }
 
     /// `account`'s index: the one in memory, else its saved one, read from
@@ -113,6 +136,7 @@ impl LibraryIndexStore {
         let built = listings.index();
         *self.held.lock().unwrap() = Some(Held { account, built: Some(built.clone()) });
         self.builds.fetch_add(1, Ordering::SeqCst);
+        *self.failures.lock().unwrap() = None;
         Ok(built)
     }
 

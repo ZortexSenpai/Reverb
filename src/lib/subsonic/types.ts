@@ -653,6 +653,11 @@ export interface StatsSummary {
    * is, entries are grouped by name and have no art.
    */
   libraryAvailable: boolean;
+  /**
+   * Without the Library index, whether it's being built, so the numbers that
+   * need it are on their way. When it isn't, they can't be had for now.
+   */
+  libraryBuilding: boolean;
   /** The ten most played genres. Absent until the Library index is there. */
   genres?: Breakdown<GenrePlays> | null;
   /** Plays per release decade, oldest first. Absent until the Library index is there. */

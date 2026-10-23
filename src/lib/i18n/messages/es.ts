@@ -611,6 +611,7 @@ export const es: Messages = {
   "stats.decade": "Años {decade}",
   "stats.coverage": "según el {share} de las reproducciones",
   "stats.readingLibrary": "Leyendo tu biblioteca…",
+  "stats.libraryUnavailable": "No se pudo leer tu biblioteca.",
   "stats.noGenres": "Las canciones de este periodo no tienen géneros.",
   "stats.noDecades": "Las canciones de este periodo no tienen año de publicación.",
   "stats.topArtists": "Artistas más escuchados",

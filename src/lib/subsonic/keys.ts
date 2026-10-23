@@ -5,6 +5,7 @@ export const qk = {
   artist: (id: string) => ["artist", id] as const,
   artistAppearances: (id: string) => ["artistAppearances", id] as const,
   topSongs: (name: string) => ["topSongs", name] as const,
+  song: (id: string) => ["song", id] as const,
   songPage: (params: Record<string, unknown>) => ["songs", params] as const,
   genres: () => ["genres"] as const,
   playlists: () => ["playlists"] as const,

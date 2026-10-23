@@ -603,6 +603,10 @@ export const es: Messages = {
   "stats.topArtists": "Artistas más escuchados",
   "stats.topSongs": "Canciones más escuchadas",
   "stats.topAlbums": "Álbumes más escuchados",
+  "stats.topArtist": "Artista más escuchado",
+  "stats.topAlbum": "Álbum más escuchado",
+  "stats.topSong": "Canción más escuchada",
+  "stats.shareOfPlays": "{share} de todas las reproducciones",
   "stats.onThisDay": "Un día como hoy de {year}",
   "stats.recentScrobbles": "Scrobbles recientes",
 

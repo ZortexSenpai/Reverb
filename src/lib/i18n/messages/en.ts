@@ -632,6 +632,10 @@ export const en = {
   "stats.topArtists": "Top artists",
   "stats.topSongs": "Top songs",
   "stats.topAlbums": "Top albums",
+  "stats.topArtist": "Top artist",
+  "stats.topAlbum": "Top album",
+  "stats.topSong": "Top song",
+  "stats.shareOfPlays": "{share} of all plays",
   "stats.onThisDay": "On this day, {year}",
   "stats.recentScrobbles": "Recent scrobbles",
 

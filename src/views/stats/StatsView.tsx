@@ -9,9 +9,10 @@ import {
   CalendarHeatmap,
   ClockChart,
   SessionIntervals,
-  StatTile,
 } from "../../components/stats/charts";
+import { HeadlineStrip } from "../../components/stats/HeadlineStrip";
 import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
+import { StatsHero } from "../../components/stats/StatsHero";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CenteredSpinner } from "../../components/ui/Spinner";
@@ -296,50 +297,20 @@ export function StatsView() {
           </div>
         ) : summary ? (
           <div className="flex flex-col gap-4 px-6 pb-8">
-            {/* Headline tiles */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <StatTile
-                label={t("stats.plays")}
-                value={t.n(summary.totalPlays)}
-                trend={summary.timeline.map((point) => point.count)}
-              />
-              <StatTile label={t("nav.artists")} value={t.n(summary.uniqueArtists)} />
-              <StatTile label={t("nav.songs")} value={t.n(summary.uniqueSongs)} />
-              <StatTile
-                label={t("stats.playsPerDay")}
-                value={t.n(summary.playsPerDay, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}
-                hint={
-                  summary.firstTs
-                    ? t("stats.since", {
-                        date: t.d(summary.firstTs * 1000, { dateStyle: "medium" }),
-                      })
-                    : undefined
-                }
-              />
-              <StatTile
-                label={t("stats.longestStreak")}
-                value={t("stats.streakDays", { n: summary.longestStreakDays })}
-                hint={t("stats.streakHint")}
-              />
-              <StatTile
-                label={t("stats.busiestDay")}
-                value={summary.busiestDay ? t.n(summary.busiestDay.count) : "—"}
-                hint={
-                  summary.busiestDay
-                    ? t("stats.playsOn", {
-                        // `label` is a plain "2026-08-28"; anchor it at local
-                        // midnight so it is not shifted a day by the timezone.
-                        date: t.d(`${summary.busiestDay.label}T00:00:00`, {
-                          dateStyle: "medium",
-                        }),
-                      })
-                    : undefined
-                }
-              />
-            </div>
+            {/* One scroll, in the spec's order: the Period at a glance, its top
+                lists, the listening charts, then the history sections. */}
+            {summary.hero && <StatsHero hero={summary.hero} />}
+            <HeadlineStrip summary={summary} />
+
+            <Section title={t("stats.topArtists")}>
+              <TopEntries kind="artist" entries={summary.topArtists} />
+            </Section>
+            <Section title={t("stats.topAlbums")}>
+              <TopEntries kind="album" entries={summary.topAlbums} />
+            </Section>
+            <Section title={t("stats.topSongs")}>
+              <TopEntries kind="song" entries={summary.topSongs} />
+            </Section>
 
             <Section title={t("stats.activity")}>
               <AreaChart points={summary.timeline} />
@@ -375,44 +346,33 @@ export function StatsView() {
               </Section>
             </div>
 
-            {/* Discovery needs a window to be meaningful, so the all-time
-                range gives the sessions the full width instead. */}
-            <div className={`grid gap-4 ${summary.discovery ? "lg:grid-cols-2" : ""}`}>
-              <Section
-                title={t("stats.longestSessions")}
-                hint={
-                  summary.sessions.count > 0
-                    ? t("stats.sessionsHint", {
-                        sessions: t("count.sessions", { n: summary.sessions.count }),
-                        median: summary.sessions.medianTracks,
-                      })
-                    : undefined
-                }
-              >
-                <SessionIntervals sessions={summary.sessions.longest} />
-              </Section>
-              {summary.discovery && (
-                <Section
-                  title={t("stats.newToYou")}
-                  hint={t("stats.discoveryHint", {
-                    artists: t("count.artists", { n: summary.discovery.newArtists }),
-                    songs: t("count.songs", { n: summary.discovery.newTracks }),
-                  })}
-                >
-                  <FirstHeardList entries={summary.discovery.firstArtists} />
-                </Section>
-              )}
-            </div>
+            <Section
+              title={t("stats.longestSessions")}
+              hint={
+                summary.sessions.count > 0
+                  ? t("stats.sessionsHint", {
+                      sessions: t("count.sessions", { n: summary.sessions.count }),
+                      median: summary.sessions.medianTracks,
+                    })
+                  : undefined
+              }
+            >
+              <SessionIntervals sessions={summary.sessions.longest} />
+            </Section>
 
-            <Section title={t("stats.topArtists")}>
-              <TopEntries kind="artist" entries={summary.topArtists} />
-            </Section>
-            <Section title={t("stats.topAlbums")}>
-              <TopEntries kind="album" entries={summary.topAlbums} />
-            </Section>
-            <Section title={t("stats.topSongs")}>
-              <TopEntries kind="song" entries={summary.topSongs} />
-            </Section>
+            {/* Discovery needs a window to be meaningful, so the all-time
+                range leaves it out. */}
+            {summary.discovery && (
+              <Section
+                title={t("stats.newToYou")}
+                hint={t("stats.discoveryHint", {
+                  artists: t("count.artists", { n: summary.discovery.newArtists }),
+                  songs: t("count.songs", { n: summary.discovery.newTracks }),
+                })}
+              >
+                <FirstHeardList entries={summary.discovery.firstArtists} />
+              </Section>
+            )}
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}

@@ -603,6 +603,10 @@ export const de: Messages = {
   "stats.topArtists": "Top-Interpreten",
   "stats.topSongs": "Top-Titel",
   "stats.topAlbums": "Top-Alben",
+  "stats.topArtist": "Top-Interpret",
+  "stats.topAlbum": "Top-Album",
+  "stats.topSong": "Top-Titel",
+  "stats.shareOfPlays": "{share} aller Wiedergaben",
   "stats.onThisDay": "An diesem Tag, {year}",
   "stats.recentScrobbles": "Letzte Scrobbles",
 

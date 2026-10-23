@@ -6,7 +6,7 @@
 // tooltip.
 // Top lists are entries with art, not charts (StatsEntry).
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import type { ListeningSession, TimelinePoint } from "../../lib/subsonic/types";
 
@@ -20,14 +20,24 @@ const AREA_H = 40;
 export function AreaChart({
   points,
   maxLabels = 6,
+  max: sharedMax,
+  className = "h-36",
 }: {
   points: TimelinePoint[];
+  /** Bucket labels along the bottom, at most; 0 for none. */
   maxLabels?: number;
+  /** Top of the scale, for charts set side by side; else the highest point. */
+  max?: number;
+  /** The plot's height. */
+  className?: string;
 }) {
   const t = useT();
   const [hover, setHover] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const max = Math.max(1, ...points.map((p) => p.count));
+  // Several charts can share a page, so each needs its own gradient id. Only
+  // plain characters, so the `url(#…)` reference resolves in every engine.
+  const fillId = `area-fill-${useId().replace(/[^\w-]/g, "")}`;
+  const max = Math.max(1, sharedMax ?? 0, ...points.map((p) => p.count));
   const n = points.length;
 
   const { linePath, areaPath } = useMemo(() => {
@@ -44,7 +54,7 @@ export function AreaChart({
   }, [points, max, n]);
 
   if (n === 0) return null;
-  const labelEvery = Math.max(1, Math.ceil(n / maxLabels));
+  const labelEvery = maxLabels > 0 ? Math.max(1, Math.ceil(n / maxLabels)) : 0;
 
   function onMove(e: React.MouseEvent) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -58,10 +68,10 @@ export function AreaChart({
     hover !== null ? ((AREA_H - (points[hover].count / max) * (AREA_H - 3)) / AREA_H) * 100 : 0;
 
   return (
-    <div className="pb-4">
+    <div className={labelEvery ? "pb-4" : ""}>
       <div
         ref={containerRef}
-        className="relative h-36"
+        className={`relative ${className}`}
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >
@@ -71,7 +81,7 @@ export function AreaChart({
           className="absolute inset-0 size-full"
         >
           <defs>
-            <linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.35" />
               <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.02" />
             </linearGradient>
@@ -88,7 +98,7 @@ export function AreaChart({
               vectorEffect="non-scaling-stroke"
             />
           ))}
-          <path d={areaPath} fill="url(#area-fill)" />
+          <path d={areaPath} fill={`url(#${fillId})`} />
           <path
             d={linePath}
             fill="none"
@@ -121,13 +131,15 @@ export function AreaChart({
           </>
         )}
       </div>
-      <div className="flex justify-between pt-1 text-[10px] text-faint">
-        {points
-          .filter((_, i) => i % labelEvery === 0)
-          .map((p, i) => (
-            <span key={p.label + i}>{p.label}</span>
-          ))}
-      </div>
+      {labelEvery > 0 && (
+        <div className="flex justify-between pt-1 text-[10px] text-faint">
+          {points
+            .filter((_, i) => i % labelEvery === 0)
+            .map((p, i) => (
+              <span key={p.label + i}>{p.label}</span>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -591,6 +591,8 @@ export const es: Messages = {
   "stats.busiestDay": "Día más activo",
   "stats.playsOn": "reproducciones el {date}",
   "stats.activity": "Actividad de escucha",
+  "stats.topArtistsOverTime": "Artistas más escuchados a lo largo del tiempo",
+  "stats.overTimeHint": "la misma escala para todos los artistas",
   "stats.calendar": "Calendario de escucha",
   "stats.calendarHint": "{from} – {to} · reproducciones en {active} de {total} días",
   "stats.aroundTheClock": "A lo largo del día",

@@ -620,6 +620,8 @@ export const en = {
   "stats.busiestDay": "Busiest day",
   "stats.playsOn": "plays on {date}",
   "stats.activity": "Listening activity",
+  "stats.topArtistsOverTime": "Top artists over time",
+  "stats.overTimeHint": "one scale for every artist",
   "stats.calendar": "Listening calendar",
   "stats.calendarHint": "{from} – {to} · plays on {active} of {total} days",
   "stats.aroundTheClock": "Around the clock",

@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod events;
+mod library_index;
 mod media_keys;
 mod mixes;
 mod persistence;

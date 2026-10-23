@@ -1,12 +1,12 @@
 //! "Made for you" mixes: personal playlists in the spirit of Spotify's,
 //! picked from the user's own library. Everything here is pure — the command
-//! layer fetches the library, the scrobbles and similar artists and hands
-//! them in — so the picking rules stay testable.
+//! layer hands in the Library index, the scrobbles and similar artists — so
+//! the picking rules stay testable.
 //!
 //! Two kinds of listening data feed it. Navidrome knows each song's lifetime
 //! play count and last play, keyed by song id. Imported Last.fm scrobbles know
-//! every play with its time, but only as artist/title text, so they are
-//! matched back to library songs by normalized name. Either source alone is
+//! every play with its time, but only as artist/title text, so the Library
+//! index matches them back to library songs by name. Either source alone is
 //! enough. With both, a song's plays are the larger of the two counts (the
 //! same play usually reaches both) and recent listening comes from the
 //! scrobbles.
@@ -18,6 +18,8 @@ use std::ops::Range;
 use reverb_core::subsonic::models::Child;
 use serde::{Deserialize, Serialize};
 
+use crate::library_index::index::LibraryIndex;
+use crate::library_index::matcher::{credit_keys, credited_artists, fold, loose_title, name_key};
 use crate::stats::store::StatScrobble;
 
 const DAY: i64 = 86_400;
@@ -126,136 +128,6 @@ pub struct Profile {
     pub matched_scrobbles: usize,
 }
 
-/// Lowercase alphanumerics only, so "AC/DC" and "ac dc" meet as "acdc". Text
-/// made only of punctuation keeps its lowercase form rather than vanish.
-fn fold(s: &str) -> String {
-    let folded: String =
-        s.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect();
-    if folded.is_empty() {
-        s.trim().to_lowercase()
-    } else {
-        folded
-    }
-}
-
-/// Words that mark a " - …" title suffix as a version note.
-const VERSION_MARKERS: &[&str] = &[
-    "remaster", "version", "edit", "mix", "live", "mono", "stereo", "acoustic", "demo",
-    "deluxe", "bonus", "explicit", "instrumental",
-];
-
-/// Words that make a note name a different recording, not a version of the
-/// same one: "(Someone Remix)" and "VIP" stay part of a title.
-const DISTINCT_MARKERS: &[&str] =
-    &["remix", "vip", "bootleg", "flip", "rework", "refix", "cover", "mashup"];
-
-const FEAT_MARKERS: &[&str] = &[" feat. ", " feat ", " ft. ", " featuring "];
-
-fn names_distinct_recording(note: &str) -> bool {
-    let note = note.to_ascii_lowercase();
-    DISTINCT_MARKERS.iter().any(|m| note.contains(m))
-}
-
-/// A title folded without the notes scrobblers and taggers disagree on —
-/// "(Original Mix)", "[Radio Edit]", "- 2011 Remaster", "feat. X" — but with
-/// the ones that make it another track, so "Song - X Remix" and
-/// "Song (X Remix)" meet while "Song" stays apart from both.
-fn loose_title(title: &str) -> String {
-    let mut t = title.trim().to_owned();
-    // ASCII lowercasing keeps byte offsets, so they index the original.
-    let lower = t.to_ascii_lowercase();
-    if let Some(at) = FEAT_MARKERS.iter().filter_map(|m| lower.find(m)).min() {
-        // "feat. X" runs up to the next note, if there is one.
-        let end = [" - ", "(", "["]
-            .iter()
-            .filter_map(|m| lower[at + 1..].find(m).map(|e| at + 1 + e))
-            .min()
-            .unwrap_or(t.len());
-        t.replace_range(at..end, "");
-    }
-
-    let mut kept = String::with_capacity(t.len());
-    let mut rest = t.as_str();
-    while let Some(open) = rest.find(['(', '[']) {
-        let close = if rest[open..].starts_with('(') { ')' } else { ']' };
-        let Some(len) = rest[open..].find(close) else { break };
-        let group = &rest[open..=open + len];
-        kept.push_str(&rest[..open]);
-        if names_distinct_recording(group) {
-            kept.push_str(group);
-        }
-        rest = &rest[open + len + 1..];
-    }
-    kept.push_str(rest);
-
-    let mut t = kept.trim_end();
-    if let Some(at) = t.rfind(" - ") {
-        let note = &t[at + 3..];
-        let lower = note.to_ascii_lowercase();
-        if VERSION_MARKERS.iter().any(|m| lower.contains(m)) && !names_distinct_recording(note) {
-            t = t[..at].trim_end();
-        }
-    }
-    if t.trim().is_empty() {
-        fold(title)
-    } else {
-        fold(t)
-    }
-}
-
-/// " • " is how Navidrome joins a credit, which is what gets scrobbled when
-/// the whole credit is sent.
-const CREDIT_SEPARATORS: &[&str] = &[
-    ", ", " & ", " and ", " x ", " / ", "; ", " • ", " feat. ", " feat ", " ft. ",
-    " featuring ", " with ", " vs. ", " vs ",
-];
-
-/// Folded keys a scrobbled artist credit can match: the whole credit, then
-/// each artist in it.
-fn credit_keys(credit: &str) -> Vec<String> {
-    let mut keys = vec![fold(credit)];
-    let lower = credit.to_ascii_lowercase();
-    let mut cuts: Vec<(usize, usize)> = CREDIT_SEPARATORS
-        .iter()
-        .flat_map(|sep| lower.match_indices(sep).map(|(at, s)| (at, at + s.len())))
-        .collect();
-    cuts.sort_unstable();
-    let mut start = 0;
-    let mut parts = Vec::new();
-    for (at, end) in cuts {
-        // Where separators overlap (", " then " and " in "A, and B"), the
-        // first one wins.
-        if at < start {
-            continue;
-        }
-        parts.push(&credit[start..at]);
-        start = end;
-    }
-    if start > 0 {
-        parts.push(&credit[start..]);
-    }
-    for part in parts {
-        let key = fold(part);
-        if !key.is_empty() && !keys.contains(&key) {
-            keys.push(key);
-        }
-    }
-    keys
-}
-
-/// Every credited artist as (name, id): the OpenSubsonic list when the
-/// server sends one, else the legacy single artist.
-fn credited_artists(song: &Child) -> Vec<(String, Option<String>)> {
-    if !song.artists.is_empty() {
-        return song.artists.iter().map(|a| (a.name.clone(), Some(a.id.clone()))).collect();
-    }
-    song.artist.iter().map(|name| (name.clone(), song.artist_id.clone())).collect()
-}
-
-fn name_key(artist: &str, title: &str) -> String {
-    format!("{artist}\u{1}{title}")
-}
-
 fn parse_ts(iso: &str) -> Option<i64> {
     chrono::DateTime::parse_from_rfc3339(iso).ok().map(|t| t.timestamp())
 }
@@ -278,35 +150,15 @@ fn love(plays: u64, starred: bool, rating: Option<u32>) -> f64 {
     }
 }
 
-/// Match a scrobble to a library song: exact titles first, then without
-/// version notes, trying the whole artist credit before its parts.
-fn find_song(
-    exact: &HashMap<String, usize>,
-    loose: &HashMap<String, usize>,
-    artist_keys: &[String],
-    title: &str,
-) -> Option<usize> {
-    let exact_title = fold(title);
-    let found = artist_keys.iter().find_map(|a| exact.get(&name_key(a, &exact_title)));
-    if let Some(&i) = found {
-        return Some(i);
-    }
-    let loose_title = loose_title(title);
-    artist_keys.iter().find_map(|a| loose.get(&name_key(a, &loose_title)).copied())
-}
-
-pub fn build_profile(songs: Vec<Child>, scrobbles: &[StatScrobble], now: i64) -> Profile {
+pub fn build_profile(library: &LibraryIndex, scrobbles: &[StatScrobble], now: i64) -> Profile {
     let mut artist_names = HashMap::new();
     let mut artist_ids = HashMap::new();
     let mut genre_names = HashMap::new();
-    let mut seen = HashSet::new();
-    let mut tracks = Vec::with_capacity(songs.len());
+    let mut tracks = Vec::with_capacity(library.songs().len());
 
-    for song in songs {
-        // Library pages can overlap where the listing's sort order has ties.
-        if song.is_dir || !seen.insert(song.id.clone()) {
-            continue;
-        }
+    // One track per library Song, in the same order, so a Song's place in
+    // the index is its track's.
+    for song in library.songs().iter().cloned() {
         let mut artists: Vec<String> = Vec::new();
         for (name, id) in credited_artists(&song) {
             let key = fold(&name);
@@ -350,30 +202,6 @@ pub fn build_profile(songs: Vec<Child>, scrobbles: &[StatScrobble], now: i64) ->
         });
     }
 
-    // Title indexes for scrobble matching, under every way a song's artist
-    // can be written. Where titles collide, the most played song wins.
-    let mut exact: HashMap<String, usize> = HashMap::new();
-    let mut loose: HashMap<String, usize> = HashMap::new();
-    for (i, track) in tracks.iter().enumerate() {
-        let song = &track.song;
-        let mut keys = track.artists.clone();
-        for credit in [&song.artist, &song.display_artist].into_iter().flatten() {
-            let key = fold(credit);
-            if !keys.contains(&key) {
-                keys.push(key);
-            }
-        }
-        let titles = [fold(&song.title), loose_title(&song.title)];
-        for artist in &keys {
-            for (index, title) in [(&mut exact, &titles[0]), (&mut loose, &titles[1])] {
-                let slot = index.entry(name_key(artist, title)).or_insert(i);
-                if tracks[i].plays > tracks[*slot].plays {
-                    *slot = i;
-                }
-            }
-        }
-    }
-
     let known: HashSet<String> = tracks.iter().flat_map(|t| t.artists.iter().cloned()).collect();
     let mut affinity: HashMap<String, f64> = HashMap::new();
     // Per track: (plays, plays within the On Repeat window, last play).
@@ -392,7 +220,7 @@ pub fn build_profile(songs: Vec<Child>, scrobbles: &[StatScrobble], now: i64) ->
         }
         let hit = *match_cache
             .entry((s.artist.as_str(), s.track.as_str()))
-            .or_insert_with(|| find_song(&exact, &loose, keys, &s.track));
+            .or_insert_with(|| library.match_song(keys, &s.track));
         if let Some(i) = hit {
             matched_scrobbles += 1;
             let (plays, recent, last) = &mut scrobbled[i];
@@ -981,6 +809,11 @@ mod tests {
         StatScrobble { ts, artist: artist.into(), track: track.into(), album: None }
     }
 
+    /// The Library index of `songs`, as mixes get it.
+    fn library(songs: Vec<Child>) -> LibraryIndex {
+        LibraryIndex::new(songs, Vec::new())
+    }
+
     fn ids(mix: &Mix) -> Vec<&str> {
         mix.songs.iter().map(|s| s.id.as_str()).collect()
     }
@@ -1005,44 +838,6 @@ mod tests {
     }
 
     #[test]
-    fn folding_ignores_case_and_punctuation() {
-        assert_eq!(fold("AC/DC"), "acdc");
-        assert_eq!(fold("ac dc"), "acdc");
-        assert_eq!(fold("夜に駆ける"), "夜に駆ける");
-        assert_eq!(fold("..."), "...");
-    }
-
-    #[test]
-    fn loose_titles_drop_version_notes() {
-        assert_eq!(loose_title("Song (Remastered 2011)"), "song");
-        assert_eq!(loose_title("Song [Live] (Deluxe)"), "song");
-        assert_eq!(loose_title("Song - 2011 Remaster"), "song");
-        assert_eq!(loose_title("Song - Radio Edit"), "song");
-        assert_eq!(loose_title("Song feat. Someone"), "song");
-        assert_eq!(loose_title("Song (Original Mix)"), "song");
-        // Part of the name, not a version note.
-        assert_eq!(loose_title("Part 1 - The Beginning"), "part1thebeginning");
-        assert_eq!(loose_title("(Untitled)"), "untitled");
-    }
-
-    #[test]
-    fn loose_titles_keep_remixes_apart() {
-        assert_eq!(loose_title("Song (Someone Remix)"), "songsomeoneremix");
-        assert_eq!(loose_title("Song - Someone Remix"), "songsomeoneremix");
-        assert_eq!(loose_title("Song feat. Guest - Someone Remix"), "songsomeoneremix");
-        assert_eq!(loose_title("Song (Someone Remix) (Upsampled)"), "songsomeoneremix");
-        assert_eq!(loose_title("Song VIP (feat. Guest)"), "songvip");
-    }
-
-    #[test]
-    fn credits_split_into_artists() {
-        assert_eq!(credit_keys("A, B & C"), vec!["abc", "a", "b", "c"]);
-        assert_eq!(credit_keys("Artist feat. Guest"), vec!["artistfeatguest", "artist", "guest"]);
-        assert_eq!(credit_keys("Solo"), vec!["solo"]);
-        assert_eq!(credit_keys("Arc North • Donna Tella"), vec!["arcnorthdonnatella", "arcnorth", "donnatella"]);
-    }
-
-    #[test]
     fn scrobbles_match_library_songs_by_name() {
         let songs = vec![
             song("1", "Artist", "Song (Remastered 2011)", "Rock", 2, None),
@@ -1054,7 +849,7 @@ mod tests {
             scrobble(NOW - DAY, "Other feat. Guest", "Tune"),
             scrobble(NOW - DAY, "Nobody", "Unknown"),
         ];
-        let profile = build_profile(songs, &scrobbles, NOW);
+        let profile = build_profile(&library(songs), &scrobbles, NOW);
         assert_eq!(profile.matched_scrobbles, 3);
         let first = &profile.tracks[0];
         // Navidrome said 2, the scrobbles say 2: the same plays, not 4.
@@ -1079,7 +874,7 @@ mod tests {
             }
         }
         scrobbles.sort_by_key(|s| s.ts);
-        let profile = build_profile(songs, &scrobbles, NOW);
+        let profile = build_profile(&library(songs), &scrobbles, NOW);
         let mix = on_repeat(&profile, NOW).expect("enough recent plays");
         assert_eq!(&ids(&mix)[..3], ["0", "1", "2"]);
     }
@@ -1090,7 +885,7 @@ mod tests {
             .map(|i| song(&i.to_string(), "A", &format!("T{i}"), "Rock", 10 - i, Some(NOW - DAY)))
             .collect();
         songs.push(song("old", "A", "Old", "Rock", 99, Some(NOW - 90 * DAY)));
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let mix = on_repeat(&profile, NOW).expect("enough recent plays");
         assert_eq!(ids(&mix)[0], "0");
         assert!(!ids(&mix).contains(&"old"), "not played this month");
@@ -1105,7 +900,7 @@ mod tests {
         for artist in ["J1", "J2", "J3"] {
             songs.extend(catalogue(artist, "Jazz", 20, 10, 5, 5));
         }
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let mixes = generate(&profile, &HashMap::new(), NOW, 7);
         let daily: Vec<&Mix> = mixes.iter().filter(|m| m.kind == MixKind::Daily).collect();
         assert_eq!(daily.len(), 2);
@@ -1131,7 +926,7 @@ mod tests {
     fn deep_cuts_are_unplayed_songs_by_favourites() {
         let mut songs = catalogue("Fav", "Pop", 30, 5, 20, 3);
         songs.extend(catalogue("Never", "Pop", 30, 0, 0, 0));
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let mix = deep_cuts(&profile, &mut Rng(1), &mut HashSet::new()).expect("enough songs");
         assert_eq!(mix.songs.len(), 25, "every unplayed song by the only favourite");
         assert!(mix.songs.iter().all(|s| s.artist.as_deref() == Some("Fav")));
@@ -1148,7 +943,7 @@ mod tests {
                 s
             }),
         );
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let mix = deep_cuts(&profile, &mut Rng(2), &mut HashSet::new()).expect("enough songs");
         assert_eq!(mix.songs.len(), 10);
         assert!(mix.songs.iter().all(|s| s.play_count == Some(1)));
@@ -1160,7 +955,7 @@ mod tests {
         songs.extend(catalogue("Now", "Pop", 12, 12, 40, 2));
         // A handful of rarely played songs, so 40 plays counts as heavy.
         songs.extend(catalogue("Light", "Pop", 40, 40, 1, 400));
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let mix = forgotten(&profile, NOW, &mut Rng(3), &mut HashSet::new()).expect("enough songs");
         assert!(mix.songs.iter().all(|s| s.artist.as_deref() == Some("Old")));
     }
@@ -1173,7 +968,7 @@ mod tests {
         songs.extend(catalogue("Unrelated", "Polka", 10, 0, 0, 0));
         // Played to death years ago: faded affinity, but not new.
         songs.extend(catalogue("OldLove", "Pop", 20, 10, 50, 1000));
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         let similar = HashMap::from([("fav".to_owned(), vec!["Similar".to_owned()])]);
         let mixes = generate(&profile, &similar, NOW, 11);
         let mix = mixes.iter().find(|m| m.kind == MixKind::Discover).expect("discover mix");
@@ -1190,7 +985,7 @@ mod tests {
         let mut songs = catalogue("A", "Pop", 20, 20, 10, 3);
         songs[0].user_rating = Some(1);
         songs[1].duration = Some(30);
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         for mix in generate(&profile, &HashMap::new(), NOW, 5) {
             assert!(!ids(&mix).contains(&"A-0"));
             assert!(!ids(&mix).contains(&"A-1"));
@@ -1201,7 +996,7 @@ mod tests {
     fn duplicate_recordings_appear_once() {
         let mut songs = catalogue("A", "Pop", 20, 20, 10, 3);
         songs.push(song("dupe", "A", "A song 0 (Remastered)", "Pop", 10, Some(NOW - 3 * DAY)));
-        let profile = build_profile(songs, &[], NOW);
+        let profile = build_profile(&library(songs), &[], NOW);
         for mix in generate(&profile, &HashMap::new(), NOW, 9) {
             let both = ids(&mix).contains(&"A-0") && ids(&mix).contains(&"dupe");
             assert!(!both, "{} holds both copies", mix.id);
@@ -1210,7 +1005,7 @@ mod tests {
 
     #[test]
     fn empty_library_makes_no_mixes() {
-        let profile = build_profile(Vec::new(), &[], NOW);
+        let profile = build_profile(&library(Vec::new()), &[], NOW);
         assert!(generate(&profile, &HashMap::new(), NOW, 1).is_empty());
     }
 }

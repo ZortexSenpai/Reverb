@@ -61,7 +61,8 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
 
     let songs = fetch_library(&state.subsonic).await?;
     let scrobbles = state.stats.all_scrobbles()?;
-    let profile = build_profile(songs, &scrobbles, now.timestamp());
+    let library = crate::library_index::index::LibraryIndex::new(songs, Vec::new());
+    let profile = build_profile(&library, &scrobbles, now.timestamp());
     let (library, unplayed) = profile.coverage();
     log::info!(
         "mixes: {library} songs ({unplayed} never played), {} of {} scrobbles matched",

@@ -10,15 +10,15 @@ import {
   ClockChart,
   SessionIntervals,
   StatTile,
-  TopList,
 } from "../../components/stats/charts";
+import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CenteredSpinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
 import { formatRelativeDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
-import type { FirstHeard, StatsRange } from "../../lib/subsonic/types";
+import type { FirstHeard, StatsRange, TopEntry } from "../../lib/subsonic/types";
 
 const RANGES: { value: StatsRange; labelKey: MessageKey }[] = [
   { value: "day", labelKey: "range.day" },
@@ -60,6 +60,40 @@ function FirstHeardList({ entries }: { entries: FirstHeard[] }) {
               {t("count.plays", { n: entry.plays })}
             </span>
           </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * A top list: art tiles in a grid for artists and albums, two, five or ten
+ * to a row so ten entries never leave one dangling; rows with covers for
+ * Songs, ranked down each column.
+ */
+function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry[] }) {
+  const t = useT();
+  if (entries.length === 0) {
+    return <p className="px-1 py-4 text-xs text-faint">{t("stats.noPlays")}</p>;
+  }
+  const layout = kind === "song" ? "row" : "tile";
+  return (
+    <ol
+      className={
+        layout === "tile"
+          ? "grid grid-cols-2 gap-1 sm:grid-cols-5 2xl:grid-cols-10"
+          : "grid gap-x-6 lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-5"
+      }
+    >
+      {entries.map((entry, i) => (
+        <li key={statsEntryKey(entry)} className="min-w-0">
+          <StatsEntry
+            kind={kind}
+            item={entry}
+            layout={layout}
+            rank={i + 1}
+            count={entry.count}
+          />
         </li>
       ))}
     </ol>
@@ -270,7 +304,7 @@ export function StatsView() {
                 trend={summary.timeline.map((point) => point.count)}
               />
               <StatTile label={t("nav.artists")} value={t.n(summary.uniqueArtists)} />
-              <StatTile label={t("nav.tracks")} value={t.n(summary.uniqueTracks)} />
+              <StatTile label={t("nav.songs")} value={t.n(summary.uniqueSongs)} />
               <StatTile
                 label={t("stats.playsPerDay")}
                 value={t.n(summary.playsPerDay, {
@@ -362,7 +396,7 @@ export function StatsView() {
                   title={t("stats.newToYou")}
                   hint={t("stats.discoveryHint", {
                     artists: t("count.artists", { n: summary.discovery.newArtists }),
-                    tracks: t("count.tracks", { n: summary.discovery.newTracks }),
+                    songs: t("count.songs", { n: summary.discovery.newTracks }),
                   })}
                 >
                   <FirstHeardList entries={summary.discovery.firstArtists} />
@@ -370,17 +404,15 @@ export function StatsView() {
               )}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Section title={t("stats.topArtists")}>
-                <TopList entries={summary.topArtists} />
-              </Section>
-              <Section title={t("stats.topTracks")}>
-                <TopList entries={summary.topTracks} />
-              </Section>
-              <Section title={t("stats.topAlbums")}>
-                <TopList entries={summary.topAlbums} />
-              </Section>
-            </div>
+            <Section title={t("stats.topArtists")}>
+              <TopEntries kind="artist" entries={summary.topArtists} />
+            </Section>
+            <Section title={t("stats.topAlbums")}>
+              <TopEntries kind="album" entries={summary.topAlbums} />
+            </Section>
+            <Section title={t("stats.topSongs")}>
+              <TopEntries kind="song" entries={summary.topSongs} />
+            </Section>
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}

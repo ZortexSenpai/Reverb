@@ -1,8 +1,9 @@
-use chrono::Utc;
+use chrono::{Local, Utc};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::ReverbError;
+use crate::library_index;
 use crate::state::AppState;
 use crate::stats::compute::{compute, StatsQuery, StatsRange, StatsSummary};
 use crate::stats::lastfm;
@@ -206,16 +207,19 @@ pub fn stats_import(source: String, app: AppHandle) {
 }
 
 /// `from`/`to` are unix seconds and only used for the custom range; `to` is
-/// exclusive.
+/// exclusive. Never waits for the Library index: until it's built, entries
+/// are grouped by name and the page refetches on its ready event.
 #[tauri::command]
 pub fn stats_get(
     range: StatsRange,
     from: Option<i64>,
     to: Option<i64>,
+    app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<StatsSummary, ReverbError> {
     let scrobbles = state.stats.all_scrobbles()?;
-    Ok(compute(&scrobbles, StatsQuery { range, from, to }))
+    let library = library_index::current(&app);
+    Ok(compute(&scrobbles, library.as_deref(), StatsQuery { range, from, to }, Local::now()))
 }
 
 fn emit_progress(app: &AppHandle, progress: ImportProgress) {

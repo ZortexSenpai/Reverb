@@ -64,7 +64,7 @@ function changeBadge(value: number | null | undefined) {
 
 /**
  * An estimate from the library Songs' lengths, so it says how much of the
- * Period's plays it comes from.
+ * Period's Scrobbles it comes from.
  */
 function ListeningTimeTile({
   time,

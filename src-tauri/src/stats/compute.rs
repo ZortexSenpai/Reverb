@@ -77,7 +77,7 @@ pub struct StatsSummary {
     pub first_ts: Option<i64>,
     pub last_ts: Option<i64>,
     pub plays_per_day: f64,
-    /// The Period at a glance. Absent when it has no plays.
+    /// The Period at a glance. Absent when it has no Scrobbles.
     pub hero: Option<Hero>,
     pub top_artists: Vec<TopEntry>,
     pub top_songs: Vec<TopEntry>,
@@ -102,7 +102,7 @@ pub struct StatsSummary {
     /// labels. Empty for windows too short to be worth a calendar.
     pub daily: Vec<TimelinePoint>,
     pub sessions: SessionStats,
-    /// Absent when the Period has no plays.
+    /// Absent when the Period has no Scrobbles.
     pub obsession: Option<Obsession>,
     /// Absent for the all-time range, where every artist is "new".
     pub discovery: Option<Discovery>,
@@ -153,7 +153,7 @@ pub struct Changes {
 #[serde(rename_all = "camelCase")]
 pub struct Hero {
     pub artist: TopEntry,
-    /// The artist's share of the Period's plays, from 0 to 1.
+    /// The artist's share of the Period's Scrobbles, from 0 to 1.
     pub share: f64,
     pub album: Option<TopEntry>,
     pub song: Option<TopEntry>,
@@ -185,19 +185,19 @@ pub struct Session {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Obsession {
-    /// Its `count` is that day's plays.
+    /// Its `count` is that day's Scrobbles of it.
     pub song: TopEntry,
     /// The local date, `%Y-%m-%d`.
     pub date: String,
 }
 
-/// First-ever plays that fall inside the window — what the period introduced.
+/// First-ever Scrobbles that fall inside the Period — what it introduced.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Discovery {
     pub new_artists: u64,
     pub new_songs: u64,
-    /// Artists first heard in the window, most-played first.
+    /// Artists first heard in the Period, most-played first.
     pub first_artists: Vec<FirstHeard>,
 }
 
@@ -209,7 +209,7 @@ pub struct FirstHeard {
     pub id: Option<String>,
     pub cover_art: Option<String>,
     pub ts: i64,
-    /// Plays since, within the window.
+    /// Scrobbles since, within the Period.
     pub plays: u64,
 }
 
@@ -254,7 +254,7 @@ pub struct ListeningTime {
     /// 0 when no matched Song has a known length: nothing to estimate from.
     pub secs: u64,
     /// The share of the Period's Scrobbles that matched a library Song, from
-    /// 0 to 1. Every play without a known length counts at the median of
+    /// 0 to 1. Every Scrobble without a known length counts at the median of
     /// those with one.
     pub coverage: f64,
 }
@@ -282,8 +282,9 @@ pub struct StatsQuery {
 }
 
 impl StatsQuery {
-    /// Half-open `[from, to)` window in unix seconds; `None` is unbounded.
-    fn window(self, now: i64) -> (Option<i64>, Option<i64>) {
+    /// The Period's half-open `[from, to)` in unix seconds; `None` is
+    /// unbounded.
+    fn period(self, now: i64) -> (Option<i64>, Option<i64>) {
         const DAY: i64 = 86_400;
         match self.range {
             StatsRange::Day => (Some(now - DAY), None),
@@ -301,8 +302,8 @@ impl StatsQuery {
 
     /// The Previous period's `[from, to)`: as long as the Period, ending
     /// where it starts. None for all time.
-    fn previous_window(self, now: i64) -> Option<(i64, i64)> {
-        let (from, to) = self.window(now);
+    fn previous_period(self, now: i64) -> Option<(i64, i64)> {
+        let (from, to) = self.period(now);
         let from = from?;
         Some((from - (to.unwrap_or(now) - from), from))
     }
@@ -421,7 +422,7 @@ pub fn compute(
     query: StatsQuery,
     now: DateTime<Local>,
 ) -> StatsSummary {
-    let (from, to) = query.window(now.timestamp());
+    let (from, to) = query.period(now.timestamp());
     let filtered: Vec<&StatScrobble> = scrobbles
         .iter()
         .filter(|s| from.is_none_or(|f| s.ts >= f) && to.is_none_or(|t| s.ts < t))
@@ -523,8 +524,8 @@ pub fn compute(
     // What the top lists and headline counts are compared with, grouped
     // through the same Library matches.
     let previous = query
-        .previous_window(now.timestamp())
-        .map(|window| previous_period(scrobbles, &mut grouper, window));
+        .previous_period(now.timestamp())
+        .map(|bounds| Previous::of(scrobbles, &mut grouper, bounds));
 
     // The leading artists are only known once everything is counted, so
     // their plays are bucketed in a second pass.
@@ -567,7 +568,7 @@ pub fn compute(
     }
 
     let sessions = sessionize(&filtered);
-    let discovery = from.map(|window_start| discover(scrobbles, &mut grouper, window_start, to));
+    let discovery = from.map(|start| discover(scrobbles, &mut grouper, start, to));
     let on_this_day = on_this_day(scrobbles, &mut grouper, now.date_naive());
 
     let first_ts = filtered.first().map(|s| s.ts);
@@ -699,36 +700,40 @@ struct Previous {
     albums: Vec<TopEntry>,
 }
 
-/// The Scrobbles in `[from, to)`, grouped like the Period's.
-fn previous_period<'a>(
-    all: &'a [StatScrobble],
-    grouper: &mut Grouper<'a>,
-    (from, to): (i64, i64),
-) -> Previous {
-    let plays: Vec<&StatScrobble> = all.iter().filter(|s| s.ts >= from && s.ts < to).collect();
-    let mut artists = Tally::default();
-    let mut songs = Tally::default();
-    let mut albums = Tally::default();
-    let mut from_library = FromLibrary::default();
-    for &s in &plays {
-        artists.add(grouper.artist(s));
-        songs.add(grouper.song(s));
-        if let Some(album) = grouper.album(s) {
-            albums.add(album);
+impl Previous {
+    /// The Scrobbles in the Previous period `[from, to)`, grouped like the
+    /// Period's.
+    fn of<'a>(
+        all: &'a [StatScrobble],
+        grouper: &mut Grouper<'a>,
+        (from, to): (i64, i64),
+    ) -> Self {
+        let plays: Vec<&StatScrobble> = all.iter().filter(|s| s.ts >= from && s.ts < to).collect();
+        let mut artists = Tally::default();
+        let mut songs = Tally::default();
+        let mut albums = Tally::default();
+        let mut from_library = FromLibrary::default();
+        for &s in &plays {
+            artists.add(grouper.artist(s));
+            songs.add(grouper.song(s));
+            if let Some(album) = grouper.album(s) {
+                albums.add(album);
+            }
+            from_library.add(grouper.library_song(s));
         }
-        from_library.add(grouper.library_song(s));
+        let days =
+            plays.iter().filter_map(|s| local_naive(s.ts)).map(|t| t.date().num_days_from_ce());
+        let headline = Headline {
+            plays: plays.len(),
+            listening_secs: from_library.listening_secs(),
+            artists: artists.len(),
+            albums: albums.len(),
+            songs: songs.len(),
+            plays_per_day: plays_per_day(&plays),
+            longest_streak: longest_streak(days),
+        };
+        Self { headline, artists: artists.ranked(), songs: songs.ranked(), albums: albums.ranked() }
     }
-    let days = plays.iter().filter_map(|s| local_naive(s.ts)).map(|t| t.date().num_days_from_ce());
-    let headline = Headline {
-        plays: plays.len(),
-        listening_secs: from_library.listening_secs(),
-        artists: artists.len(),
-        albums: albums.len(),
-        songs: songs.len(),
-        plays_per_day: plays_per_day(&plays),
-        longest_streak: longest_streak(days),
-    };
-    Previous { headline, artists: artists.ranked(), songs: songs.ranked(), albums: albums.ranked() }
 }
 
 /// Split plays into sittings: a gap longer than [`SESSION_GAP_SECS`] starts a
@@ -798,7 +803,7 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
     SessionStats { count, median_songs, longest: sessions }
 }
 
-/// Artists and Songs whose *first ever* play falls inside the window, grouped
+/// Artists and Songs whose *first ever* Scrobble falls inside the Period, grouped
 /// like the top lists: "A feat. B" is nothing new once A is known.
 fn discover<'a>(
     all: &'a [StatScrobble],
@@ -806,15 +811,15 @@ fn discover<'a>(
     from: i64,
     to: Option<i64>,
 ) -> Discovery {
-    let in_window = |ts: i64| ts >= from && to.is_none_or(|t| ts < t);
-    // Each artist's entry, first play and plays in the window.
+    let in_period = |ts: i64| ts >= from && to.is_none_or(|t| ts < t);
+    // Each artist's entry, first Scrobble and Scrobbles in the Period.
     let mut first_artist: HashMap<GroupKey, (Group, i64, u64)> = HashMap::new();
     let mut first_song: HashMap<GroupKey, i64> = HashMap::new();
     // Scrobbles are chronological, so the first sighting wins.
     for s in all {
         let artist = grouper.artist(s);
         let (_, _, plays) = first_artist.entry(artist.key()).or_insert((artist, s.ts, 0));
-        if in_window(s.ts) {
+        if in_period(s.ts) {
             *plays += 1;
         }
         first_song.entry(grouper.song(s).key()).or_insert(s.ts);
@@ -822,7 +827,7 @@ fn discover<'a>(
 
     let mut first_artists: Vec<FirstHeard> = first_artist
         .into_values()
-        .filter(|(_, ts, _)| in_window(*ts))
+        .filter(|(_, ts, _)| in_period(*ts))
         .map(|(artist, ts, plays)| FirstHeard {
             name: artist.name.to_owned(),
             id: artist.id.map(str::to_owned),
@@ -839,7 +844,7 @@ fn discover<'a>(
 
     Discovery {
         new_artists,
-        new_songs: first_song.values().filter(|ts| in_window(**ts)).count() as u64,
+        new_songs: first_song.values().filter(|ts| in_period(**ts)).count() as u64,
         first_artists,
     }
 }
@@ -919,7 +924,7 @@ struct FromLibrary<'a> {
     /// Plays of a Song with at least one genre.
     with_genre: u64,
     decades: BTreeMap<i32, u64>,
-    /// The length of each play of a Song whose length the library knows.
+    /// The length of each Scrobble of a Song whose length the library knows.
     lengths: Vec<u32>,
 }
 
@@ -944,7 +949,7 @@ impl<'a> FromLibrary<'a> {
         }
     }
 
-    /// `plays` as a share of every play counted.
+    /// `plays` as a share of every Scrobble counted.
     fn share(&self, plays: u64) -> f64 {
         if self.plays == 0 {
             return 0.0;
@@ -966,7 +971,7 @@ impl<'a> FromLibrary<'a> {
     fn decades(&self) -> Breakdown<DecadePlays> {
         let entries =
             self.decades.iter().map(|(&decade, &count)| DecadePlays { decade, count }).collect();
-        // A Song has one year, so every play of a dated Song is in one decade.
+        // A Song has one year, so every Scrobble of a dated Song is in one decade.
         Breakdown { entries, coverage: self.share(self.decades.values().sum()) }
     }
 
@@ -975,7 +980,7 @@ impl<'a> FromLibrary<'a> {
         (!self.lengths.is_empty()).then(|| self.listening_time().secs)
     }
 
-    /// Each play at its library Song's length, and every other play at the
+    /// Each Scrobble at its library Song's length, and every other one at the
     /// median of those, the most typical length there is to go by.
     fn listening_time(&self) -> ListeningTime {
         let known: u64 = self.lengths.iter().map(|&length| u64::from(length)).sum();

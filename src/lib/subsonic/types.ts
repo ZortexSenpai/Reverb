@@ -516,7 +516,7 @@ export interface HeadlineChanges {
 /** The Period's #1 artist, album and Song. */
 export interface StatsHero {
   artist: TopEntry;
-  /** The artist's share of the Period's plays, from 0 to 1. */
+  /** The artist's share of the Period's Scrobbles, from 0 to 1. */
   share: number;
   /** Absent with no album tags, or when the Period has a single Song. */
   album?: TopEntry | null;
@@ -559,7 +559,7 @@ export interface SessionStats {
 
 /** The Song played most on a single day of the Period. */
 export interface Obsession {
-  /** Its `count` is that day's plays. */
+  /** Its `count` is that day's Scrobbles of it. */
   song: TopEntry;
   /** The local date, `YYYY-MM-DD`. */
   date: string;
@@ -608,7 +608,7 @@ export interface ListeningTime {
   secs: number;
   /**
    * The share of the Period's Scrobbles that matched a library Song, from 0
-   * to 1. Every play without a known length counts at the median of those
+   * to 1. Every Scrobble without a known length counts at the median of those
    * with one.
    */
   coverage: number;
@@ -622,7 +622,7 @@ export interface StatsSummary {
   firstTs?: number | null;
   lastTs?: number | null;
   playsPerDay: number;
-  /** Absent when the Period has no plays. */
+  /** Absent when the Period has no Scrobbles. */
   hero?: StatsHero | null;
   topArtists: TopEntry[];
   topSongs: TopEntry[];
@@ -643,7 +643,7 @@ export interface StatsSummary {
   /** One entry per day for the calendar; empty for short ranges. */
   daily: TimelinePoint[];
   sessions: SessionStats;
-  /** Absent when the Period has no plays. */
+  /** Absent when the Period has no Scrobbles. */
   obsession?: Obsession | null;
   /** Absent for the all-time range, where everything is "new". */
   discovery?: Discovery | null;

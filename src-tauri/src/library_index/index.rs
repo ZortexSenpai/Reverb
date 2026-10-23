@@ -2,7 +2,7 @@
 //! indexed by name so Scrobbles find their Library match.
 
 // Mixes only match Songs; the rest is for the stats aggregation.
-#![cfg_attr(not(test), expect(dead_code, reason = "the stats aggregation reads the lookups"))]
+#![cfg_attr(not(test), expect(dead_code, reason = "only stats read what a Library match knows"))]
 
 use std::collections::{HashMap, HashSet};
 

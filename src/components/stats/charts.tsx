@@ -1,8 +1,9 @@
 // Chart primitives for the stats page. Each dataset gets the form that fits
 // its job: area chart for change-over-time, radial clock for the cyclical
-// hours, horizontal bars for the 7 weekdays. Everything plots ONE measure
-// (plays): a single accent hue carries magnitude, text wears text tokens,
-// grids stay recessive, and every mark has a hover target with a tooltip.
+// hours, horizontal bars for the 7 weekdays and the decades. Everything plots
+// ONE measure (plays): a single accent hue carries magnitude, text wears text
+// tokens, grids stay recessive, and every mark has a hover target with a
+// tooltip.
 // Top lists are entries with art, not charts (StatsEntry).
 
 import { useId, useMemo, useRef, useState } from "react";
@@ -236,10 +237,17 @@ export function ClockChart({ counts }: { counts: number[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Horizontal bars (weekdays)
+// Horizontal bars (weekdays, decades)
 // ---------------------------------------------------------------------------
 
-export function BarRows({ items }: { items: { label: string; count: number }[] }) {
+export function BarRows({
+  items,
+  labelWidth = "w-9",
+}: {
+  items: { label: string; count: number }[];
+  /** Width class for the label column: wide enough for the longest label. */
+  labelWidth?: string;
+}) {
   const t = useT();
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...items.map((i) => i.count));
@@ -252,7 +260,7 @@ export function BarRows({ items }: { items: { label: string; count: number }[] }
           onMouseEnter={() => setHover(i)}
           onMouseLeave={() => setHover(null)}
         >
-          <span className="w-9 shrink-0 text-xs text-dim">{item.label}</span>
+          <span className={`${labelWidth} shrink-0 text-xs text-dim`}>{item.label}</span>
           <div className="h-3.5 flex-1 overflow-hidden rounded-r">
             <div
               className={`h-full rounded-r transition-colors ${

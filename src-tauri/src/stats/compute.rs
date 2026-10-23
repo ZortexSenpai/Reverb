@@ -1475,6 +1475,24 @@ mod tests {
     }
 
     #[test]
+    fn an_artist_credited_only_on_songs_has_the_servers_art_for_them() {
+        use reverb_core::subsonic::models::ArtistRef;
+        // Featured artists often have no album of their own, so the artist
+        // listing leaves them out.
+        let mut duet = library::song("s1", "Main feat. Guest", "Duet");
+        duet.artists = vec![
+            ArtistRef { id: "m".into(), name: "Main".into() },
+            ArtistRef { id: "g".into(), name: "Guest".into() },
+        ];
+        let library = LibraryIndex::new(vec![duet], vec![library::artist("m", "Main")]);
+        let scrobbles = vec![scrobble(fixed_now().timestamp() - 60, "Guest", "Solo")];
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        let guest = entry(&s.top_artists, "Guest");
+        assert_eq!((guest.id.as_deref(), guest.cover_art.as_deref()), (Some("g"), Some("ar-g")));
+    }
+
+    #[test]
     fn unmatched_scrobbles_group_by_name_without_ids() {
         let library = merge_library();
         let now = fixed_now().timestamp();

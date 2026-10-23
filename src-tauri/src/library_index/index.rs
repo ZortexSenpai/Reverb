@@ -25,7 +25,8 @@ pub struct LibraryIndex {
     artist_names: HashMap<String, usize>,
 }
 
-/// A library Artist. Only those in the artist listing have art.
+/// A library Artist, with the cover-art id of whatever art the server has
+/// for them.
 #[derive(Debug, Clone)]
 pub struct LibraryArtist {
     pub id: String,
@@ -53,10 +54,12 @@ impl LibraryIndex {
             index.add_artist(LibraryArtist { id: a.id, name: a.name, cover_art: a.cover_art });
         }
         // Featured artists often have no album of their own, so the artist
-        // listing leaves them out.
+        // listing leaves them out. The server still has art for them, under
+        // its cover-art id for an artist.
         for (name, id) in songs.iter().flat_map(credited_artists) {
             if let Some(id) = id {
-                index.add_artist(LibraryArtist { id, name, cover_art: None });
+                let cover_art = Some(format!("ar-{id}"));
+                index.add_artist(LibraryArtist { id, name, cover_art });
             }
         }
 
@@ -282,8 +285,7 @@ mod tests {
             .into_iter()
             .map(|a| (a.id.as_str(), a.cover_art.as_deref()))
             .collect();
-        // Only the artist listing has art.
-        assert_eq!(credited, [("m", Some("ar-m")), ("g", None)]);
+        assert_eq!(credited, [("m", Some("ar-m")), ("g", Some("ar-g"))]);
         let guest = index.find_artist("Guest").expect("credited on a Song");
         assert_eq!(guest.id, "g");
     }

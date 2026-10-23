@@ -52,8 +52,8 @@ function Monogram({ name }: { name: string }) {
 
 /**
  * An entry's art from the library: a round avatar for an artist, falling back
- * to a monogram, or a square cover for an album or Song, falling back to the
- * vinyl placeholder.
+ * to a monogram when there's none or it fails to load, or a square cover for
+ * an album or Song, falling back to the vinyl placeholder.
  */
 export function StatsArt({
   kind,
@@ -66,9 +66,13 @@ export function StatsArt({
   size: number;
   className?: string;
 }) {
+  // Keyed by its art, so a failed load doesn't stay with a slot (like the
+  // hero's) once it shows another entry.
+  const key = item.coverArt ?? "";
   if (kind === "artist") {
     return (
       <CoverImage
+        key={key}
         coverArt={item.coverArt}
         size={size}
         alt={item.name}
@@ -77,7 +81,15 @@ export function StatsArt({
       />
     );
   }
-  return <CoverImage coverArt={item.coverArt} size={size} alt={item.name} className={className} />;
+  return (
+    <CoverImage
+      key={key}
+      coverArt={item.coverArt}
+      size={size}
+      alt={item.name}
+      className={className}
+    />
+  );
 }
 
 /** The top three stand out in the accent. */

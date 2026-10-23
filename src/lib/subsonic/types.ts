@@ -493,10 +493,17 @@ export interface TimelinePoint {
   count: number;
 }
 
-export interface RecentPlay {
+/** One of the Period's top artists, played per bucket of the activity timeline. */
+export interface ArtistTimeline {
+  artist: TopEntry;
+  /** The same buckets, with the same labels, as `StatsSummary.timeline`. */
+  timeline: TimelinePoint[];
+}
+
+/** A Scrobble, as the Song it counts toward. */
+export interface RecentPlay extends StatsItem {
   ts: number;
   artist: string;
-  track: string;
   album?: string | null;
 }
 
@@ -515,22 +522,23 @@ export interface SessionStats {
   longest: ListeningSession[];
 }
 
-export interface FirstHeard {
-  name: string;
+/** An artist first heard in the Period. */
+export interface FirstHeard extends StatsItem {
   ts: number;
   plays: number;
 }
 
 export interface Discovery {
   newArtists: number;
-  newTracks: number;
+  newSongs: number;
   firstArtists: FirstHeard[];
 }
 
 export interface OnThisDay {
   year: number;
   plays: number;
-  tracks: TopEntry[];
+  /** That day's most played Songs. */
+  songs: TopEntry[];
 }
 
 export interface StatsSummary {
@@ -547,6 +555,8 @@ export interface StatsSummary {
   byHour: number[];
   byWeekday: number[];
   timeline: TimelinePoint[];
+  /** The five most played artists, most played first. */
+  topArtistsOverTime: ArtistTimeline[];
   recent: RecentPlay[];
   busiestDay?: TimelinePoint | null;
   longestStreakDays: number;

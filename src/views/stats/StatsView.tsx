@@ -11,6 +11,7 @@ import {
   SessionIntervals,
   StatTile,
 } from "../../components/stats/charts";
+import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
 import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -48,18 +49,14 @@ function FirstHeardList({ entries }: { entries: FirstHeard[] }) {
   return (
     <ol className="flex flex-col">
       {entries.map((entry) => (
-        <li
-          key={`${entry.name}-${entry.ts}`}
-          className="flex items-baseline justify-between gap-3 rounded px-2 py-1.5 odd:bg-surface-2/40"
-        >
-          <span className="min-w-0 truncate text-sm">{entry.name}</span>
-          <span className="shrink-0 text-xs tabular-nums text-faint">
-            {t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
-            <span className="text-dim">
-              {" · "}
-              {t("count.plays", { n: entry.plays })}
-            </span>
-          </span>
+        <li key={statsEntryKey(entry)} className="min-w-0">
+          <StatsEntry
+            kind="artist"
+            item={entry}
+            layout="row"
+            count={entry.plays}
+            detail={t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
+          />
         </li>
       ))}
     </ol>
@@ -345,6 +342,12 @@ export function StatsView() {
               <AreaChart points={summary.timeline} />
             </Section>
 
+            {summary.topArtistsOverTime.length > 0 && (
+              <Section title={t("stats.topArtistsOverTime")} hint={t("stats.overTimeHint")}>
+                <ArtistsOverTime artists={summary.topArtistsOverTime} />
+              </Section>
+            )}
+
             {summary.daily.length > 0 && (
               <Section
                 title={t("stats.calendar")}
@@ -396,7 +399,7 @@ export function StatsView() {
                   title={t("stats.newToYou")}
                   hint={t("stats.discoveryHint", {
                     artists: t("count.artists", { n: summary.discovery.newArtists }),
-                    songs: t("count.songs", { n: summary.discovery.newTracks }),
+                    songs: t("count.songs", { n: summary.discovery.newSongs }),
                   })}
                 >
                   <FirstHeardList entries={summary.discovery.firstArtists} />
@@ -425,16 +428,15 @@ export function StatsView() {
                     title={t("stats.onThisDay", { year: String(day.year) })}
                     hint={t("count.plays", { n: day.plays })}
                   >
-                    <ol className="flex flex-col gap-1.5">
-                      {day.tracks.map((track) => (
-                        <li key={`${track.name}-${track.artist ?? ""}`} className="min-w-0">
-                          <div className="truncate text-sm">{track.name}</div>
-                          <div className="truncate text-xs text-dim">
-                            {track.artist}
-                            {track.count > 1 && (
-                              <span className="text-faint"> · {t.n(track.count)}×</span>
-                            )}
-                          </div>
+                    <ol className="flex flex-col">
+                      {day.songs.map((song) => (
+                        <li key={statsEntryKey(song)} className="min-w-0">
+                          <StatsEntry
+                            kind="song"
+                            item={song}
+                            layout="row"
+                            detail={song.count > 1 ? `${t.n(song.count)}×` : undefined}
+                          />
                         </li>
                       ))}
                     </ol>
@@ -449,18 +451,14 @@ export function StatsView() {
               ) : (
                 <ol className="flex flex-col">
                   {summary.recent.map((play, i) => (
-                    <li
-                      key={`${play.ts}-${i}`}
-                      className="flex items-baseline justify-between gap-4 rounded px-2 py-1.5 odd:bg-surface-2/40"
-                    >
-                      <span className="min-w-0 truncate text-sm">
-                        {play.track}
-                        <span className="text-dim"> — {play.artist}</span>
-                        {play.album && <span className="text-faint"> · {play.album}</span>}
-                      </span>
-                      <span className="shrink-0 text-xs tabular-nums text-faint">
-                        {formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
-                      </span>
+                    <li key={`${play.ts}-${i}`} className="min-w-0">
+                      <StatsEntry
+                        kind="song"
+                        item={play}
+                        layout="row"
+                        album={play.album}
+                        detail={formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
+                      />
                     </li>
                   ))}
                 </ol>

@@ -4,7 +4,7 @@
 
 import { Children, useLayoutEffect, useRef, useState } from "react";
 import { balancedColumns } from "../../lib/balancedColumns";
-import { formatChange, formatCoverage, formatListeningTime } from "../../lib/format";
+import { formatChange, formatCoverage, formatListeningTime, localDate } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import type { StatsSummary } from "../../lib/subsonic/types";
 import { Spinner } from "../ui/Spinner";
@@ -168,9 +168,7 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
         hint={
           summary.busiestDay
             ? t("stats.playsOn", {
-                // `label` is a plain "2026-08-28"; anchor it at local
-                // midnight so it is not shifted a day by the timezone.
-                date: t.d(`${summary.busiestDay.label}T00:00:00`, {
+                date: t.d(localDate(summary.busiestDay.label), {
                   dateStyle: "medium",
                 }),
               })

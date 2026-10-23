@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatChange, formatListeningTime, movementMarker } from "./format";
+import { formatChange, formatListeningTime, localDate, movementMarker } from "./format";
 import { translator } from "./i18n/core";
 
 const t = translator("en");
@@ -25,6 +25,14 @@ describe("formatListeningTime", () => {
   it("writes the number and unit the way the language does", () => {
     expect(formatListeningTime(2.5 * HOUR, translator("de"))).toBe("≈ 2,5 Std.");
     expect(formatListeningTime(45 * 60, translator("fr"))).toBe("≈ 45 min");
+  });
+});
+
+describe("localDate", () => {
+  it("is the day itself, at local midnight", () => {
+    const date = localDate("2026-08-28");
+    expect([date.getFullYear(), date.getMonth() + 1, date.getDate()]).toEqual([2026, 8, 28]);
+    expect([date.getHours(), date.getMinutes()]).toEqual([0, 0]);
   });
 });
 

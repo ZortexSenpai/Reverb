@@ -18,7 +18,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CenteredSpinner, Spinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
-import { formatCoverage, formatRelativeDate } from "../../lib/format";
+import { formatCoverage, formatRelativeDate, localDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import type {
   Breakdown,
@@ -224,7 +224,7 @@ function validDate(value: string | null): string | null {
 
 /** "Aug 2026" for a `YYYY-MM-DD` label. */
 function monthLabel(date: string, t: T): string {
-  return t.d(`${date}T00:00:00`, { month: "short", year: "numeric" });
+  return t.d(localDate(date), { month: "short", year: "numeric" });
 }
 
 function daysAgo(days: number): Date {
@@ -468,14 +468,12 @@ export function StatsView() {
               </Section>
               {summary.obsession && (
                 <Section title={t("stats.obsession")} hint={t("stats.obsessionHint")}>
-                  {/* `date` is a plain "2026-08-28", read at local midnight so
-                      the timezone can't shift it a day. */}
                   <StatsEntry
                     kind="song"
                     item={summary.obsession.song}
                     layout="hero"
                     count={summary.obsession.song.count}
-                    detail={t.d(`${summary.obsession.date}T00:00:00`, { dateStyle: "medium" })}
+                    detail={t.d(localDate(summary.obsession.date), { dateStyle: "medium" })}
                   />
                 </Section>
               )}

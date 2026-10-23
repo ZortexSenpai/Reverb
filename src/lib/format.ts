@@ -28,6 +28,14 @@ export function formatLongDuration(totalSeconds: number, t: T): string {
   return t("format.minutes", { m: minutes });
 }
 
+/**
+ * A plain `YYYY-MM-DD` date, like the stats summary's day labels, at local
+ * midnight. Read as UTC, it would show as the day before west of Greenwich.
+ */
+export function localDate(date: string): Date {
+  return new Date(`${date}T00:00:00`);
+}
+
 /** "≈ 142 h": an estimated listening time, in minutes below an hour. */
 export function formatListeningTime(totalSeconds: number, t: T): string {
   const minutes = Math.round(totalSeconds / 60);

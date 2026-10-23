@@ -1,8 +1,9 @@
-use chrono::Utc;
+use chrono::{Local, Utc};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::ReverbError;
+use crate::library_index;
 use crate::state::AppState;
 use crate::stats::compute::{compute, StatsQuery, StatsRange, StatsSummary};
 use crate::stats::lastfm;
@@ -206,16 +207,27 @@ pub fn stats_import(source: String, app: AppHandle) {
 }
 
 /// `from`/`to` are unix seconds and only used for the custom range; `to` is
-/// exclusive.
+/// exclusive. Never waits for a Library index build: until the first one is
+/// done, entries are grouped by name and the page refetches once it's ready
+/// or has failed. Runs off the main thread, since reading the account's
+/// saved index and adding up every Scrobble can take a moment.
 #[tauri::command]
-pub fn stats_get(
+pub async fn stats_get(
     range: StatsRange,
     from: Option<i64>,
     to: Option<i64>,
-    state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<StatsSummary, ReverbError> {
-    let scrobbles = state.stats.all_scrobbles()?;
-    Ok(compute(&scrobbles, StatsQuery { range, from, to }))
+    tauri::async_runtime::spawn_blocking(move || {
+        let scrobbles = app.state::<AppState>().stats.all_scrobbles()?;
+        let library = library_index::current(&app);
+        let query = StatsQuery { range, from, to };
+        let summary = compute(&scrobbles, library.index(), query, Local::now());
+        let library_building = matches!(library, library_index::Current::Building);
+        Ok(StatsSummary { library_building, ..summary })
+    })
+    .await
+    .map_err(|e| ReverbError::State(e.to_string()))?
 }
 
 fn emit_progress(app: &AppHandle, progress: ImportProgress) {

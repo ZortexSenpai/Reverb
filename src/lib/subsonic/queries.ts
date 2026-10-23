@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePlayerStore } from "../../stores/playerStore";
 import { cmd } from "../ipc/commands";
 import { qk } from "./keys";
@@ -87,6 +87,19 @@ export function useAlbum(id: string) {
     queryFn: () => cmd("library_get_album", { id }),
     staleTime: 5 * 60_000,
   });
+}
+
+/** One Song by id, shared by `useSong` and one-off fetches (`fetchQuery`). */
+export function songQuery(id: string) {
+  return queryOptions({
+    queryKey: qk.song(id),
+    queryFn: () => cmd("library_get_song", { id }),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSong(id: string) {
+  return useQuery(songQuery(id));
 }
 
 export function useArtists() {

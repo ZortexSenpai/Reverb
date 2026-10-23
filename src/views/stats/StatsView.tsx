@@ -9,16 +9,30 @@ import {
   CalendarHeatmap,
   ClockChart,
   SessionIntervals,
-  StatTile,
-  TopList,
 } from "../../components/stats/charts";
+import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
+import { HeadlineStrip } from "../../components/stats/HeadlineStrip";
+import {
+  Rank,
+  StatsEntry,
+  statsEntryKey,
+  type StatsEntryKind,
+} from "../../components/stats/StatsEntry";
+import { StatsHero } from "../../components/stats/StatsHero";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import { CenteredSpinner } from "../../components/ui/Spinner";
+import { CenteredSpinner, Spinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
-import { formatRelativeDate } from "../../lib/format";
+import { formatCoverage, formatRelativeDate, localDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
-import type { FirstHeard, StatsRange } from "../../lib/subsonic/types";
+import type {
+  Breakdown,
+  FirstHeard,
+  GenrePlays,
+  StatsRange,
+  StatsSummary,
+  TopEntry,
+} from "../../lib/subsonic/types";
 
 const RANGES: { value: StatsRange; labelKey: MessageKey }[] = [
   { value: "day", labelKey: "range.day" },
@@ -48,21 +62,143 @@ function FirstHeardList({ entries }: { entries: FirstHeard[] }) {
   return (
     <ol className="flex flex-col">
       {entries.map((entry) => (
-        <li
-          key={`${entry.name}-${entry.ts}`}
-          className="flex items-baseline justify-between gap-3 rounded px-2 py-1.5 odd:bg-surface-2/40"
-        >
-          <span className="min-w-0 truncate text-sm">{entry.name}</span>
-          <span className="shrink-0 text-xs tabular-nums text-faint">
-            {t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
-            <span className="text-dim">
-              {" · "}
-              {t("count.plays", { n: entry.plays })}
-            </span>
-          </span>
+        <li key={statsEntryKey(entry)} className="min-w-0">
+          <StatsEntry
+            kind="artist"
+            item={entry}
+            layout="row"
+            count={entry.plays}
+            detail={t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
+          />
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * A top list: art tiles in a grid for artists and albums, two, five or ten
+ * to a row so ten entries never leave one dangling; rows with covers for
+ * Songs, ranked down each column.
+ */
+function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry[] }) {
+  const t = useT();
+  if (entries.length === 0) {
+    return <p className="px-1 py-4 text-xs text-faint">{t("stats.noPlays")}</p>;
+  }
+  const layout = kind === "song" ? "row" : "tile";
+  return (
+    <ol
+      className={
+        layout === "tile"
+          ? "grid grid-cols-2 gap-1 sm:grid-cols-5 2xl:grid-cols-10"
+          : "grid gap-x-6 lg:grid-flow-col lg:grid-cols-2 lg:grid-rows-5"
+      }
+    >
+      {entries.map((entry, i) => (
+        <li key={statsEntryKey(entry)} className="min-w-0">
+          <StatsEntry
+            kind={kind}
+            item={entry}
+            layout={layout}
+            rank={i + 1}
+            movement={entry.movement}
+            count={entry.count}
+          />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * Stand-in for a section built from the library while there's no Library
+ * index: a spinner while it's being built, else a word that it can't be had.
+ */
+function WithoutLibrary({ building }: { building: boolean }) {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-2 px-1 py-4 text-xs text-faint">
+      {building && <Spinner className="size-3.5" />}
+      {t(building ? "stats.readingLibrary" : "stats.libraryUnavailable")}
+    </div>
+  );
+}
+
+/**
+ * Genres ranked by plays. No shares: a Song counts toward each of its
+ * genres, so they would add up to more than 100%.
+ */
+function GenreList({ genres }: { genres: GenrePlays[] }) {
+  const t = useT();
+  const max = Math.max(1, ...genres.map((g) => g.count));
+  return (
+    <ol className="flex flex-col gap-1.5">
+      {genres.map((genre, i) => (
+        <li key={genre.name}>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-sm">
+              <span className="mr-1.5 text-xs">
+                <Rank rank={i + 1} />
+              </span>
+              {genre.name}
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-dim">
+              {t("count.plays", { n: genre.count })}
+            </span>
+          </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${(genre.count / max) * 100}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** "from 82% of plays", for a breakdown with something in it. */
+function coverageHint(breakdown: Breakdown<unknown> | null | undefined, t: T) {
+  if (!breakdown?.entries.length) return undefined;
+  return formatCoverage(breakdown.coverage, t);
+}
+
+/** Genres and decades of the Period's library Songs, side by side. */
+function GenresAndDecades({
+  genres,
+  decades,
+  libraryBuilding,
+}: Pick<StatsSummary, "genres" | "decades" | "libraryBuilding">) {
+  const t = useT();
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Section title={t("nav.genres")} hint={coverageHint(genres, t)}>
+        {!genres ? (
+          <WithoutLibrary building={libraryBuilding} />
+        ) : genres.entries.length === 0 ? (
+          <p className="px-1 py-4 text-xs text-faint">{t("stats.noGenres")}</p>
+        ) : (
+          <GenreList genres={genres.entries} />
+        )}
+      </Section>
+      <Section title={t("stats.decades")} hint={coverageHint(decades, t)}>
+        {!decades ? (
+          <WithoutLibrary building={libraryBuilding} />
+        ) : decades.entries.length === 0 ? (
+          <p className="px-1 py-4 text-xs text-faint">{t("stats.noDecades")}</p>
+        ) : (
+          <BarRows
+            labelWidth="w-20"
+            items={decades.entries.map((d) => ({
+              label: t("stats.decade", { decade: String(d.decade) }),
+              count: d.count,
+            }))}
+          />
+        )}
+      </Section>
+    </div>
   );
 }
 
@@ -89,7 +225,7 @@ function validDate(value: string | null): string | null {
 
 /** "Aug 2026" for a `YYYY-MM-DD` label. */
 function monthLabel(date: string, t: T): string {
-  return t.d(`${date}T00:00:00`, { month: "short", year: "numeric" });
+  return t.d(localDate(date), { month: "short", year: "numeric" });
 }
 
 function daysAgo(days: number): Date {
@@ -262,54 +398,30 @@ export function StatsView() {
           </div>
         ) : summary ? (
           <div className="flex flex-col gap-4 px-6 pb-8">
-            {/* Headline tiles */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-              <StatTile
-                label={t("stats.plays")}
-                value={t.n(summary.totalPlays)}
-                trend={summary.timeline.map((point) => point.count)}
-              />
-              <StatTile label={t("nav.artists")} value={t.n(summary.uniqueArtists)} />
-              <StatTile label={t("nav.tracks")} value={t.n(summary.uniqueTracks)} />
-              <StatTile
-                label={t("stats.playsPerDay")}
-                value={t.n(summary.playsPerDay, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}
-                hint={
-                  summary.firstTs
-                    ? t("stats.since", {
-                        date: t.d(summary.firstTs * 1000, { dateStyle: "medium" }),
-                      })
-                    : undefined
-                }
-              />
-              <StatTile
-                label={t("stats.longestStreak")}
-                value={t("stats.streakDays", { n: summary.longestStreakDays })}
-                hint={t("stats.streakHint")}
-              />
-              <StatTile
-                label={t("stats.busiestDay")}
-                value={summary.busiestDay ? t.n(summary.busiestDay.count) : "—"}
-                hint={
-                  summary.busiestDay
-                    ? t("stats.playsOn", {
-                        // `label` is a plain "2026-08-28"; anchor it at local
-                        // midnight so it is not shifted a day by the timezone.
-                        date: t.d(`${summary.busiestDay.label}T00:00:00`, {
-                          dateStyle: "medium",
-                        }),
-                      })
-                    : undefined
-                }
-              />
-            </div>
+            {/* One scroll, in the spec's order: the Period at a glance, its top
+                lists, the listening charts, then the history sections. */}
+            {summary.hero && <StatsHero hero={summary.hero} />}
+            <HeadlineStrip summary={summary} />
+
+            <Section title={t("stats.topArtists")}>
+              <TopEntries kind="artist" entries={summary.topArtists} />
+            </Section>
+            <Section title={t("stats.topAlbums")}>
+              <TopEntries kind="album" entries={summary.topAlbums} />
+            </Section>
+            <Section title={t("stats.topSongs")}>
+              <TopEntries kind="song" entries={summary.topSongs} />
+            </Section>
 
             <Section title={t("stats.activity")}>
               <AreaChart points={summary.timeline} />
             </Section>
+
+            {summary.topArtistsOverTime.length > 0 && (
+              <Section title={t("stats.topArtistsOverTime")} hint={t("stats.overTimeHint")}>
+                <ArtistsOverTime artists={summary.topArtistsOverTime} />
+              </Section>
+            )}
 
             {summary.daily.length > 0 && (
               <Section
@@ -341,46 +453,52 @@ export function StatsView() {
               </Section>
             </div>
 
-            {/* Discovery needs a window to be meaningful, so the all-time
-                range gives the sessions the full width instead. */}
-            <div className={`grid gap-4 ${summary.discovery ? "lg:grid-cols-2" : ""}`}>
+            <div className="grid gap-4 lg:grid-cols-2">
               <Section
                 title={t("stats.longestSessions")}
                 hint={
                   summary.sessions.count > 0
                     ? t("stats.sessionsHint", {
                         sessions: t("count.sessions", { n: summary.sessions.count }),
-                        median: summary.sessions.medianTracks,
+                        median: summary.sessions.medianSongs,
                       })
                     : undefined
                 }
               >
                 <SessionIntervals sessions={summary.sessions.longest} />
               </Section>
-              {summary.discovery && (
-                <Section
-                  title={t("stats.newToYou")}
-                  hint={t("stats.discoveryHint", {
-                    artists: t("count.artists", { n: summary.discovery.newArtists }),
-                    tracks: t("count.tracks", { n: summary.discovery.newTracks }),
-                  })}
-                >
-                  <FirstHeardList entries={summary.discovery.firstArtists} />
+              {summary.obsession && (
+                <Section title={t("stats.obsession")} hint={t("stats.obsessionHint")}>
+                  <StatsEntry
+                    kind="song"
+                    item={summary.obsession.song}
+                    layout="hero"
+                    count={summary.obsession.song.count}
+                    detail={t.d(localDate(summary.obsession.date), { dateStyle: "medium" })}
+                  />
                 </Section>
               )}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Section title={t("stats.topArtists")}>
-                <TopList entries={summary.topArtists} />
+            {/* Discovery needs a window to be meaningful, so the all-time
+                range leaves it out. */}
+            {summary.discovery && (
+              <Section
+                title={t("stats.newToYou")}
+                hint={t("stats.discoveryHint", {
+                  artists: t("count.artists", { n: summary.discovery.newArtists }),
+                  songs: t("count.songs", { n: summary.discovery.newSongs }),
+                })}
+              >
+                <FirstHeardList entries={summary.discovery.firstArtists} />
               </Section>
-              <Section title={t("stats.topTracks")}>
-                <TopList entries={summary.topTracks} />
-              </Section>
-              <Section title={t("stats.topAlbums")}>
-                <TopList entries={summary.topAlbums} />
-              </Section>
-            </div>
+            )}
+
+            <GenresAndDecades
+              genres={summary.genres}
+              decades={summary.decades}
+              libraryBuilding={summary.libraryBuilding}
+            />
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}
@@ -393,16 +511,15 @@ export function StatsView() {
                     title={t("stats.onThisDay", { year: String(day.year) })}
                     hint={t("count.plays", { n: day.plays })}
                   >
-                    <ol className="flex flex-col gap-1.5">
-                      {day.tracks.map((track) => (
-                        <li key={`${track.name}-${track.artist ?? ""}`} className="min-w-0">
-                          <div className="truncate text-sm">{track.name}</div>
-                          <div className="truncate text-xs text-dim">
-                            {track.artist}
-                            {track.count > 1 && (
-                              <span className="text-faint"> · {t.n(track.count)}×</span>
-                            )}
-                          </div>
+                    <ol className="flex flex-col">
+                      {day.songs.map((song) => (
+                        <li key={statsEntryKey(song)} className="min-w-0">
+                          <StatsEntry
+                            kind="song"
+                            item={song}
+                            layout="row"
+                            detail={song.count > 1 ? `${t.n(song.count)}×` : undefined}
+                          />
                         </li>
                       ))}
                     </ol>
@@ -417,18 +534,14 @@ export function StatsView() {
               ) : (
                 <ol className="flex flex-col">
                   {summary.recent.map((play, i) => (
-                    <li
-                      key={`${play.ts}-${i}`}
-                      className="flex items-baseline justify-between gap-4 rounded px-2 py-1.5 odd:bg-surface-2/40"
-                    >
-                      <span className="min-w-0 truncate text-sm">
-                        {play.track}
-                        <span className="text-dim"> — {play.artist}</span>
-                        {play.album && <span className="text-faint"> · {play.album}</span>}
-                      </span>
-                      <span className="shrink-0 text-xs tabular-nums text-faint">
-                        {formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
-                      </span>
+                    <li key={`${play.ts}-${i}`} className="min-w-0">
+                      <StatsEntry
+                        kind="song"
+                        item={play}
+                        layout="row"
+                        album={play.album}
+                        detail={formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
+                      />
                     </li>
                   ))}
                 </ol>

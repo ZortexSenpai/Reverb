@@ -474,10 +474,53 @@ export interface ReverbErrorPayload {
 
 export type StatsRange = "day" | "week" | "month" | "year" | "all" | "custom";
 
-export interface TopEntry {
+/** An artist, album or Song on the stats page. */
+export interface StatsItem {
   name: string;
+  /** For album and Song entries. */
   artist?: string | null;
+  /** The library item's id and cover-art id, for a Library match. */
+  id?: string | null;
+  coverArt?: string | null;
+}
+
+/** A top-list entry's change of place since the Previous period. */
+export type RankMovement =
+  /** Places up, or down when negative: from 40th to 3rd is 37. */
+  | { kind: "moved"; places: number }
+  /** No Scrobbles in the Previous period. */
+  | { kind: "new" };
+
+export interface TopEntry extends StatsItem {
   count: number;
+  /** Since the Previous period, for a top-list entry. Absent for all time. */
+  movement?: RankMovement | null;
+}
+
+/**
+ * Each headline count's change since the Previous period, relative to what it
+ * was then: 0.12 for 12% more. Absent when it was nothing then. The current
+ * Streak and the Busiest day have none.
+ */
+export interface HeadlineChanges {
+  plays?: number | null;
+  /** Also absent when either Period has no library Song length to go by. */
+  listeningTime?: number | null;
+  artists?: number | null;
+  albums?: number | null;
+  songs?: number | null;
+  playsPerDay?: number | null;
+  longestStreak?: number | null;
+}
+
+/** The Period's #1 artist, album and Song. */
+export interface Hero {
+  artist: TopEntry;
+  /** The artist's share of the Period's Scrobbles, from 0 to 1. */
+  share: number;
+  /** Absent with no album tags, or when the Period has a single Song. */
+  album?: TopEntry | null;
+  song?: TopEntry | null;
 }
 
 export interface TimelinePoint {
@@ -485,69 +528,144 @@ export interface TimelinePoint {
   count: number;
 }
 
-export interface RecentPlay {
+/** One of the Period's top artists, played per bucket of the activity timeline. */
+export interface ArtistTimeline {
+  artist: TopEntry;
+  /** The same buckets, with the same labels, as `StatsSummary.timeline`. */
+  timeline: TimelinePoint[];
+}
+
+/** A Scrobble, as the Song it counts toward. */
+export interface RecentPlay extends StatsItem {
   ts: number;
   artist: string;
-  track: string;
   album?: string | null;
 }
 
 /** A run of plays with no long gap between them. */
 export interface ListeningSession {
   startTs: number;
-  tracks: number;
+  songs: number;
   spanMinutes: number;
   topArtist: string;
 }
 
 export interface SessionStats {
   count: number;
-  medianTracks: number;
+  medianSongs: number;
   /** Biggest first. */
   longest: ListeningSession[];
 }
 
-export interface FirstHeard {
-  name: string;
+/** The Song played most on a single day of the Period. */
+export interface Obsession {
+  /** Its `count` is that day's Scrobbles of it. */
+  song: TopEntry;
+  /** The local date, `YYYY-MM-DD`. */
+  date: string;
+}
+
+/** An artist first heard in the Period. */
+export interface FirstHeard extends StatsItem {
   ts: number;
   plays: number;
 }
 
 export interface Discovery {
   newArtists: number;
-  newTracks: number;
+  newSongs: number;
   firstArtists: FirstHeard[];
 }
 
 export interface OnThisDay {
   year: number;
   plays: number;
-  tracks: TopEntry[];
+  /** That day's most played Songs. */
+  songs: TopEntry[];
+}
+
+/** Plays split by what only the Library match knows, like genres. */
+export interface Breakdown<T> {
+  entries: T[];
+  /** The share of the Period's Scrobbles it's based on, from 0 to 1. */
+  coverage: number;
+}
+
+export interface GenrePlays {
+  name: string;
+  count: number;
+}
+
+export interface DecadePlays {
+  /** Its first year: 1980 for the 1980s. */
+  decade: number;
+  count: number;
+}
+
+/** An estimate of the Period's listening time. */
+export interface ListeningTime {
+  /** 0 when no matched Song has a known length: nothing to estimate from. */
+  secs: number;
+  /**
+   * The share of the Period's Scrobbles that matched a library Song, from 0
+   * to 1. Every Scrobble without a known length counts at the median of those
+   * with one.
+   */
+  coverage: number;
 }
 
 export interface StatsSummary {
   totalPlays: number;
   uniqueArtists: number;
-  uniqueTracks: number;
+  uniqueSongs: number;
   uniqueAlbums: number;
   firstTs?: number | null;
   lastTs?: number | null;
   playsPerDay: number;
+  /** Absent when the Period has no Scrobbles. */
+  hero?: Hero | null;
   topArtists: TopEntry[];
-  topTracks: TopEntry[];
+  topSongs: TopEntry[];
   topAlbums: TopEntry[];
   byHour: number[];
   byWeekday: number[];
   timeline: TimelinePoint[];
+  /** The five most played artists, most played first. */
+  topArtistsOverTime: ArtistTimeline[];
   recent: RecentPlay[];
   busiestDay?: TimelinePoint | null;
   longestStreakDays: number;
+  /**
+   * Days in a row with a Scrobble up to today, or up to yesterday while today
+   * has none yet. Whatever the Period.
+   */
+  currentStreakDays: number;
   /** One entry per day for the calendar; empty for short ranges. */
   daily: TimelinePoint[];
   sessions: SessionStats;
+  /** Absent when the Period has no Scrobbles. */
+  obsession?: Obsession | null;
   /** Absent for the all-time range, where everything is "new". */
   discovery?: Discovery | null;
   onThisDay: OnThisDay[];
+  /**
+   * Whether the Library index was there to match Scrobbles against. Until it
+   * is, entries are grouped by name and have no art.
+   */
+  libraryAvailable: boolean;
+  /**
+   * Without the Library index, whether it's being built, so the numbers that
+   * need it are on their way. When it isn't, they can't be had for now.
+   */
+  libraryBuilding: boolean;
+  /** The ten most played genres. Absent until the Library index is there. */
+  genres?: Breakdown<GenrePlays> | null;
+  /** Plays per release decade, oldest first. Absent until the Library index is there. */
+  decades?: Breakdown<DecadePlays> | null;
+  /** Estimated from library Songs' lengths. Absent until the Library index is there. */
+  listeningTime?: ListeningTime | null;
+  /** Since the Previous period. Absent for all time, which has none. */
+  changes?: HeadlineChanges | null;
 }
 
 export interface LastfmStatus {

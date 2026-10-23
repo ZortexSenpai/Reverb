@@ -3,6 +3,7 @@
 // caller — which already has `useT()` — decides the language.
 
 import type { T } from "./i18n/core";
+import type { RankMovement } from "./subsonic/types";
 
 export function formatDuration(totalSeconds: number | undefined): string {
   if (totalSeconds == null || !Number.isFinite(totalSeconds)) return "–:––";
@@ -25,6 +26,61 @@ export function formatLongDuration(totalSeconds: number, t: T): string {
   const minutes = Math.round((totalSeconds % 3600) / 60);
   if (hours > 0) return t("format.hoursMinutes", { h: hours, m: minutes });
   return t("format.minutes", { m: minutes });
+}
+
+/**
+ * A plain `YYYY-MM-DD` date, like the stats summary's day labels, at local
+ * midnight. Read as UTC, it would show as the day before west of Greenwich.
+ */
+export function localDate(date: string): Date {
+  return new Date(`${date}T00:00:00`);
+}
+
+/** "≈ 142 h": an estimated listening time, in minutes below an hour. */
+export function formatListeningTime(totalSeconds: number, t: T): string {
+  const minutes = Math.round(totalSeconds / 60);
+  if (minutes < 60) return t("format.aboutMinutes", { n: t.n(minutes) });
+  const hours = totalSeconds / 3600;
+  // A tenth of an hour says something about an afternoon, not a year.
+  const digits = hours < 10 ? 1 : 0;
+  return t("format.aboutHours", { n: t.n(hours, { maximumFractionDigits: digits }) });
+}
+
+/** "from 82% of plays": the share of the Period's Scrobbles a stat is based on. */
+export function formatCoverage(share: number, t: T): string {
+  return t("stats.coverage", {
+    share: t.n(share, { style: "percent", maximumFractionDigits: 0 }),
+  });
+}
+
+/** "+12%": a count's change since the Previous period, unsigned when it rounds to 0. */
+export function formatChange(change: number, t: T): string {
+  return t.n(change, { style: "percent", signDisplay: "exceptZero", maximumFractionDigits: 0 });
+}
+
+/** How a top-list entry shows its places moved since the Previous period. */
+export interface MovementMarker {
+  direction: "up" | "down" | "new";
+  /** "▲37", "▼3" or "new". */
+  text: string;
+  /** What it means, for a tooltip. */
+  title: string;
+}
+
+/** A top-list entry's marker for its places moved; none when it kept its place. */
+export function movementMarker(movement: RankMovement, t: T): MovementMarker | null {
+  if (movement.kind === "new") {
+    return { direction: "new", text: t("stats.movementNew"), title: t("stats.movementNewHint") };
+  }
+  const { places } = movement;
+  const n = Math.abs(places);
+  if (places > 0) {
+    return { direction: "up", text: `▲${t.n(n)}`, title: t("stats.movementUp", { n }) };
+  }
+  if (places < 0) {
+    return { direction: "down", text: `▼${t.n(n)}`, title: t("stats.movementDown", { n }) };
+  }
+  return null;
 }
 
 /** "44.1 kHz" — sample rates are quoted in kHz everywhere in the UI. */

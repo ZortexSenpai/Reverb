@@ -94,6 +94,15 @@ export function initEngineBridge() {
     void queryClient.invalidateQueries({ queryKey: qk.mixes() });
   });
 
+  // Stats render by name until the Library index is ready, then regroup by
+  // Library match and fill in art. A failed build ends their wait too.
+  void on("library:index-ready", () => {
+    void queryClient.invalidateQueries({ queryKey: ["stats"] });
+  });
+  void on("library:index-failed", () => {
+    void queryClient.invalidateQueries({ queryKey: ["stats"] });
+  });
+
   // Stats imports run in the backend regardless of which view is mounted:
   // mirror their progress into the UI store and refresh cached data (and
   // announce the outcome) when they finish.

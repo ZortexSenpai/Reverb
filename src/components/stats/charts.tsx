@@ -1,13 +1,15 @@
 // Chart primitives for the stats page. Each dataset gets the form that fits
 // its job: area chart for change-over-time, radial clock for the cyclical
-// hours, horizontal bars for the 7 weekdays, ranked bar-lists for tops.
-// Everything plots ONE measure (plays): a single accent hue carries
-// magnitude, text wears text tokens, grids stay recessive, and every mark
-// has a hover target with a tooltip.
+// hours, horizontal bars for the 7 weekdays and the decades. Everything plots
+// ONE measure (plays): a single accent hue carries magnitude, text wears text
+// tokens, grids stay recessive, and every mark has a hover target with a
+// tooltip.
+// Top lists are entries with art, not charts (StatsEntry).
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { localDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
-import type { ListeningSession, TimelinePoint, TopEntry } from "../../lib/subsonic/types";
+import type { ListeningSession, TimelinePoint } from "../../lib/subsonic/types";
 
 // ---------------------------------------------------------------------------
 // Area chart (timeline)
@@ -19,14 +21,24 @@ const AREA_H = 40;
 export function AreaChart({
   points,
   maxLabels = 6,
+  max: sharedMax,
+  className = "h-36",
 }: {
   points: TimelinePoint[];
+  /** Bucket labels along the bottom, at most; 0 for none. */
   maxLabels?: number;
+  /** Top of the scale, for charts set side by side; else the highest point. */
+  max?: number;
+  /** The plot's height. */
+  className?: string;
 }) {
   const t = useT();
   const [hover, setHover] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const max = Math.max(1, ...points.map((p) => p.count));
+  // Several charts can share a page, so each needs its own gradient id. Only
+  // plain characters, so the `url(#…)` reference resolves in every engine.
+  const fillId = `area-fill-${useId().replace(/[^\w-]/g, "")}`;
+  const max = Math.max(1, sharedMax ?? 0, ...points.map((p) => p.count));
   const n = points.length;
 
   const { linePath, areaPath } = useMemo(() => {
@@ -43,7 +55,7 @@ export function AreaChart({
   }, [points, max, n]);
 
   if (n === 0) return null;
-  const labelEvery = Math.max(1, Math.ceil(n / maxLabels));
+  const labelEvery = maxLabels > 0 ? Math.max(1, Math.ceil(n / maxLabels)) : 0;
 
   function onMove(e: React.MouseEvent) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -57,10 +69,10 @@ export function AreaChart({
     hover !== null ? ((AREA_H - (points[hover].count / max) * (AREA_H - 3)) / AREA_H) * 100 : 0;
 
   return (
-    <div className="pb-4">
+    <div className={labelEvery ? "pb-4" : ""}>
       <div
         ref={containerRef}
-        className="relative h-36"
+        className={`relative ${className}`}
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >
@@ -70,7 +82,7 @@ export function AreaChart({
           className="absolute inset-0 size-full"
         >
           <defs>
-            <linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.35" />
               <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.02" />
             </linearGradient>
@@ -87,7 +99,7 @@ export function AreaChart({
               vectorEffect="non-scaling-stroke"
             />
           ))}
-          <path d={areaPath} fill="url(#area-fill)" />
+          <path d={areaPath} fill={`url(#${fillId})`} />
           <path
             d={linePath}
             fill="none"
@@ -120,13 +132,15 @@ export function AreaChart({
           </>
         )}
       </div>
-      <div className="flex justify-between pt-1 text-[10px] text-faint">
-        {points
-          .filter((_, i) => i % labelEvery === 0)
-          .map((p, i) => (
-            <span key={p.label + i}>{p.label}</span>
-          ))}
-      </div>
+      {labelEvery > 0 && (
+        <div className="flex justify-between pt-1 text-[10px] text-faint">
+          {points
+            .filter((_, i) => i % labelEvery === 0)
+            .map((p, i) => (
+              <span key={p.label + i}>{p.label}</span>
+            ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -224,10 +238,17 @@ export function ClockChart({ counts }: { counts: number[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Horizontal bars (weekdays)
+// Horizontal bars (weekdays, decades)
 // ---------------------------------------------------------------------------
 
-export function BarRows({ items }: { items: { label: string; count: number }[] }) {
+export function BarRows({
+  items,
+  labelWidth = "w-9",
+}: {
+  items: { label: string; count: number }[];
+  /** Width class for the label column: wide enough for the longest label. */
+  labelWidth?: string;
+}) {
   const t = useT();
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...items.map((i) => i.count));
@@ -240,7 +261,7 @@ export function BarRows({ items }: { items: { label: string; count: number }[] }
           onMouseEnter={() => setHover(i)}
           onMouseLeave={() => setHover(null)}
         >
-          <span className="w-9 shrink-0 text-xs text-dim">{item.label}</span>
+          <span className={`${labelWidth} shrink-0 text-xs text-dim`}>{item.label}</span>
           <div className="h-3.5 flex-1 overflow-hidden rounded-r">
             <div
               className={`h-full rounded-r transition-colors ${
@@ -258,65 +279,39 @@ export function BarRows({ items }: { items: { label: string; count: number }[] }
   );
 }
 
-// ---------------------------------------------------------------------------
-// Ranked list (tops)
-// ---------------------------------------------------------------------------
-
-export function TopList({ entries }: { entries: TopEntry[] }) {
-  const t = useT();
-  const max = Math.max(1, ...entries.map((e) => e.count));
-  if (entries.length === 0) {
-    return <p className="px-1 py-4 text-xs text-faint">{t("stats.noPlays")}</p>;
-  }
-  return (
-    <ol className="flex flex-col gap-1.5">
-      {entries.map((entry, i) => (
-        <li key={`${entry.name}-${entry.artist ?? ""}`} className="group">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className={`min-w-0 truncate ${i === 0 ? "text-[15px] font-medium" : "text-sm"}`}>
-              <span
-                className={`mr-1.5 text-xs tabular-nums ${
-                  i < 3 ? "font-semibold text-accent" : "text-faint"
-                }`}
-              >
-                {i + 1}.
-              </span>
-              {entry.name}
-              {entry.artist && <span className="text-dim"> — {entry.artist}</span>}
-            </span>
-            <span className="shrink-0 text-xs tabular-nums text-dim">{t.n(entry.count)}</span>
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-accent"
-              style={{ width: `${(entry.count / max) * 100}%` }}
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function StatTile({
   label,
   value,
   hint,
+  change,
   trend,
 }: {
   label: string;
-  value: string;
+  /** The number, or a spinner while it's still coming. */
+  value: React.ReactNode;
+  /** A line of context under the label. */
   hint?: string;
+  /** A small badge beside the value, like its change since the Previous period. */
+  change?: React.ReactNode;
   /** Optional shape-of-the-period sparkline, oldest value first. */
   trend?: number[];
 }) {
   return (
-    <div className="rounded-xl border border-edge bg-surface p-4">
-      {/* Proportional figures: tabular-nums looks loose at display sizes. */}
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="mt-0.5 text-xs text-dim">{label}</div>
+    <div className="flex min-w-0 flex-col rounded-xl border border-edge bg-surface p-4">
+      {/* The badge drops under the value when a narrow tile can't fit both. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+        {/* Proportional figures: tabular-nums looks loose at display sizes. */}
+        <div className="truncate text-2xl font-semibold">{value}</div>
+        {change && <div className="shrink-0 text-[11px] tabular-nums">{change}</div>}
+      </div>
+      <div className="mt-0.5 truncate text-xs text-dim">{label}</div>
       {hint && <div className="text-[10px] text-faint">{hint}</div>}
-      {trend && trend.length > 2 && <Sparkline values={trend} />}
+      {/* Pinned to the bottom, level with the strip's other tiles. */}
+      {trend && trend.length > 2 && (
+        <div className="mt-auto">
+          <Sparkline values={trend} />
+        </div>
+      )}
     </div>
   );
 }
@@ -396,7 +391,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
 
   const { cells, columns, lead, thresholds, titles } = useMemo(() => {
     // Pad so every column is a full Mon–Sun week.
-    const lead = (new Date(`${days[0]?.label}T00:00:00`).getDay() + 6) % 7;
+    const lead = days.length > 0 ? (localDate(days[0].label).getDay() + 6) % 7 : 0;
     const cells: (TimelinePoint | null)[] = [...Array(lead).fill(null), ...days];
     const columns: (TimelinePoint | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) columns.push(cells.slice(i, i + 7));
@@ -410,7 +405,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
       cell === null
         ? ""
         : t("chart.playsWithLabel", {
-            label: t.d(`${cell.label}T00:00:00`, { dateStyle: "medium" }),
+            label: t.d(localDate(cell.label), { dateStyle: "medium" }),
             n: cell.count,
           }),
     );
@@ -498,7 +493,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
         <span className="tabular-nums">
           {hovered
             ? t("chart.playsWithLabel", {
-                label: t.d(`${hovered.label}T00:00:00`, { dateStyle: "medium" }),
+                label: t.d(localDate(hovered.label), { dateStyle: "medium" }),
                 n: hovered.count,
               })
             : t("count.days", { n: days.length })}
@@ -525,7 +520,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
 // ---------------------------------------------------------------------------
 
 const DAY_HOURS = 24;
-/** Date+artist · the 24-hour track · tracks and length. */
+/** Date+artist · the 24-hour track · songs and length. */
 const SESSION_COLUMNS = "6.5rem 1fr 9rem";
 
 export function SessionIntervals({ sessions }: { sessions: ListeningSession[] }) {
@@ -552,7 +547,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
             onMouseLeave={() => setHover(null)}
             title={t("chart.sessionTitle", {
               date: t.d(start, { dateStyle: "medium", timeStyle: "short" }),
-              n: session.tracks,
+              n: session.songs,
               span: formatSpan(session.spanMinutes, t),
             })}
           >
@@ -578,7 +573,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
               />
             </div>
             <span className="text-right whitespace-nowrap tabular-nums text-dim">
-              {t("count.tracks", { n: session.tracks })}
+              {t("count.songs", { n: session.songs })}
               <span className="text-faint"> · {formatSpan(session.spanMinutes, t)}</span>
             </span>
           </div>

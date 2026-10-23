@@ -27,3 +27,26 @@ _Avoid_: Recently listened, listening history, history
 **Scrobble**:
 A listening as recorded by Last.fm or Navidrome, which may come from any device or client. A Play becomes a Scrobble only if it is sent there.
 _Avoid_: Play (for plays recorded elsewhere)
+
+### Stats
+
+**Library match**:
+The library Song, Album or Artist a Scrobble is recognised as, matched by name. A Scrobble of music not in the library has none.
+_Avoid_: Lookup, mapping
+
+**Library index**:
+The signed-in account's record of its library's Songs, Albums and Artists, which Scrobbles are matched against to find their Library match. It's kept for each account and shared by stats and mixes.
+
+**Period**:
+The span of time the stats page summarises: the last day, week, month or year, a custom date range, or all time.
+_Avoid_: Range, window
+
+**Previous period**:
+The equal-length span immediately before a Period, which its numbers and ranks are compared against. All time has none.
+
+**Streak**:
+A run of consecutive days with at least one Scrobble. The current Streak ends today, or yesterday while today has none yet.
+
+**Obsession**:
+The Song with the most Scrobbles on a single day within a Period.
+_Avoid_: On repeat (the name of a mix)

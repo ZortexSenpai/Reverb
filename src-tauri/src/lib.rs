@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod events;
+mod library_index;
 mod media_keys;
 mod mixes;
 mod persistence;
@@ -88,6 +89,7 @@ pub fn run() {
 
             let data_dir = app.path().app_data_dir()?;
             let stats = stats::store::StatsStore::load(data_dir.clone())?;
+            let library_index = library_index::store::LibraryIndexStore::new(data_dir.clone());
             let mixes = mixes::store::MixStore::load(data_dir.clone());
             let play_history = play_history::store::PlayHistoryStore::load(data_dir);
 
@@ -100,14 +102,17 @@ pub fn run() {
                 keychain,
                 player: player.clone(),
                 stats,
+                library_index,
                 mixes,
                 play_history,
             });
 
             events::spawn_forwarder(app.handle().clone(), event_rx, player, subsonic);
+            library_index::load_saved(app.handle().clone());
 
-            // Pull fresh scrobbles from connected stats sources shortly
-            // after startup, then build the day's mixes on top of them.
+            // Shortly after startup, ready the Library index and pull fresh
+            // scrobbles from connected stats sources side by side, then build
+            // the day's mixes on top of both.
             {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
@@ -116,6 +121,7 @@ pub fn run() {
                     })
                     .await
                     .ok();
+                    tauri::async_runtime::spawn(library_index::warm_up(app_handle.clone()));
                     let configured = {
                         use tauri::Manager;
                         app_handle.state::<AppState>().stats.config().lastfm.is_some()
@@ -142,6 +148,7 @@ pub fn run() {
             commands::auth::auth_sign_out,
             commands::library::library_get_albums,
             commands::library::library_get_album,
+            commands::library::library_get_song,
             commands::library::library_get_artists,
             commands::library::library_get_artist,
             commands::library::library_get_artist_appearances,

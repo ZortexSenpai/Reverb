@@ -2,9 +2,10 @@ use reverb_core::audio::EngineCommand;
 use reverb_core::subsonic::models::ServerInfo;
 use reverb_core::subsonic::Credentials;
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::error::ReverbError;
+use crate::library_index;
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -46,6 +47,7 @@ pub async fn auth_save(
     server_url: String,
     username: String,
     password: String,
+    app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<ServerInfo, ReverbError> {
     let creds = Credentials::new(&server_url, &username, &password)?;
@@ -57,6 +59,8 @@ pub async fn auth_save(
         s.username = Some(username.clone());
     })?;
     state.subsonic.set_credentials(Some(creds));
+    // Another account needs its own Library index.
+    tauri::async_runtime::spawn(library_index::warm_up(app));
     Ok(info)
 }
 

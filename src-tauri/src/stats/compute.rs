@@ -412,9 +412,9 @@ fn top(tally: Tally, before: Option<&[TopEntry]>) -> Vec<TopEntry> {
     entries.truncate(TOP_N);
     let Some(before) = before else { return entries };
     let places: HashMap<GroupKey, usize> =
-        before.iter().enumerate().map(|(at, entry)| (entry.key(), at)).collect();
+        before.iter().enumerate().map(|(at, entry)| (entry.group().key(), at)).collect();
     for (at, entry) in entries.iter_mut().enumerate() {
-        let movement = match places.get(&entry.key()) {
+        let movement = match places.get(&entry.group().key()) {
             Some(&was) => Movement::Moved { places: was as i32 - at as i32 },
             None => Movement::New,
         };
@@ -527,10 +527,11 @@ pub fn compute(
     // their plays are bucketed in a second pass.
     let top_artists = top(artists, previous.as_ref().map(|p| &p.artists[..]));
     let leaders: Vec<&TopEntry> = top_artists.iter().take(OVER_TIME_ARTISTS).collect();
+    let leader_keys: Vec<GroupKey> = leaders.iter().map(|leader| leader.group().key()).collect();
     let mut leader_buckets = vec![HashMap::<String, u64>::new(); leaders.len()];
     for s in &filtered {
         let key = grouper.artist(s).key();
-        let Some(at) = leaders.iter().position(|leader| leader.key() == key) else { continue };
+        let Some(at) = leader_keys.iter().position(|leader| *leader == key) else { continue };
         if let Some(local) = local_naive(s.ts) {
             *leader_buckets[at].entry(bucket.key(local)).or_default() += 1;
         }

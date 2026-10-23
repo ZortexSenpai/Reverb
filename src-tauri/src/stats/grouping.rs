@@ -54,11 +54,16 @@ impl<'a> Group<'a> {
 }
 
 impl TopEntry {
-    /// What the entry was counted under, to pick out its Scrobbles again.
-    pub fn key(&self) -> GroupKey<'_> {
-        match &self.matched {
-            Some(matched) => GroupKey::Library(&matched.id),
-            None => GroupKey::Name(&self.name, self.artist.as_deref()),
+    /// The entry as the [`Group`] it was counted as, whose key picks out its
+    /// Scrobbles again.
+    pub fn group(&self) -> Group<'_> {
+        Group {
+            name: &self.name,
+            artist: self.artist.as_deref(),
+            matched: self.matched.as_ref().map(|m| MatchRef {
+                id: &m.id,
+                cover_art: m.cover_art.as_deref(),
+            }),
         }
     }
 }

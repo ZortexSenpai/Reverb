@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use super::compute::TopEntry;
 use super::store::StatScrobble;
 use crate::library_index::index::{LibraryArtist, LibraryIndex, LibrarySong};
-use crate::library_index::matcher::credit_keys;
 
 /// An artist, album or Song entry a Scrobble counts toward.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,14 +56,13 @@ impl TopEntry {
 pub struct Grouper<'a> {
     library: Option<&'a LibraryIndex>,
     artists: HashMap<&'a str, Option<&'a LibraryArtist>>,
-    credits: HashMap<&'a str, Vec<String>>,
     songs: HashMap<(&'a str, &'a str), Option<LibrarySong<'a>>>,
 }
 
 impl<'a> Grouper<'a> {
     /// Without a `library`, everything groups by name.
     pub fn new(library: Option<&'a LibraryIndex>) -> Self {
-        Self { library, artists: HashMap::new(), credits: HashMap::new(), songs: HashMap::new() }
+        Self { library, artists: HashMap::new(), songs: HashMap::new() }
     }
 
     /// The library Artist the credit matches, else the credit itself.
@@ -116,13 +114,7 @@ impl<'a> Grouper<'a> {
     pub fn library_song(&mut self, scrobble: &'a StatScrobble) -> Option<LibrarySong<'a>> {
         let library = self.library?;
         let (artist, title) = (scrobble.artist.as_str(), scrobble.track.as_str());
-        if let Some(&found) = self.songs.get(&(artist, title)) {
-            return found;
-        }
-        let keys = self.credits.entry(artist).or_insert_with(|| credit_keys(artist));
-        let found = library.match_song(keys, title).map(|at| library.song(at));
-        self.songs.insert((artist, title), found);
-        found
+        *self.songs.entry((artist, title)).or_insert_with(|| library.find_song(artist, title))
     }
 }
 

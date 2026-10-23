@@ -5,9 +5,14 @@
 import { CoverImage } from "../library/CoverImage";
 import { useT } from "../../lib/i18n";
 import { initials } from "../../lib/initials";
+import type { StatsEntryKind } from "../../lib/statsEntryAction";
 import type { StatsItem } from "../../lib/subsonic/types";
+import { StatsEntryActions } from "./StatsEntryActions";
 
-export type StatsEntryKind = "artist" | "album" | "song";
+export type { StatsEntryKind };
+
+/** A matched entry lights up under the pointer, like a library card or row. */
+const HOVER = "transition-colors hover:bg-surface-2";
 
 /** Art sizes already in the cover cache: hero, card and row-sized. */
 const HERO_ART = 600;
@@ -105,6 +110,7 @@ export function StatsEntry({
   rank,
   count,
   detail,
+  album,
 }: {
   kind: StatsEntryKind;
   item: StatsItem;
@@ -117,6 +123,8 @@ export function StatsEntry({
   count?: number;
   /** Anything else to say about it, after the plays. */
   detail?: React.ReactNode;
+  /** A Song row's album, after its artist. */
+  album?: string | null;
 }) {
   const t = useT();
   const plays = count !== undefined ? t("count.plays", { n: count }) : null;
@@ -130,26 +138,28 @@ export function StatsEntry({
 
   if (layout === "hero") {
     return (
-      <div className="flex min-w-0 items-center gap-5 rounded-lg p-2 sm:gap-6">
-        <StatsArt
-          kind={kind}
-          item={item}
-          size={HERO_ART}
-          className={`size-28 shrink-0 shadow-xl sm:size-40 ${kind === "artist" ? "" : "rounded-lg"}`}
-        />
-        <div className="min-w-0">
-          {label && <Label>{label}</Label>}
-          {/* Two lines before it truncates: the name is the point here. */}
-          <div
-            className="mt-1 line-clamp-2 text-2xl font-bold tracking-tight break-words sm:text-4xl"
-            title={item.name}
-          >
-            {item.name}
+      <StatsEntryActions kind={kind} item={item} className={HOVER}>
+        <div className="flex min-w-0 items-center gap-5 rounded-lg p-2 sm:gap-6">
+          <StatsArt
+            kind={kind}
+            item={item}
+            size={HERO_ART}
+            className={`size-28 shrink-0 shadow-xl sm:size-40 ${kind === "artist" ? "" : "rounded-lg"}`}
+          />
+          <div className="min-w-0">
+            {label && <Label>{label}</Label>}
+            {/* Two lines before it truncates: the name is the point here. */}
+            <div
+              className="mt-1 line-clamp-2 text-2xl font-bold tracking-tight break-words sm:text-4xl"
+              title={item.name}
+            >
+              {item.name}
+            </div>
+            {item.artist && <div className="mt-1 truncate text-sm text-dim">{item.artist}</div>}
+            <div className="mt-1.5 text-sm text-dim">{secondary}</div>
           </div>
-          {item.artist && <div className="mt-1 truncate text-sm text-dim">{item.artist}</div>}
-          <div className="mt-1.5 text-sm text-dim">{secondary}</div>
         </div>
-      </div>
+      </StatsEntryActions>
     );
   }
 
@@ -157,49 +167,68 @@ export function StatsEntry({
     // Avatars are centred under their circle, covers read from the left.
     const artist = kind === "artist";
     return (
-      <div className={`min-w-0 rounded-lg p-2 ${artist ? "text-center" : ""}`}>
-        <StatsArt kind={kind} item={item} size={TILE_ART} className={artist ? "" : "rounded-md"} />
-        {label && (
-          <div className="mt-2">
-            <Label>{label}</Label>
-          </div>
-        )}
-        <div className={`${label ? "" : "mt-2"} truncate text-sm font-medium`} title={item.name}>
-          {rank !== undefined && (
-            <>
-              <Rank rank={rank} />{" "}
-            </>
+      <StatsEntryActions kind={kind} item={item} className={HOVER}>
+        <div className={`min-w-0 rounded-lg p-2 ${artist ? "text-center" : ""}`}>
+          <StatsArt
+            kind={kind}
+            item={item}
+            size={TILE_ART}
+            className={artist ? "" : "rounded-md"}
+          />
+          {label && (
+            <div className="mt-2">
+              <Label>{label}</Label>
+            </div>
           )}
-          {item.name}
+          <div className={`${label ? "" : "mt-2"} truncate text-sm font-medium`} title={item.name}>
+            {rank !== undefined && (
+              <>
+                <Rank rank={rank} />{" "}
+              </>
+            )}
+            {item.name}
+          </div>
+          {/* A non-breaking space holds the line for an album by no one artist
+              in particular, so tiles in a row stay the same height. */}
+          {!artist && <div className="truncate text-xs text-dim">{item.artist || " "}</div>}
+          <div className="truncate text-xs text-faint tabular-nums">{secondary}</div>
         </div>
-        {/* A non-breaking space holds the line for an album by no one artist
-            in particular, so tiles in a row stay the same height. */}
-        {!artist && <div className="truncate text-xs text-dim">{item.artist || " "}</div>}
-        <div className="truncate text-xs text-faint tabular-nums">{secondary}</div>
-      </div>
+      </StatsEntryActions>
     );
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded px-2 py-1.5">
-      {rank !== undefined && (
-        <span className="w-5 shrink-0 text-right text-xs">
-          <Rank rank={rank} />
-        </span>
-      )}
-      <StatsArt
-        kind={kind}
-        item={item}
-        size={ROW_ART}
-        className={`size-10 shrink-0 ${kind === "artist" ? "" : "rounded"}`}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm" title={item.name}>
-          {item.name}
+    <StatsEntryActions kind={kind} item={item} className={HOVER}>
+      <div className="flex min-w-0 items-center gap-3 rounded px-2 py-1.5">
+        {rank !== undefined && (
+          <span className="w-5 shrink-0 text-right text-xs">
+            <Rank rank={rank} />
+          </span>
+        )}
+        <StatsArt
+          kind={kind}
+          item={item}
+          size={ROW_ART}
+          className={`size-10 shrink-0 ${kind === "artist" ? "" : "rounded"}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm" title={item.name}>
+            {item.name}
+          </div>
+          {(item.artist || album) && (
+            <div className="truncate text-xs text-dim">
+              {item.artist}
+              {album && (
+                <span className="text-faint">
+                  {item.artist ? " · " : null}
+                  {album}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        {item.artist && <div className="truncate text-xs text-dim">{item.artist}</div>}
+        <span className="shrink-0 text-xs tabular-nums text-faint">{secondary}</span>
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-faint">{secondary}</span>
-    </div>
+    </StatsEntryActions>
   );
 }

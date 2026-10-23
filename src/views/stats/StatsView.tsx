@@ -10,16 +10,24 @@ import {
   ClockChart,
   SessionIntervals,
 } from "../../components/stats/charts";
+import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
 import { HeadlineStrip } from "../../components/stats/HeadlineStrip";
 import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
 import { StatsHero } from "../../components/stats/StatsHero";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import { CenteredSpinner } from "../../components/ui/Spinner";
+import { CenteredSpinner, Spinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
 import { formatRelativeDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
-import type { FirstHeard, StatsRange, TopEntry } from "../../lib/subsonic/types";
+import type {
+  Breakdown,
+  FirstHeard,
+  GenrePlays,
+  StatsRange,
+  StatsSummary,
+  TopEntry,
+} from "../../lib/subsonic/types";
 
 const RANGES: { value: StatsRange; labelKey: MessageKey }[] = [
   { value: "day", labelKey: "range.day" },
@@ -49,18 +57,14 @@ function FirstHeardList({ entries }: { entries: FirstHeard[] }) {
   return (
     <ol className="flex flex-col">
       {entries.map((entry) => (
-        <li
-          key={`${entry.name}-${entry.ts}`}
-          className="flex items-baseline justify-between gap-3 rounded px-2 py-1.5 odd:bg-surface-2/40"
-        >
-          <span className="min-w-0 truncate text-sm">{entry.name}</span>
-          <span className="shrink-0 text-xs tabular-nums text-faint">
-            {t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
-            <span className="text-dim">
-              {" · "}
-              {t("count.plays", { n: entry.plays })}
-            </span>
-          </span>
+        <li key={statsEntryKey(entry)} className="min-w-0">
+          <StatsEntry
+            kind="artist"
+            item={entry}
+            layout="row"
+            count={entry.plays}
+            detail={t.d(entry.ts * 1000, { day: "numeric", month: "short" })}
+          />
         </li>
       ))}
     </ol>
@@ -98,6 +102,96 @@ function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry
         </li>
       ))}
     </ol>
+  );
+}
+
+/** Stand-in for a section built from the library while Reverb reads it. */
+function ReadingLibrary() {
+  const t = useT();
+  return (
+    <div className="flex items-center gap-2 px-1 py-4 text-xs text-faint">
+      <Spinner className="size-3.5" />
+      {t("stats.readingLibrary")}
+    </div>
+  );
+}
+
+/**
+ * Genres ranked by plays. No shares: a Song counts toward each of its
+ * genres, so they would add up to more than 100%.
+ */
+function GenreList({ genres }: { genres: GenrePlays[] }) {
+  const t = useT();
+  const max = Math.max(1, ...genres.map((g) => g.count));
+  return (
+    <ol className="flex flex-col gap-1.5">
+      {genres.map((genre, i) => (
+        <li key={genre.name}>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-sm">
+              <span
+                className={`mr-1.5 text-xs tabular-nums ${
+                  i < 3 ? "font-semibold text-accent" : "text-faint"
+                }`}
+              >
+                {i + 1}.
+              </span>
+              {genre.name}
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-dim">
+              {t("count.plays", { n: genre.count })}
+            </span>
+          </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${(genre.count / max) * 100}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** "from 82% of plays", for a breakdown with something in it. */
+function coverageHint(breakdown: Breakdown<unknown> | null | undefined, t: T) {
+  if (!breakdown?.entries.length) return undefined;
+  return t("stats.coverage", {
+    share: t.n(breakdown.coverage, { style: "percent", maximumFractionDigits: 0 }),
+  });
+}
+
+/** Genres and decades of the Period's library Songs, side by side. */
+function GenresAndDecades({ genres, decades }: Pick<StatsSummary, "genres" | "decades">) {
+  const t = useT();
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Section title={t("nav.genres")} hint={coverageHint(genres, t)}>
+        {!genres ? (
+          <ReadingLibrary />
+        ) : genres.entries.length === 0 ? (
+          <p className="px-1 py-4 text-xs text-faint">{t("stats.noGenres")}</p>
+        ) : (
+          <GenreList genres={genres.entries} />
+        )}
+      </Section>
+      <Section title={t("stats.decades")} hint={coverageHint(decades, t)}>
+        {!decades ? (
+          <ReadingLibrary />
+        ) : decades.entries.length === 0 ? (
+          <p className="px-1 py-4 text-xs text-faint">{t("stats.noDecades")}</p>
+        ) : (
+          <BarRows
+            labelWidth="w-20"
+            items={decades.entries.map((d) => ({
+              label: t("stats.decade", { decade: String(d.decade) }),
+              count: d.count,
+            }))}
+          />
+        )}
+      </Section>
+    </div>
   );
 }
 
@@ -316,6 +410,12 @@ export function StatsView() {
               <AreaChart points={summary.timeline} />
             </Section>
 
+            {summary.topArtistsOverTime.length > 0 && (
+              <Section title={t("stats.topArtistsOverTime")} hint={t("stats.overTimeHint")}>
+                <ArtistsOverTime artists={summary.topArtistsOverTime} />
+              </Section>
+            )}
+
             {summary.daily.length > 0 && (
               <Section
                 title={t("stats.calendar")}
@@ -367,12 +467,14 @@ export function StatsView() {
                 title={t("stats.newToYou")}
                 hint={t("stats.discoveryHint", {
                   artists: t("count.artists", { n: summary.discovery.newArtists }),
-                  songs: t("count.songs", { n: summary.discovery.newTracks }),
+                  songs: t("count.songs", { n: summary.discovery.newSongs }),
                 })}
               >
                 <FirstHeardList entries={summary.discovery.firstArtists} />
               </Section>
             )}
+
+            <GenresAndDecades genres={summary.genres} decades={summary.decades} />
 
             {/* Flex, not a 3-column grid: fewer years should widen to fill the
                 row rather than leave a hole. */}
@@ -385,16 +487,15 @@ export function StatsView() {
                     title={t("stats.onThisDay", { year: String(day.year) })}
                     hint={t("count.plays", { n: day.plays })}
                   >
-                    <ol className="flex flex-col gap-1.5">
-                      {day.tracks.map((track) => (
-                        <li key={`${track.name}-${track.artist ?? ""}`} className="min-w-0">
-                          <div className="truncate text-sm">{track.name}</div>
-                          <div className="truncate text-xs text-dim">
-                            {track.artist}
-                            {track.count > 1 && (
-                              <span className="text-faint"> · {t.n(track.count)}×</span>
-                            )}
-                          </div>
+                    <ol className="flex flex-col">
+                      {day.songs.map((song) => (
+                        <li key={statsEntryKey(song)} className="min-w-0">
+                          <StatsEntry
+                            kind="song"
+                            item={song}
+                            layout="row"
+                            detail={song.count > 1 ? `${t.n(song.count)}×` : undefined}
+                          />
                         </li>
                       ))}
                     </ol>
@@ -409,18 +510,14 @@ export function StatsView() {
               ) : (
                 <ol className="flex flex-col">
                   {summary.recent.map((play, i) => (
-                    <li
-                      key={`${play.ts}-${i}`}
-                      className="flex items-baseline justify-between gap-4 rounded px-2 py-1.5 odd:bg-surface-2/40"
-                    >
-                      <span className="min-w-0 truncate text-sm">
-                        {play.track}
-                        <span className="text-dim"> — {play.artist}</span>
-                        {play.album && <span className="text-faint"> · {play.album}</span>}
-                      </span>
-                      <span className="shrink-0 text-xs tabular-nums text-faint">
-                        {formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
-                      </span>
+                    <li key={`${play.ts}-${i}`} className="min-w-0">
+                      <StatsEntry
+                        kind="song"
+                        item={play}
+                        layout="row"
+                        album={play.album}
+                        detail={formatRelativeDate(new Date(play.ts * 1000).toISOString(), t)}
+                      />
                     </li>
                   ))}
                 </ol>

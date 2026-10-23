@@ -48,6 +48,16 @@ pub async fn library_get_album(
     Ok(state.subsonic.get_album(&id).await?)
 }
 
+/// One Song by id, for places that only know its id (the stats page's
+/// Library matches).
+#[tauri::command]
+pub async fn library_get_song(
+    id: String,
+    state: State<'_, AppState>,
+) -> Result<Child, ReverbError> {
+    Ok(state.subsonic.get_song(&id).await?)
+}
+
 #[tauri::command]
 pub async fn library_get_artists(
     state: State<'_, AppState>,

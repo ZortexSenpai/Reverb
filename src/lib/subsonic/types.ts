@@ -503,10 +503,17 @@ export interface TimelinePoint {
   count: number;
 }
 
-export interface RecentPlay {
+/** One of the Period's top artists, played per bucket of the activity timeline. */
+export interface ArtistTimeline {
+  artist: TopEntry;
+  /** The same buckets, with the same labels, as `StatsSummary.timeline`. */
+  timeline: TimelinePoint[];
+}
+
+/** A Scrobble, as the Song it counts toward. */
+export interface RecentPlay extends StatsItem {
   ts: number;
   artist: string;
-  track: string;
   album?: string | null;
 }
 
@@ -525,22 +532,41 @@ export interface SessionStats {
   longest: ListeningSession[];
 }
 
-export interface FirstHeard {
-  name: string;
+/** An artist first heard in the Period. */
+export interface FirstHeard extends StatsItem {
   ts: number;
   plays: number;
 }
 
 export interface Discovery {
   newArtists: number;
-  newTracks: number;
+  newSongs: number;
   firstArtists: FirstHeard[];
 }
 
 export interface OnThisDay {
   year: number;
   plays: number;
-  tracks: TopEntry[];
+  /** That day's most played Songs. */
+  songs: TopEntry[];
+}
+
+/** Plays split by what only the Library match knows, like genres. */
+export interface Breakdown<T> {
+  entries: T[];
+  /** The share of the Period's Scrobbles it's based on, from 0 to 1. */
+  coverage: number;
+}
+
+export interface GenrePlays {
+  name: string;
+  count: number;
+}
+
+export interface DecadePlays {
+  /** Its first year: 1980 for the 1980s. */
+  decade: number;
+  count: number;
 }
 
 export interface StatsSummary {
@@ -559,6 +585,8 @@ export interface StatsSummary {
   byHour: number[];
   byWeekday: number[];
   timeline: TimelinePoint[];
+  /** The five most played artists, most played first. */
+  topArtistsOverTime: ArtistTimeline[];
   recent: RecentPlay[];
   busiestDay?: TimelinePoint | null;
   longestStreakDays: number;
@@ -573,6 +601,10 @@ export interface StatsSummary {
    * is, entries are grouped by name and have no art.
    */
   libraryAvailable: boolean;
+  /** The ten most played genres. Absent until the Library index is there. */
+  genres?: Breakdown<GenrePlays> | null;
+  /** Plays per release decade, oldest first. Absent until the Library index is there. */
+  decades?: Breakdown<DecadePlays> | null;
 }
 
 export interface LastfmStatus {

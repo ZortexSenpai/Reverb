@@ -612,6 +612,7 @@ export const en = {
   "stats.noPlays": "No plays in this period.",
   "stats.noPlaysRefresh": "No plays in this period — try refreshing the source.",
   "stats.plays": "Plays",
+  "stats.listeningTime": "Listening time",
   "stats.playsPerDay": "Plays per day",
   "stats.since": "since {date}",
   "stats.longestStreak": "Longest streak",
@@ -679,6 +680,8 @@ export const en = {
   // ---- formatting ----
   "format.hoursMinutes": "{h} hr {m} min",
   "format.minutes": "{m} min",
+  "format.aboutHours": "≈ {n} h",
+  "format.aboutMinutes": "≈ {n} min",
   "format.minutesAgo": "{n} min ago",
   "format.hoursAgo": "{n} hr ago",
   "format.daysAgo": "{n} d ago",

@@ -177,9 +177,9 @@ impl<'a> LibrarySong<'a> {
         self.song.cover_art.as_deref()
     }
 
-    /// Length in seconds.
+    /// Length in seconds, when the server knows it.
     pub fn duration(&self) -> Option<u32> {
-        self.song.duration
+        self.song.duration.filter(|&secs| secs > 0)
     }
 
     /// Release year.

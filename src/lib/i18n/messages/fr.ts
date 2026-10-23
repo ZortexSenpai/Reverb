@@ -583,6 +583,7 @@ export const fr: Messages = {
   "stats.noPlays": "Aucune écoute sur cette période.",
   "stats.noPlaysRefresh": "Aucune écoute sur cette période — essayez d'actualiser la source.",
   "stats.plays": "Écoutes",
+  "stats.listeningTime": "Temps d'écoute",
   "stats.playsPerDay": "Écoutes par jour",
   "stats.since": "depuis le {date}",
   "stats.longestStreak": "Plus longue série",
@@ -649,6 +650,8 @@ export const fr: Messages = {
 
   "format.hoursMinutes": "{h} h {m} min",
   "format.minutes": "{m} min",
+  "format.aboutHours": "≈ {n} h",
+  "format.aboutMinutes": "≈ {n} min",
   "format.minutesAgo": "il y a {n} min",
   "format.hoursAgo": "il y a {n} h",
   "format.daysAgo": "il y a {n} j",

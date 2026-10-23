@@ -282,21 +282,34 @@ export function StatTile({
   label,
   value,
   hint,
+  change,
   trend,
 }: {
   label: string;
   value: string;
+  /** A line of context under the label. */
   hint?: string;
+  /** A small badge beside the value, like its change since the Previous period. */
+  change?: React.ReactNode;
   /** Optional shape-of-the-period sparkline, oldest value first. */
   trend?: number[];
 }) {
   return (
-    <div className="rounded-xl border border-edge bg-surface p-4">
-      {/* Proportional figures: tabular-nums looks loose at display sizes. */}
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="mt-0.5 text-xs text-dim">{label}</div>
+    <div className="flex min-w-0 flex-col rounded-xl border border-edge bg-surface p-4">
+      {/* The badge drops under the value when a narrow tile can't fit both. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+        {/* Proportional figures: tabular-nums looks loose at display sizes. */}
+        <div className="truncate text-2xl font-semibold">{value}</div>
+        {change && <div className="shrink-0 text-[11px] tabular-nums">{change}</div>}
+      </div>
+      <div className="mt-0.5 truncate text-xs text-dim">{label}</div>
       {hint && <div className="text-[10px] text-faint">{hint}</div>}
-      {trend && trend.length > 2 && <Sparkline values={trend} />}
+      {/* Pinned to the bottom, level with the strip's other tiles. */}
+      {trend && trend.length > 2 && (
+        <div className="mt-auto">
+          <Sparkline values={trend} />
+        </div>
+      )}
     </div>
   );
 }

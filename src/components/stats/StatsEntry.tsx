@@ -14,7 +14,8 @@ export type { StatsEntryKind };
 /** A matched entry lights up under the pointer, like a library card or row. */
 const HOVER = "transition-colors hover:bg-surface-2";
 
-/** Art sizes already in the cover cache: card-sized and row-sized. */
+/** Art sizes already in the cover cache: hero, card and row-sized. */
+const HERO_ART = 600;
 const TILE_ART = 300;
 const ROW_ART = 80;
 
@@ -87,14 +88,25 @@ function Rank({ rank }: { rank: number }) {
   );
 }
 
+/** A small caption over an entry's name, like "Top album". */
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="truncate text-[10px] font-semibold tracking-wide text-faint uppercase">
+      {children}
+    </div>
+  );
+}
+
 /**
  * One artist, album or Song. `tile` stacks big art over the text, for grids;
- * `row` puts a small cover beside it, for lists.
+ * `row` puts a small cover beside it, for lists; `hero` sets large art beside
+ * a large name, for the one entry that leads the page.
  */
 export function StatsEntry({
   kind,
   item,
   layout,
+  label,
   rank,
   count,
   detail,
@@ -102,7 +114,9 @@ export function StatsEntry({
 }: {
   kind: StatsEntryKind;
   item: StatsItem;
-  layout: "tile" | "row";
+  layout: "tile" | "row" | "hero";
+  /** A caption over the name, for `tile` and `hero`. */
+  label?: string;
   /** Place in its list, from 1. */
   rank?: number;
   /** Plays. */
@@ -122,6 +136,33 @@ export function StatsEntry({
     </>
   );
 
+  if (layout === "hero") {
+    return (
+      <StatsEntryActions kind={kind} item={item} className={HOVER}>
+        <div className="flex min-w-0 items-center gap-5 rounded-lg p-2 sm:gap-6">
+          <StatsArt
+            kind={kind}
+            item={item}
+            size={HERO_ART}
+            className={`size-28 shrink-0 shadow-xl sm:size-40 ${kind === "artist" ? "" : "rounded-lg"}`}
+          />
+          <div className="min-w-0">
+            {label && <Label>{label}</Label>}
+            {/* Two lines before it truncates: the name is the point here. */}
+            <div
+              className="mt-1 line-clamp-2 text-2xl font-bold tracking-tight break-words sm:text-4xl"
+              title={item.name}
+            >
+              {item.name}
+            </div>
+            {item.artist && <div className="mt-1 truncate text-sm text-dim">{item.artist}</div>}
+            <div className="mt-1.5 text-sm text-dim">{secondary}</div>
+          </div>
+        </div>
+      </StatsEntryActions>
+    );
+  }
+
   if (layout === "tile") {
     // Avatars are centred under their circle, covers read from the left.
     const artist = kind === "artist";
@@ -134,7 +175,12 @@ export function StatsEntry({
             size={TILE_ART}
             className={artist ? "" : "rounded-md"}
           />
-          <div className="mt-2 truncate text-sm font-medium" title={item.name}>
+          {label && (
+            <div className="mt-2">
+              <Label>{label}</Label>
+            </div>
+          )}
+          <div className={`${label ? "" : "mt-2"} truncate text-sm font-medium`} title={item.name}>
             {rank !== undefined && (
               <>
                 <Rank rank={rank} />{" "}

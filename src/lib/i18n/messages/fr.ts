@@ -611,6 +611,10 @@ export const fr: Messages = {
   "stats.topArtists": "Artistes les plus écoutés",
   "stats.topSongs": "Morceaux les plus écoutés",
   "stats.topAlbums": "Albums les plus écoutés",
+  "stats.topArtist": "Artiste le plus écouté",
+  "stats.topAlbum": "Album le plus écouté",
+  "stats.topSong": "Morceau le plus écouté",
+  "stats.shareOfPlays": "{share} de toutes les écoutes",
   "stats.onThisDay": "Ce jour-là, en {year}",
   "stats.recentScrobbles": "Scrobbles récents",
 

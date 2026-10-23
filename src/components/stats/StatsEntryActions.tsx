@@ -46,14 +46,17 @@ export function StatsEntryActions({
 
   // A Song has no page; double-clicking plays it, as Song lists do (and, as
   // there, doesn't select the word under the pointer).
-  const use =
+  const interaction =
     action.kind === "song"
       ? { onDoubleClick: () => playSong(action.id), className: "select-none" }
       : { onClick: () => navigate(action.page), className: "" };
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>
-        <Slot.Root {...use} className={`cursor-pointer ${use.className} ${className}`}>
+        <Slot.Root
+          {...interaction}
+          className={`cursor-pointer ${interaction.className} ${className}`}
+        >
           {children}
         </Slot.Root>
       </ContextMenu.Trigger>

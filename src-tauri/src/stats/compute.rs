@@ -33,13 +33,13 @@ pub struct TopEntry {
     pub count: u64,
     /// Places moved since the Previous period, for a top-list entry. Absent
     /// for all time, which has none.
-    pub movement: Option<Movement>,
+    pub movement: Option<RankMovement>,
 }
 
 /// A top-list entry's change of place since the Previous period.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum Movement {
+pub enum RankMovement {
     /// Places up, or down when negative: from 40th to 3rd is 37.
     Moved { places: i32 },
     /// No Scrobbles in the Previous period.
@@ -136,7 +136,7 @@ pub struct StatsSummary {
     pub listening_time: Option<ListeningTime>,
     /// How the headline counts changed since the Previous period. Absent for
     /// all time, which has none.
-    pub changes: Option<Changes>,
+    pub changes: Option<HeadlineChanges>,
 }
 
 /// Each headline count's change since the Previous period, relative to what
@@ -145,7 +145,7 @@ pub struct StatsSummary {
 /// have none.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Changes {
+pub struct HeadlineChanges {
     pub plays: Option<f64>,
     /// Also absent when either Period has no library Song length to
     /// estimate from.
@@ -429,8 +429,8 @@ fn top(tally: Tally, before: Option<&[TopEntry]>) -> Vec<TopEntry> {
         before.iter().enumerate().map(|(at, entry)| (entry.group().key(), at)).collect();
     for (at, entry) in entries.iter_mut().enumerate() {
         let movement = match places.get(&entry.group().key()) {
-            Some(&was) => Movement::Moved { places: was as i32 - at as i32 },
-            None => Movement::New,
+            Some(&was) => RankMovement::Moved { places: was as i32 - at as i32 },
+            None => RankMovement::New,
         };
         entry.movement = Some(movement);
     }
@@ -457,7 +457,7 @@ pub fn compute(
     let mut grouper = Grouper::new(library);
     let counted = Counted::of(&filtered, &mut grouper);
     let headline = counted.headline(&filtered);
-    let Counted { artists, songs, albums, library: from_library, days: day_counts } = counted;
+    let Counted { artists, songs, albums, coverage, days: day_counts } = counted;
 
     let mut by_hour = vec![0u64; 24];
     let mut by_weekday = vec![0u64; 7];
@@ -616,9 +616,9 @@ pub fn compute(
         on_this_day,
         library_available: library.is_some(),
         library_building: false,
-        genres: library.map(|_| from_library.genres()),
-        decades: library.map(|_| from_library.decades()),
-        listening_time: library.map(|_| from_library.listening_time()),
+        genres: library.map(|_| coverage.genres()),
+        decades: library.map(|_| coverage.decades()),
+        listening_time: library.map(|_| coverage.listening_time()),
         changes,
     }
 }
@@ -659,7 +659,7 @@ struct Counted<'a> {
     artists: Tally<'a>,
     songs: Tally<'a>,
     albums: Tally<'a>,
-    library: FromLibrary<'a>,
+    coverage: CoverageTally<'a>,
     /// Scrobbles per local day, by days from the common era.
     days: HashMap<i32, u64>,
 }
@@ -669,7 +669,7 @@ impl<'a> Counted<'a> {
         let mut artists = Tally::default();
         let mut songs = Tally::default();
         let mut albums = Tally::default();
-        let mut library = FromLibrary::default();
+        let mut coverage = CoverageTally::default();
         let mut days: HashMap<i32, u64> = HashMap::new();
         for &s in plays {
             artists.add(grouper.artist(s));
@@ -677,19 +677,19 @@ impl<'a> Counted<'a> {
             if let Some(album) = grouper.album(s) {
                 albums.add(album);
             }
-            library.add(grouper.library_song(s));
+            coverage.add(grouper.library_song(s));
             if let Some(local) = local_naive(s.ts) {
                 *days.entry(local.date().num_days_from_ce()).or_default() += 1;
             }
         }
-        Self { artists, songs, albums, library, days }
+        Self { artists, songs, albums, coverage, days }
     }
 
     /// The headline counts of `plays`, the Scrobbles these were counted from.
     fn headline(&self, plays: &[&StatScrobble]) -> Headline {
         Headline {
             plays: plays.len(),
-            listening_secs: self.library.listening_secs(),
+            listening_secs: self.coverage.listening_secs(),
             artists: self.artists.len(),
             albums: self.albums.len(),
             songs: self.songs.len(),
@@ -713,9 +713,9 @@ struct Headline {
 
 impl Headline {
     /// How these counts changed since `before`'s.
-    fn since(&self, before: &Headline) -> Changes {
+    fn since(&self, before: &Headline) -> HeadlineChanges {
         let count = |now: usize, before: usize| change(now as f64, before as f64);
-        Changes {
+        HeadlineChanges {
             plays: count(self.plays, before.plays),
             listening_time: self
                 .listening_secs
@@ -924,10 +924,11 @@ fn on_this_day<'a>(
     out
 }
 
-/// Plays per genre and per release decade of the Scrobbles' library Songs,
-/// and their lengths, still being tallied.
+/// What only the Scrobbles' library Songs know (genres, release decades and
+/// lengths), tallied with how many Scrobbles each comes from: the coverage
+/// every number from the library is reported with.
 #[derive(Default)]
-struct FromLibrary<'a> {
+struct CoverageTally<'a> {
     plays: u64,
     /// Plays with a Library match.
     matched: u64,
@@ -939,7 +940,7 @@ struct FromLibrary<'a> {
     lengths: Vec<u32>,
 }
 
-impl<'a> FromLibrary<'a> {
+impl<'a> CoverageTally<'a> {
     /// Count a Scrobble with Library match `song`, if any.
     fn add(&mut self, song: Option<LibrarySong<'a>>) {
         self.plays += 1;
@@ -2001,7 +2002,7 @@ mod tests {
         assert!(compute(&[], None, preset(StatsRange::All), fixed_now()).obsession.is_none());
     }
 
-    fn changes(s: &StatsSummary) -> &Changes {
+    fn changes(s: &StatsSummary) -> &HeadlineChanges {
         s.changes.as_ref().expect("a Period with a Previous period")
     }
 
@@ -2133,7 +2134,7 @@ mod tests {
             ["albums", "artists", "listeningTime", "longestStreak", "plays", "playsPerDay", "songs"]
         );
         // One day's plays, not a place in a ranking.
-        assert_eq!(s.top_songs[0].movement, Some(Movement::Moved { places: 0 }));
+        assert_eq!(s.top_songs[0].movement, Some(RankMovement::Moved { places: 0 }));
         assert_eq!(s.obsession.expect("the week has plays").song.movement, None);
     }
 
@@ -2159,7 +2160,7 @@ mod tests {
     }
 
     /// Each entry's name and places moved.
-    fn movements(entries: &[TopEntry]) -> Vec<(&str, Option<Movement>)> {
+    fn movements(entries: &[TopEntry]) -> Vec<(&str, Option<RankMovement>)> {
         entries.iter().map(|e| (e.name.as_str(), e.movement)).collect()
     }
 
@@ -2181,12 +2182,12 @@ mod tests {
         }
         let s = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
 
-        let moved = |places| Some(Movement::Moved { places });
+        let moved = |places| Some(RankMovement::Moved { places });
         assert_eq!(
             movements(&s.top_artists),
             [
                 ("P01", moved(0)),
-                ("Newcomer", Some(Movement::New)),
+                ("Newcomer", Some(RankMovement::New)),
                 // From outside the top ten: 40th to 3rd.
                 ("Riser", moved(37)),
                 ("P05", moved(1)),
@@ -2212,11 +2213,14 @@ mod tests {
         ];
         let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
 
-        let moved = |places| Some(Movement::Moved { places });
-        assert_eq!(movements(&s.top_artists), [("Artist", moved(1)), ("Y", Some(Movement::New))]);
+        let moved = |places| Some(RankMovement::Moved { places });
+        assert_eq!(
+            movements(&s.top_artists),
+            [("Artist", moved(1)), ("Y", Some(RankMovement::New))]
+        );
         assert_eq!(
             movements(&s.top_songs),
-            [("Song - 2011 Remaster", moved(2)), ("Second", Some(Movement::New))]
+            [("Song - 2011 Remaster", moved(2)), ("Second", Some(RankMovement::New))]
         );
         assert_eq!(movements(&s.top_albums), [("Album", moved(1)), ("Hits", moved(1))]);
     }

@@ -255,7 +255,9 @@ mod tests {
             ArtistRef { id: "g".into(), name: "Guest".into() },
         ];
         let index = LibraryIndex::new(vec![duet], vec![artist("m", "Main")]);
-        let found = |credit: &str| index.find_artist(credit).map(|a| (a.id.as_str(), a.cover_art.as_deref()));
+        let found = |credit: &str| {
+            index.find_artist(credit).map(|a| (a.id.as_str(), a.cover_art.as_deref()))
+        };
 
         assert_eq!(found("Main"), Some(("m", Some("ar-m"))));
         // Not in the artist listing, but the server has art for them too.

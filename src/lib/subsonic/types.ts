@@ -514,7 +514,7 @@ export interface HeadlineChanges {
 }
 
 /** The Period's #1 artist, album and Song. */
-export interface StatsHero {
+export interface Hero {
   artist: TopEntry;
   /** The artist's share of the Period's Scrobbles, from 0 to 1. */
   share: number;
@@ -623,7 +623,7 @@ export interface StatsSummary {
   lastTs?: number | null;
   playsPerDay: number;
   /** Absent when the Period has no Scrobbles. */
-  hero?: StatsHero | null;
+  hero?: Hero | null;
   topArtists: TopEntry[];
   topSongs: TopEntry[];
   topAlbums: TopEntry[];

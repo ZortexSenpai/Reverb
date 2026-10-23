@@ -649,6 +649,12 @@ export const en = {
   "stats.topAlbum": "Top album",
   "stats.topSong": "Top song",
   "stats.shareOfPlays": "{share} of all plays",
+  "stats.vsPrevious": "compared with the previous period",
+  "stats.movementNew": "new",
+  "stats.movementNewHint": "not played in the previous period",
+  "stats.movementUp": "up {n, plural, one {# place} other {# places}} since the previous period",
+  "stats.movementDown": "down {n, plural, one {# place} other {# places}} since the previous period",
+  "stats.movementSame": "same place as in the previous period",
   "stats.onThisDay": "On this day, {year}",
   "stats.recentScrobbles": "Recent scrobbles",
 

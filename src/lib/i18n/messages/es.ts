@@ -620,6 +620,12 @@ export const es: Messages = {
   "stats.topAlbum": "Álbum más escuchado",
   "stats.topSong": "Canción más escuchada",
   "stats.shareOfPlays": "{share} de todas las reproducciones",
+  "stats.vsPrevious": "frente al periodo anterior",
+  "stats.movementNew": "nuevo",
+  "stats.movementNewHint": "sin reproducciones en el periodo anterior",
+  "stats.movementUp": "sube {n, plural, one {# puesto} other {# puestos}} respecto al periodo anterior",
+  "stats.movementDown": "baja {n, plural, one {# puesto} other {# puestos}} respecto al periodo anterior",
+  "stats.movementSame": "mismo puesto que en el periodo anterior",
   "stats.onThisDay": "Un día como hoy de {year}",
   "stats.recentScrobbles": "Scrobbles recientes",
 

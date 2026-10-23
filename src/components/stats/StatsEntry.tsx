@@ -3,10 +3,11 @@
 // that lists entries uses it, so they all look and behave alike.
 
 import { CoverImage } from "../library/CoverImage";
+import { formatMovement } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { initials } from "../../lib/initials";
 import type { StatsEntryKind } from "../../lib/statsEntryAction";
-import type { StatsItem } from "../../lib/subsonic/types";
+import type { RankMovement, StatsItem } from "../../lib/subsonic/types";
 import { StatsEntryActions } from "./StatsEntryActions";
 
 export type { StatsEntryKind };
@@ -88,6 +89,34 @@ function Rank({ rank }: { rank: number }) {
   );
 }
 
+/** Places moved since the Previous period: rises in the accent, "new" as a tag. */
+function Movement({ movement }: { movement: RankMovement }) {
+  const t = useT();
+  const text = formatMovement(movement, t);
+  if (movement.kind === "new") {
+    return (
+      <span
+        title={t("stats.movementNewHint")}
+        className="rounded bg-accent/15 px-1 text-[10px] font-semibold tracking-wide text-accent uppercase"
+      >
+        {text}
+      </span>
+    );
+  }
+  const { places } = movement;
+  const [title, tone] =
+    places > 0
+      ? [t("stats.movementUp", { n: places }), "text-accent"]
+      : places < 0
+        ? [t("stats.movementDown", { n: -places }), "text-dim"]
+        : [t("stats.movementSame"), "text-faint"];
+  return (
+    <span title={title} className={`tabular-nums ${tone}`}>
+      {text}
+    </span>
+  );
+}
+
 /** A small caption over an entry's name, like "Top album". */
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -108,6 +137,7 @@ export function StatsEntry({
   layout,
   label,
   rank,
+  movement,
   count,
   detail,
   album,
@@ -119,6 +149,8 @@ export function StatsEntry({
   label?: string;
   /** Place in its list, from 1. */
   rank?: number;
+  /** Places moved since the Previous period, for `tile` and `row`. */
+  movement?: RankMovement | null;
   /** Plays. */
   count?: number;
   /** Anything else to say about it, after the plays. */
@@ -191,7 +223,15 @@ export function StatsEntry({
           {/* A non-breaking space holds the line for an album by no one artist
               in particular, so tiles in a row stay the same height. */}
           {!artist && <div className="truncate text-xs text-dim">{item.artist || " "}</div>}
-          <div className="truncate text-xs text-faint tabular-nums">{secondary}</div>
+          <div className="truncate text-xs text-faint tabular-nums">
+            {secondary}
+            {movement && (
+              <>
+                {" · "}
+                <Movement movement={movement} />
+              </>
+            )}
+          </div>
         </div>
       </StatsEntryActions>
     );
@@ -228,6 +268,12 @@ export function StatsEntry({
           )}
         </div>
         <span className="shrink-0 text-xs tabular-nums text-faint">{secondary}</span>
+        {/* Its own column, so the markers line up down the list. */}
+        {movement && (
+          <span className="min-w-8 shrink-0 text-right text-xs">
+            <Movement movement={movement} />
+          </span>
+        )}
       </div>
     </StatsEntryActions>
   );

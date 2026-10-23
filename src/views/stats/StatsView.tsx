@@ -97,6 +97,7 @@ function TopEntries({ kind, entries }: { kind: StatsEntryKind; entries: TopEntry
             item={entry}
             layout={layout}
             rank={i + 1}
+            movement={entry.movement}
             count={entry.count}
           />
         </li>

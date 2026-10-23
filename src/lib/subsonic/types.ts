@@ -604,10 +604,12 @@ export interface DecadePlays {
 
 /** An estimate of the Period's listening time. */
 export interface ListeningTime {
+  /** 0 when no matched Song has a known length: nothing to estimate from. */
   secs: number;
   /**
-   * The share of the Period's Scrobbles whose library Song's length it adds,
-   * from 0 to 1. The rest count at the median of those.
+   * The share of the Period's Scrobbles that matched a library Song, from 0
+   * to 1. Every play without a known length counts at the median of those
+   * with one.
    */
   coverage: number;
 }

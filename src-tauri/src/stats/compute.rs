@@ -247,9 +247,11 @@ pub struct DecadePlays {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListeningTime {
+    /// 0 when no matched Song has a known length: nothing to estimate from.
     pub secs: u64,
-    /// The share of the Period's Scrobbles whose library Song's length it
-    /// adds, from 0 to 1. The rest count at the median of those.
+    /// The share of the Period's Scrobbles that matched a library Song, from
+    /// 0 to 1. Every play without a known length counts at the median of
+    /// those with one.
     pub coverage: f64,
 }
 
@@ -906,6 +908,8 @@ fn on_this_day<'a>(
 #[derive(Default)]
 struct FromLibrary<'a> {
     plays: u64,
+    /// Plays with a Library match.
+    matched: u64,
     genres: HashMap<&'a str, u64>,
     /// Plays of a Song with at least one genre.
     with_genre: u64,
@@ -919,6 +923,7 @@ impl<'a> FromLibrary<'a> {
     fn add(&mut self, song: Option<LibrarySong<'a>>) {
         self.plays += 1;
         let Some(song) = song else { return };
+        self.matched += 1;
         let genres = song.genres();
         if !genres.is_empty() {
             self.with_genre += 1;
@@ -971,7 +976,7 @@ impl<'a> FromLibrary<'a> {
         let known: u64 = self.lengths.iter().map(|&length| u64::from(length)).sum();
         let unknown = self.plays - self.lengths.len() as u64;
         let secs = known as f64 + unknown as f64 * median(&self.lengths);
-        ListeningTime { secs: secs.round() as u64, coverage: self.share(self.lengths.len() as u64) }
+        ListeningTime { secs: secs.round() as u64, coverage: self.share(self.matched) }
     }
 }
 
@@ -1669,10 +1674,10 @@ mod tests {
         scrobbles.insert(0, scrobble(fixed_now().timestamp() - 30 * 86_400, "Artist", "Long"));
         let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
 
-        // Three of the week's five plays have their Song's length; the other
-        // two count at the median, 100 s.
+        // Four of the week's five plays match a library Song. The matched one
+        // without a length and the unmatched one count at the median, 100 s.
         let time = listening_time(&s);
-        assert_eq!((time.secs, time.coverage), (1_300, 0.6));
+        assert_eq!((time.secs, time.coverage), (1_300, 0.8));
     }
 
     #[test]

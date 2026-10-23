@@ -86,7 +86,7 @@ function ListeningTimeTile({
     );
   }
   // Not one play with a known length: nothing to estimate from.
-  if (time.coverage === 0) return <StatTile label={label} value="—" />;
+  if (time.secs === 0) return <StatTile label={label} value="—" />;
   return (
     <StatTile
       label={label}

@@ -533,6 +533,24 @@ export interface OnThisDay {
   tracks: TopEntry[];
 }
 
+/** Plays split by what only the Library match knows, like genres. */
+export interface Breakdown<T> {
+  entries: T[];
+  /** The share of the Period's Scrobbles it's based on, from 0 to 1. */
+  coverage: number;
+}
+
+export interface GenrePlays {
+  name: string;
+  count: number;
+}
+
+export interface DecadePlays {
+  /** Its first year: 1980 for the 1980s. */
+  decade: number;
+  count: number;
+}
+
 export interface StatsSummary {
   totalPlays: number;
   uniqueArtists: number;
@@ -561,6 +579,10 @@ export interface StatsSummary {
    * is, entries are grouped by name and have no art.
    */
   libraryAvailable: boolean;
+  /** The ten most played genres. Absent until the Library index is there. */
+  genres?: Breakdown<GenrePlays> | null;
+  /** Plays per release decade, oldest first. Absent until the Library index is there. */
+  decades?: Breakdown<DecadePlays> | null;
 }
 
 export interface LastfmStatus {

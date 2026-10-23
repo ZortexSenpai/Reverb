@@ -12,7 +12,12 @@ import {
 } from "../../components/stats/charts";
 import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
 import { HeadlineStrip } from "../../components/stats/HeadlineStrip";
-import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
+import {
+  Rank,
+  StatsEntry,
+  statsEntryKey,
+  type StatsEntryKind,
+} from "../../components/stats/StatsEntry";
 import { StatsHero } from "../../components/stats/StatsHero";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -133,12 +138,8 @@ function GenreList({ genres }: { genres: GenrePlays[] }) {
         <li key={genre.name}>
           <div className="flex items-baseline justify-between gap-3">
             <span className="min-w-0 truncate text-sm">
-              <span
-                className={`mr-1.5 text-xs tabular-nums ${
-                  i < 3 ? "font-semibold text-accent" : "text-faint"
-                }`}
-              >
-                {i + 1}.
+              <span className="mr-1.5 text-xs">
+                <Rank rank={i + 1} />
               </span>
               {genre.name}
             </span>

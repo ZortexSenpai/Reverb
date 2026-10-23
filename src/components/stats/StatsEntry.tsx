@@ -92,8 +92,8 @@ export function StatsArt({
   );
 }
 
-/** The top three stand out in the accent. */
-function Rank({ rank }: { rank: number }) {
+/** A place in a ranked list, from 1. The top three stand out in the accent. */
+export function Rank({ rank }: { rank: number }) {
   return (
     <span className={`tabular-nums ${rank <= 3 ? "font-semibold text-accent" : "text-faint"}`}>
       {rank}

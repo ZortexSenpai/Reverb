@@ -31,6 +31,16 @@ pub struct TimelinePoint {
     pub count: u64,
 }
 
+/// One of the Period's top artists, played per bucket of the activity
+/// timeline.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistTimeline {
+    pub artist: TopEntry,
+    /// The same buckets, with the same labels, as [`StatsSummary::timeline`].
+    pub timeline: Vec<TimelinePoint>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecentPlay {
@@ -58,6 +68,8 @@ pub struct StatsSummary {
     /// Monday-first weekday, 7 buckets.
     pub by_weekday: Vec<u64>,
     pub timeline: Vec<TimelinePoint>,
+    /// The [`OVER_TIME_ARTISTS`] most played artists, most played first.
+    pub top_artists_over_time: Vec<ArtistTimeline>,
     /// Newest first.
     pub recent: Vec<RecentPlay>,
     /// Local date with the most plays in the range.
@@ -235,6 +247,7 @@ impl Bucket {
 }
 
 const TOP_N: usize = 10;
+const OVER_TIME_ARTISTS: usize = 5;
 const TOP_SESSIONS: usize = 5;
 const ON_THIS_DAY_YEARS: usize = 3;
 const ON_THIS_DAY_TRACKS: usize = 3;
@@ -338,17 +351,44 @@ pub fn compute(
 
     // Dense timeline (include empty buckets so gaps are visible). `end` is
     // exclusive, so the last point is the bucket holding its final second.
-    let mut timeline = Vec::new();
+    let mut slots = Vec::new();
     if let (Some(first), Some(last)) = (local_naive(start), local_naive(end - 1)) {
         let mut cursor = bucket.floor(first);
-        while cursor <= last && timeline.len() < MAX_TIMELINE_POINTS {
-            timeline.push(TimelinePoint {
-                count: buckets.get(&bucket.key(cursor)).copied().unwrap_or(0),
-                label: bucket.label(cursor),
-            });
+        while cursor <= last && slots.len() < MAX_TIMELINE_POINTS {
+            slots.push(cursor);
             cursor = bucket.next(cursor);
         }
     }
+    let points = |counts: &HashMap<String, u64>| -> Vec<TimelinePoint> {
+        let point = |at| TimelinePoint {
+            count: counts.get(&bucket.key(at)).copied().unwrap_or(0),
+            label: bucket.label(at),
+        };
+        slots.iter().copied().map(point).collect()
+    };
+    let timeline = points(&buckets);
+
+    // The leading artists are only known once everything is counted, so
+    // their plays are bucketed in a second pass.
+    let unique_artists = artists.len() as u64;
+    let top_artists = top(artists);
+    let leaders: Vec<&TopEntry> = top_artists.iter().take(OVER_TIME_ARTISTS).collect();
+    let mut leader_buckets = vec![HashMap::<String, u64>::new(); leaders.len()];
+    for s in &filtered {
+        let key = grouper.artist(s).key();
+        let Some(at) = leaders.iter().position(|leader| leader.key() == key) else { continue };
+        if let Some(local) = local_naive(s.ts) {
+            *leader_buckets[at].entry(bucket.key(local)).or_default() += 1;
+        }
+    }
+    let top_artists_over_time = leaders
+        .iter()
+        .zip(&leader_buckets)
+        .map(|(&artist, counts)| ArtistTimeline {
+            artist: artist.clone(),
+            timeline: points(counts),
+        })
+        .collect();
 
     // One cell per day for the calendar, capped so a long window stays a
     // readable grid rather than an endless strip.
@@ -381,18 +421,19 @@ pub fn compute(
 
     StatsSummary {
         total_plays: filtered.len() as u64,
-        unique_artists: artists.len() as u64,
+        unique_artists,
         unique_songs: songs.len() as u64,
         unique_albums: albums.len() as u64,
         first_ts,
         last_ts,
         plays_per_day: filtered.len() as f64 / span_days,
-        top_artists: top(artists),
+        top_artists,
         top_songs: top(songs),
         top_albums: top(albums),
         by_hour,
         by_weekday,
         timeline,
+        top_artists_over_time,
         recent,
         busiest_day,
         longest_streak_days,
@@ -786,6 +827,52 @@ mod tests {
         // Yearly buckets over a decade — 11 calendar years at most.
         assert!(s.timeline.len() <= 11, "got {} points", s.timeline.len());
         assert_eq!(s.timeline.iter().map(|p| p.count).sum::<u64>(), 2);
+    }
+
+    #[test]
+    fn top_five_artists_are_counted_on_the_activity_buckets() {
+        let library = LibraryIndex::new(Vec::new(), vec![library::artist("a", "Artist")]);
+        let (now, day) = (fixed_now().timestamp(), 86_400);
+        // (days before 2024-03-01, artist), at noon UTC so every zone sees
+        // the same local date.
+        let plays = [
+            (2, "Artist"),
+            (2, "Artist feat. Guest"),
+            (0, "Artist"),
+            (1, "B"),
+            (1, "B"),
+            (2, "C"),
+            (0, "C"),
+            (1, "D"),
+            (0, "E"),
+            (2, "F"),
+        ];
+        let scrobbles: Vec<StatScrobble> =
+            plays.iter().map(|&(ago, artist)| scrobble(now - ago * day, artist, "Song")).collect();
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
+
+        let over_time = &s.top_artists_over_time;
+        let artists: Vec<&str> = over_time.iter().map(|a| a.artist.name.as_str()).collect();
+        // F ties D and E on plays but ranks sixth by name.
+        assert_eq!(artists, ["Artist", "B", "C", "D", "E"]);
+        assert_eq!(over_time[0].artist.id.as_deref(), Some("a"));
+        assert_eq!(over_time[0].artist.cover_art.as_deref(), Some("ar-a"));
+
+        let labels = |points: &[TimelinePoint]| -> Vec<String> {
+            points.iter().map(|p| p.label.clone()).collect()
+        };
+        let played = |i: usize| -> Vec<(&str, u64)> {
+            let points = over_time[i].timeline.iter().filter(|p| p.count > 0);
+            points.map(|p| (p.label.as_str(), p.count)).collect()
+        };
+        for artist in over_time {
+            assert_eq!(labels(&artist.timeline), labels(&s.timeline));
+        }
+        assert_eq!(played(0), [("02-28", 2), ("03-01", 1)]);
+        assert_eq!(played(1), [("02-29", 2)]);
+        assert_eq!(played(2), [("02-28", 1), ("03-01", 1)]);
+        assert_eq!(played(3), [("02-29", 1)]);
+        assert_eq!(played(4), [("03-01", 1)]);
     }
 
     /// 2024-03-01 12:00 UTC: noon, so the local date is the same in every

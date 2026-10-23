@@ -72,6 +72,7 @@ export interface CommandMap {
   };
   library_get_genres: { args: NoArgs; result: Genre[] };
   library_get_album: { args: { id: string }; result: AlbumWithSongs };
+  library_get_song: { args: { id: string }; result: Song };
   library_get_artists: { args: NoArgs; result: ArtistsIndexes };
   library_get_artist: { args: { id: string }; result: ArtistWithAlbums };
   /** Albums the artist is credited on without being the album artist. */

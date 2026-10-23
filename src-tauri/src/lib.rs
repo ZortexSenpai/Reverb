@@ -147,6 +147,7 @@ pub fn run() {
             commands::auth::auth_sign_out,
             commands::library::library_get_albums,
             commands::library::library_get_album,
+            commands::library::library_get_song,
             commands::library::library_get_artists,
             commands::library::library_get_artist,
             commands::library::library_get_artist_appearances,

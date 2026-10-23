@@ -18,7 +18,7 @@ import { useUiStore } from "../../stores/uiStore";
 
 const itemClass =
   "flex cursor-pointer items-center gap-2.5 rounded px-2.5 py-1.5 text-sm text-text outline-none select-none data-highlighted:bg-surface-2";
-const contentClass =
+export const menuContentClass =
   "z-50 min-w-52 rounded-lg border border-edge bg-surface p-1 shadow-xl";
 
 type Kind = "album" | "artist";
@@ -162,90 +162,104 @@ function EntityItems({
 }
 
 export function AlbumContextMenu({ album, children }: { album: Album; children: ReactNode }) {
-  const t = useT();
-  const navigate = useNavigate();
-  const artists = linkableArtists(album);
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className={contentClass}>
-          <EntityItems
-            Menu={ContextMenu}
-            entity={{ kind: "album", id: album.id, name: album.name, starred: album.starred }}
-            navigateItems={
-              <>
-                <ContextMenu.Separator className="my-1 h-px bg-edge" />
-                <ContextMenu.Item
-                  className={itemClass}
-                  onSelect={() => navigate(`/albums/${album.id}`)}
-                >
-                  <Disc3 className="size-4 text-dim" /> {t("menu.goToAlbum")}
-                </ContextMenu.Item>
-                {artists.length === 1 && (
-                  <ContextMenu.Item
-                    className={itemClass}
-                    onSelect={() => navigate(`/artists/${artists[0].id}`)}
-                  >
-                    <User className="size-4 text-dim" /> {t("menu.goToArtist")}
-                  </ContextMenu.Item>
-                )}
-                {/* Several credited album artists: pick which one to open. */}
-                {artists.length > 1 && (
-                  <ContextMenu.Sub>
-                    <ContextMenu.SubTrigger className={itemClass}>
-                      <User className="size-4 text-dim" /> {t("menu.goToArtist")}
-                    </ContextMenu.SubTrigger>
-                    <ContextMenu.Portal>
-                      <ContextMenu.SubContent className="z-50 min-w-40 rounded-lg border border-edge bg-surface p-1 shadow-xl">
-                        {artists.map((artist) => (
-                          <ContextMenu.Item
-                            key={artist.id}
-                            className={itemClass}
-                            onSelect={() => navigate(`/artists/${artist.id}`)}
-                          >
-                            <span className="truncate">{artist.name}</span>
-                          </ContextMenu.Item>
-                        ))}
-                      </ContextMenu.SubContent>
-                    </ContextMenu.Portal>
-                  </ContextMenu.Sub>
-                )}
-              </>
-            }
-          />
+        <ContextMenu.Content className={menuContentClass}>
+          <AlbumMenuItems album={album} />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 }
 
-export function ArtistContextMenu({ artist, children }: { artist: Artist; children: ReactNode }) {
+/** The menu's items, inside a `ContextMenu.Content`; they mount only while it's open. */
+export function AlbumMenuItems({ album }: { album: Album }) {
   const t = useT();
   const navigate = useNavigate();
+  const artists = linkableArtists(album);
+  return (
+    <EntityItems
+      Menu={ContextMenu}
+      entity={{ kind: "album", id: album.id, name: album.name, starred: album.starred }}
+      navigateItems={
+        <>
+          <ContextMenu.Separator className="my-1 h-px bg-edge" />
+          <ContextMenu.Item
+            className={itemClass}
+            onSelect={() => navigate(`/albums/${album.id}`)}
+          >
+            <Disc3 className="size-4 text-dim" /> {t("menu.goToAlbum")}
+          </ContextMenu.Item>
+          {artists.length === 1 && (
+            <ContextMenu.Item
+              className={itemClass}
+              onSelect={() => navigate(`/artists/${artists[0].id}`)}
+            >
+              <User className="size-4 text-dim" /> {t("menu.goToArtist")}
+            </ContextMenu.Item>
+          )}
+          {/* Several credited album artists: pick which one to open. */}
+          {artists.length > 1 && (
+            <ContextMenu.Sub>
+              <ContextMenu.SubTrigger className={itemClass}>
+                <User className="size-4 text-dim" /> {t("menu.goToArtist")}
+              </ContextMenu.SubTrigger>
+              <ContextMenu.Portal>
+                <ContextMenu.SubContent className="z-50 min-w-40 rounded-lg border border-edge bg-surface p-1 shadow-xl">
+                  {artists.map((artist) => (
+                    <ContextMenu.Item
+                      key={artist.id}
+                      className={itemClass}
+                      onSelect={() => navigate(`/artists/${artist.id}`)}
+                    >
+                      <span className="truncate">{artist.name}</span>
+                    </ContextMenu.Item>
+                  ))}
+                </ContextMenu.SubContent>
+              </ContextMenu.Portal>
+            </ContextMenu.Sub>
+          )}
+        </>
+      }
+    />
+  );
+}
+
+export function ArtistContextMenu({ artist, children }: { artist: Artist; children: ReactNode }) {
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className={contentClass}>
-          <EntityItems
-            Menu={ContextMenu}
-            entity={{ kind: "artist", id: artist.id, name: artist.name, starred: artist.starred }}
-            navigateItems={
-              <>
-                <ContextMenu.Separator className="my-1 h-px bg-edge" />
-                <ContextMenu.Item
-                  className={itemClass}
-                  onSelect={() => navigate(`/artists/${artist.id}`)}
-                >
-                  <User className="size-4 text-dim" /> {t("menu.goToArtist")}
-                </ContextMenu.Item>
-              </>
-            }
-          />
+        <ContextMenu.Content className={menuContentClass}>
+          <ArtistMenuItems artist={artist} />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
+  );
+}
+
+/** The menu's items, inside a `ContextMenu.Content`; they mount only while it's open. */
+export function ArtistMenuItems({ artist }: { artist: Artist }) {
+  const t = useT();
+  const navigate = useNavigate();
+  return (
+    <EntityItems
+      Menu={ContextMenu}
+      entity={{ kind: "artist", id: artist.id, name: artist.name, starred: artist.starred }}
+      navigateItems={
+        <>
+          <ContextMenu.Separator className="my-1 h-px bg-edge" />
+          <ContextMenu.Item
+            className={itemClass}
+            onSelect={() => navigate(`/artists/${artist.id}`)}
+          >
+            <User className="size-4 text-dim" /> {t("menu.goToArtist")}
+          </ContextMenu.Item>
+        </>
+      }
+    />
   );
 }
 
@@ -255,7 +269,7 @@ export function EntityActionsMenu({ entity, trigger }: { entity: Entity; trigger
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>{trigger}</DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content align="start" className={contentClass}>
+        <DropdownMenu.Content align="start" className={menuContentClass}>
           <EntityItems Menu={DropdownMenu} entity={entity} />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

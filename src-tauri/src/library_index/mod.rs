@@ -128,6 +128,8 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
     let state = app.state::<AppState>();
     let builds_before = state.library_index.builds();
     let _building = state.library_index.building.lock().await;
+    // Before the account, so a sign-in changing between the two shows.
+    let sign_ins = state.subsonic.sign_ins();
     let account = state.account().ok_or(SubsonicError::NotConfigured)?;
     let date = today();
 
@@ -147,6 +149,11 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
 
     let songs = fetch_songs(&state.subsonic).await?;
     let artists = fetch_artists(&state.subsonic).await;
+    // Signed in anew meanwhile, some pages may be another account's. The
+    // sign-in starts a build of its own.
+    if state.subsonic.sign_ins() != sign_ins {
+        return Err(ReverbError::State("signed in anew while the library was read".into()));
+    }
     let listings = Listings { account, date, songs, artists };
     let handle = app.clone();
     let built = blocking(move || handle.state::<AppState>().library_index.save(listings)).await??;

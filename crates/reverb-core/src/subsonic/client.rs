@@ -2,7 +2,7 @@
 //! URL building for the audio engine (which does its own blocking HTTP).
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::RwLock;
 use std::time::Duration;
 
@@ -90,6 +90,8 @@ pub struct SongListRequest<'a> {
 pub struct SubsonicClient {
     http: reqwest::Client,
     creds: RwLock<Option<Credentials>>,
+    /// How many times credentials were set, see [`Self::sign_ins`].
+    sign_ins: AtomicU64,
     /// JWT for Navidrome's native REST API (used for sorted song listings).
     native_token: RwLock<Option<String>>,
     /// Genre name → native genre id cache.
@@ -115,6 +117,7 @@ impl SubsonicClient {
         Self {
             http,
             creds: RwLock::new(None),
+            sign_ins: AtomicU64::new(0),
             native_token: RwLock::new(None),
             native_genres: RwLock::new(None),
             playback_report_unsupported: AtomicBool::new(false),
@@ -123,6 +126,9 @@ impl SubsonicClient {
 
     pub fn set_credentials(&self, creds: Option<Credentials>) {
         *self.creds.write().unwrap() = creds;
+        // After the credentials: whoever reads `sign_ins` before them never
+        // sees new credentials under the old count.
+        self.sign_ins.fetch_add(1, Ordering::SeqCst);
         *self.native_token.write().unwrap() = None;
         *self.native_genres.write().unwrap() = None;
         self.playback_report_unsupported.store(false, Ordering::Relaxed);
@@ -130,6 +136,14 @@ impl SubsonicClient {
 
     pub fn credentials(&self) -> Option<Credentials> {
         self.creds.read().unwrap().clone()
+    }
+
+    /// Goes up whenever credentials are set, signing out included. Read
+    /// before [`Self::credentials`], the same count after several requests
+    /// means they all went to the account those credentials are for, even if
+    /// it was switched away from and back meanwhile.
+    pub fn sign_ins(&self) -> u64 {
+        self.sign_ins.load(Ordering::SeqCst)
     }
 
     fn require_creds(&self) -> Result<Credentials, SubsonicError> {

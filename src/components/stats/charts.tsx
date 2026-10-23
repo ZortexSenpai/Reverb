@@ -286,7 +286,8 @@ export function StatTile({
   trend,
 }: {
   label: string;
-  value: string;
+  /** The number, or a spinner while it's still coming. */
+  value: React.ReactNode;
   /** A line of context under the label. */
   hint?: string;
   /** A small badge beside the value, like its change since the Previous period. */

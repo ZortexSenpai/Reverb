@@ -27,6 +27,23 @@ export function formatLongDuration(totalSeconds: number, t: T): string {
   return t("format.minutes", { m: minutes });
 }
 
+/** "≈ 142 h": an estimated listening time, in minutes below an hour. */
+export function formatListeningTime(totalSeconds: number, t: T): string {
+  const minutes = Math.round(totalSeconds / 60);
+  if (minutes < 60) return t("format.aboutMinutes", { n: t.n(minutes) });
+  const hours = totalSeconds / 3600;
+  // A tenth of an hour says something about an afternoon, not a year.
+  const digits = hours < 10 ? 1 : 0;
+  return t("format.aboutHours", { n: t.n(hours, { maximumFractionDigits: digits }) });
+}
+
+/** "from 82% of plays": the share of the Period's plays a stat is based on. */
+export function formatCoverage(share: number, t: T): string {
+  return t("stats.coverage", {
+    share: t.n(share, { style: "percent", maximumFractionDigits: 0 }),
+  });
+}
+
 /** "44.1 kHz" — sample rates are quoted in kHz everywhere in the UI. */
 export function formatSampleRate(hz: number, t: T): string {
   return `${t.n(hz / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kHz`;

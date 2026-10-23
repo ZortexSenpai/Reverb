@@ -105,6 +105,9 @@ pub struct StatsSummary {
     /// Plays per release decade of the Period's library Songs, oldest first.
     /// Absent without a Library index.
     pub decades: Option<Breakdown<DecadePlays>>,
+    /// Time spent listening in the Period, estimated from the library Songs'
+    /// lengths. Absent without a Library index.
+    pub listening_time: Option<ListeningTime>,
 }
 
 /// The Period's #1 artist, album and Song.
@@ -204,6 +207,16 @@ pub struct DecadePlays {
     /// Its first year: 1980 for the 1980s.
     pub decade: i32,
     pub count: u64,
+}
+
+/// An estimate of the Period's listening time.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListeningTime {
+    pub secs: u64,
+    /// The share of the Period's Scrobbles whose library Song's length it
+    /// adds, from 0 to 1. The rest count at the median of those.
+    pub coverage: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
@@ -547,6 +560,7 @@ pub fn compute(
         library_available: library.is_some(),
         genres: library.map(|_| from_library.genres()),
         decades: library.map(|_| from_library.decades()),
+        listening_time: library.map(|_| from_library.listening_time()),
     }
 }
 
@@ -728,7 +742,7 @@ fn on_this_day<'a>(
 }
 
 /// Plays per genre and per release decade of the Scrobbles' library Songs,
-/// still being tallied.
+/// and their lengths, still being tallied.
 #[derive(Default)]
 struct FromLibrary<'a> {
     plays: u64,
@@ -736,6 +750,8 @@ struct FromLibrary<'a> {
     /// Plays of a Song with at least one genre.
     with_genre: u64,
     decades: BTreeMap<i32, u64>,
+    /// The length of each play of a Song whose length the library knows.
+    lengths: Vec<u32>,
 }
 
 impl<'a> FromLibrary<'a> {
@@ -752,6 +768,9 @@ impl<'a> FromLibrary<'a> {
         }
         if let Some(year) = song.year() {
             *self.decades.entry(year - year.rem_euclid(10)).or_default() += 1;
+        }
+        if let Some(length) = song.duration() {
+            self.lengths.push(length);
         }
     }
 
@@ -779,6 +798,27 @@ impl<'a> FromLibrary<'a> {
             self.decades.iter().map(|(&decade, &count)| DecadePlays { decade, count }).collect();
         // A Song has one year, so every play of a dated Song is in one decade.
         Breakdown { entries, coverage: self.share(self.decades.values().sum()) }
+    }
+
+    /// Each play at its library Song's length, and every other play at the
+    /// median of those, the most typical length there is to go by.
+    fn listening_time(&self) -> ListeningTime {
+        let known: u64 = self.lengths.iter().map(|&length| u64::from(length)).sum();
+        let unknown = self.plays - self.lengths.len() as u64;
+        let secs = known as f64 + unknown as f64 * median(&self.lengths);
+        ListeningTime { secs: secs.round() as u64, coverage: self.share(self.lengths.len() as u64) }
+    }
+}
+
+/// The middle of `values`, 0 when there are none.
+fn median(values: &[u32]) -> f64 {
+    let mut sorted = values.to_vec();
+    sorted.sort_unstable();
+    let mid = sorted.len() / 2;
+    match sorted.len() {
+        0 => 0.0,
+        n if n % 2 == 1 => f64::from(sorted[mid]),
+        _ => (f64::from(sorted[mid - 1]) + f64::from(sorted[mid])) / 2.0,
     }
 }
 
@@ -1418,13 +1458,66 @@ mod tests {
         assert_eq!(s.decades.expect("decades with an index").coverage, 0.6);
     }
 
+    /// Library Songs by "Artist", each `(title, length in seconds)`.
+    fn timed_library(songs: &[(&str, Option<u32>)]) -> LibraryIndex {
+        let songs = songs
+            .iter()
+            .map(|&(title, length)| {
+                let mut song = library::song(title, "Artist", title);
+                song.duration = length;
+                song
+            })
+            .collect();
+        LibraryIndex::new(songs, Vec::new())
+    }
+
+    fn listening_time(s: &StatsSummary) -> &ListeningTime {
+        s.listening_time.as_ref().expect("listening time with an index")
+    }
+
     #[test]
-    fn genres_and_decades_wait_for_the_index() {
+    fn listening_time_adds_up_the_library_songs_lengths() {
+        let library = timed_library(&[("Short", Some(120)), ("Long", Some(300))]);
+        let scrobbles = plays_of(&["Short", "Long", "Long"]);
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        assert_eq!(listening_time(&s).secs, 720);
+    }
+
+    #[test]
+    fn a_scrobble_without_a_library_song_counts_at_the_median_play() {
+        let library = timed_library(&[("Short", Some(100)), ("Long", Some(900))]);
+        let scrobbles = plays_of(&["Short", "Short", "Short", "Long", "Long", "Unreleased"]);
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
+
+        // The median of the five matched plays is 100 s: 300 + 1800 + 100.
+        assert_eq!(listening_time(&s).secs, 2_200);
+    }
+
+    #[test]
+    fn listening_time_says_what_share_of_the_periods_plays_it_comes_from() {
+        // A length of 0 is the server not knowing it.
+        let library =
+            timed_library(&[("Short", Some(100)), ("Long", Some(900)), ("Blank", Some(0))]);
+        let mut scrobbles = plays_of(&["Short", "Short", "Long", "Blank", "Unreleased"]);
+        // Before the week: not part of the share.
+        scrobbles.insert(0, scrobble(fixed_now().timestamp() - 30 * 86_400, "Artist", "Long"));
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
+
+        // Three of the week's five plays have their Song's length; the other
+        // two count at the median, 100 s.
+        let time = listening_time(&s);
+        assert_eq!((time.secs, time.coverage), (1_300, 0.6));
+    }
+
+    #[test]
+    fn the_numbers_from_the_library_wait_for_the_index() {
         let scrobbles = plays_of(&["Now", "Then"]);
         let s = compute(&scrobbles, None, preset(StatsRange::All), fixed_now());
 
         assert!(s.genres.is_none());
         assert!(s.decades.is_none());
+        assert!(s.listening_time.is_none());
     }
 
     /// `(name, id, cover art)` of each artist New to you lists.

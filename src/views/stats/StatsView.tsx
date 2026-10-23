@@ -18,7 +18,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { CenteredSpinner, Spinner } from "../../components/ui/Spinner";
 import { cmd } from "../../lib/ipc/commands";
-import { formatRelativeDate } from "../../lib/format";
+import { formatCoverage, formatRelativeDate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import type {
   Breakdown,
@@ -157,9 +157,7 @@ function GenreList({ genres }: { genres: GenrePlays[] }) {
 /** "from 82% of plays", for a breakdown with something in it. */
 function coverageHint(breakdown: Breakdown<unknown> | null | undefined, t: T) {
   if (!breakdown?.entries.length) return undefined;
-  return t("stats.coverage", {
-    share: t.n(breakdown.coverage, { style: "percent", maximumFractionDigits: 0 }),
-  });
+  return formatCoverage(breakdown.coverage, t);
 }
 
 /** Genres and decades of the Period's library Songs, side by side. */

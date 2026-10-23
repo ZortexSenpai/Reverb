@@ -4,8 +4,10 @@
 
 import { Children, useLayoutEffect, useRef, useState } from "react";
 import { balancedColumns } from "../../lib/balancedColumns";
+import { formatCoverage, formatListeningTime } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import type { StatsSummary } from "../../lib/subsonic/types";
+import { Spinner } from "../ui/Spinner";
 import { StatTile } from "./charts";
 
 /** Narrowest a tile gets before the strip wraps. */
@@ -41,6 +43,34 @@ function Strip({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * An estimate from the library Songs' lengths, so it says how much of the
+ * Period's plays it comes from.
+ */
+function ListeningTimeTile({ time }: { time: StatsSummary["listeningTime"] }) {
+  const t = useT();
+  const label = t("stats.listeningTime");
+  // Absent until Reverb has read the library.
+  if (!time) {
+    return (
+      <StatTile
+        label={label}
+        value={<Spinner className="my-1.5 size-5" />}
+        hint={t("stats.readingLibrary")}
+      />
+    );
+  }
+  // Not one play with a known length: nothing to estimate from.
+  if (time.coverage === 0) return <StatTile label={label} value="—" />;
+  return (
+    <StatTile
+      label={label}
+      value={formatListeningTime(time.secs, t)}
+      hint={formatCoverage(time.coverage, t)}
+    />
+  );
+}
+
 export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
   const t = useT();
   return (
@@ -50,6 +80,7 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
         value={t.n(summary.totalPlays)}
         trend={summary.timeline.map((point) => point.count)}
       />
+      <ListeningTimeTile time={summary.listeningTime} />
       <StatTile label={t("nav.artists")} value={t.n(summary.uniqueArtists)} />
       <StatTile label={t("nav.albums")} value={t.n(summary.uniqueAlbums)} />
       <StatTile label={t("nav.songs")} value={t.n(summary.uniqueSongs)} />

@@ -583,6 +583,7 @@ export const es: Messages = {
   "stats.noPlaysRefresh":
     "No hay reproducciones en este periodo: prueba a actualizar la fuente.",
   "stats.plays": "Reproducciones",
+  "stats.listeningTime": "Tiempo de escucha",
   "stats.playsPerDay": "Reproducciones por día",
   "stats.since": "desde el {date}",
   "stats.currentStreak": "Racha actual",
@@ -654,6 +655,8 @@ export const es: Messages = {
 
   "format.hoursMinutes": "{h} h {m} min",
   "format.minutes": "{m} min",
+  "format.aboutHours": "≈ {n} h",
+  "format.aboutMinutes": "≈ {n} min",
   "format.minutesAgo": "hace {n} min",
   "format.hoursAgo": "hace {n} h",
   "format.daysAgo": "hace {n} d",

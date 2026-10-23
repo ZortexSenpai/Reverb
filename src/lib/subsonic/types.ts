@@ -577,6 +577,16 @@ export interface DecadePlays {
   count: number;
 }
 
+/** An estimate of the Period's listening time. */
+export interface ListeningTime {
+  secs: number;
+  /**
+   * The share of the Period's Scrobbles whose library Song's length it adds,
+   * from 0 to 1. The rest count at the median of those.
+   */
+  coverage: number;
+}
+
 export interface StatsSummary {
   totalPlays: number;
   uniqueArtists: number;
@@ -620,6 +630,8 @@ export interface StatsSummary {
   genres?: Breakdown<GenrePlays> | null;
   /** Plays per release decade, oldest first. Absent until the Library index is there. */
   decades?: Breakdown<DecadePlays> | null;
+  /** Estimated from library Songs' lengths. Absent until the Library index is there. */
+  listeningTime?: ListeningTime | null;
 }
 
 export interface LastfmStatus {

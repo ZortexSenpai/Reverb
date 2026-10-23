@@ -444,19 +444,34 @@ export function StatsView() {
               </Section>
             </div>
 
-            <Section
-              title={t("stats.longestSessions")}
-              hint={
-                summary.sessions.count > 0
-                  ? t("stats.sessionsHint", {
-                      sessions: t("count.sessions", { n: summary.sessions.count }),
-                      median: summary.sessions.medianTracks,
-                    })
-                  : undefined
-              }
-            >
-              <SessionIntervals sessions={summary.sessions.longest} />
-            </Section>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Section
+                title={t("stats.longestSessions")}
+                hint={
+                  summary.sessions.count > 0
+                    ? t("stats.sessionsHint", {
+                        sessions: t("count.sessions", { n: summary.sessions.count }),
+                        median: summary.sessions.medianTracks,
+                      })
+                    : undefined
+                }
+              >
+                <SessionIntervals sessions={summary.sessions.longest} />
+              </Section>
+              {summary.obsession && (
+                <Section title={t("stats.obsession")} hint={t("stats.obsessionHint")}>
+                  {/* `date` is a plain "2026-08-28", read at local midnight so
+                      the timezone can't shift it a day. */}
+                  <StatsEntry
+                    kind="song"
+                    item={summary.obsession.song}
+                    layout="hero"
+                    count={summary.obsession.song.count}
+                    detail={t.d(`${summary.obsession.date}T00:00:00`, { dateStyle: "medium" })}
+                  />
+                </Section>
+              )}
+            </div>
 
             {/* Discovery needs a window to be meaningful, so the all-time
                 range leaves it out. */}

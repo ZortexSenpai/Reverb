@@ -82,10 +82,15 @@ pub struct StatsSummary {
     pub busiest_day: Option<TimelinePoint>,
     /// Longest run of consecutive days with at least one play.
     pub longest_streak_days: u32,
+    /// The run of days with a Scrobble up to today, or up to yesterday while
+    /// today has none yet. Over every Scrobble, whatever the Period.
+    pub current_streak_days: u32,
     /// One entry per day for the calendar grid, oldest first, `%Y-%m-%d`
     /// labels. Empty for windows too short to be worth a calendar.
     pub daily: Vec<TimelinePoint>,
     pub sessions: SessionStats,
+    /// Absent when the Period has no plays.
+    pub obsession: Option<Obsession>,
     /// Absent for the all-time range, where every artist is "new".
     pub discovery: Option<Discovery>,
     /// Same calendar day in earlier years, most recent first. Independent of
@@ -136,6 +141,16 @@ pub struct Session {
     pub span_minutes: u64,
     /// Whoever dominated the sitting.
     pub top_artist: String,
+}
+
+/// The Song played most on a single day of the Period.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Obsession {
+    /// Its `count` is that day's plays.
+    pub song: TopEntry,
+    /// The local date, `%Y-%m-%d`.
+    pub date: String,
 }
 
 /// First-ever plays that fall inside the window — what the period introduced.
@@ -368,18 +383,22 @@ pub fn compute(
     let mut by_weekday = vec![0u64; 7];
     let mut buckets: HashMap<String, u64> = HashMap::new();
     let mut day_counts: HashMap<i32, u64> = HashMap::new();
+    let mut songs_by_day: HashMap<i32, Tally> = HashMap::new();
 
     for s in &filtered {
+        let song = grouper.song(s);
         artists.add(grouper.artist(s));
-        songs.add(grouper.song(s));
+        songs.add(song);
         if let Some(album) = grouper.album(s) {
             albums.add(album);
         }
         from_library.add(grouper.library_song(s));
         if let Some(local) = Local.timestamp_opt(s.ts, 0).single() {
+            let day = local.date_naive().num_days_from_ce();
             by_hour[local.hour() as usize] += 1;
             by_weekday[local.weekday().num_days_from_monday() as usize] += 1;
-            *day_counts.entry(local.date_naive().num_days_from_ce()).or_default() += 1;
+            *day_counts.entry(day).or_default() += 1;
+            songs_by_day.entry(day).or_default().add(song);
             *buckets.entry(bucket.key(local.naive_local())).or_default() += 1;
         }
     }
@@ -403,6 +422,17 @@ pub fn compute(
         longest_streak_days = longest_streak_days.max(run);
         prev = Some(day);
     }
+
+    // Each day's most played Song, then the day it was played most: a tie
+    // goes to the more recent day.
+    let obsession = songs_by_day
+        .into_iter()
+        .filter_map(|(day, songs)| Some((day, songs.ranked().into_iter().next()?)))
+        .max_by_key(|(day, song)| (song.count, *day))
+        .and_then(|(day, song)| {
+            let date = NaiveDate::from_num_days_from_ce_opt(day)?;
+            Some(Obsession { song, date: date.format("%Y-%m-%d").to_string() })
+        });
 
     let recent: Vec<RecentPlay> = filtered
         .iter()
@@ -521,8 +551,10 @@ pub fn compute(
         recent,
         busiest_day,
         longest_streak_days,
+        current_streak_days: current_streak(scrobbles, now.date_naive()),
         daily,
         sessions,
+        obsession,
         discovery,
         on_this_day,
         library_available: library.is_some(),
@@ -643,6 +675,31 @@ fn discover<'a>(
         new_songs: first_song.values().filter(|ts| in_window(**ts)).count() as u64,
         first_artists,
     }
+}
+
+/// Days in a row with a Scrobble, back from `today`.
+fn current_streak(all: &[StatScrobble], today: NaiveDate) -> u32 {
+    // Scrobbles are chronological, so walking back meets each day in turn.
+    let mut days = all.iter().rev().filter_map(|s| local_naive(s.ts)).map(|t| t.date());
+    let Some(mut last) = days.find(|day| *day <= today) else { return 0 };
+    // Nothing today yet leaves the streak running; nothing since before
+    // yesterday ends it.
+    if today.pred_opt().is_some_and(|yesterday| last < yesterday) {
+        return 0;
+    }
+    let mut streak = 1;
+    for day in days {
+        // Another Scrobble on a day already counted.
+        if day >= last {
+            continue;
+        }
+        if Some(day) != last.pred_opt() {
+            break;
+        }
+        streak += 1;
+        last = day;
+    }
+    streak
 }
 
 /// One earlier year's plays on today's date, still being tallied.
@@ -1568,5 +1625,159 @@ mod tests {
                 ("Song - 2011 Remaster", "Artist", Some("Album"), Some("s1"), Some("al-al1")),
             ]
         );
+    }
+
+    /// A minute before [`fixed_now`]'s time of day, `days` days earlier.
+    fn days_ago(days: i64) -> i64 {
+        fixed_now().timestamp() - days * 86_400 - 60
+    }
+
+    #[test]
+    fn the_current_streak_runs_through_today() {
+        let scrobbles = vec![
+            // A day without Scrobbles ends the earlier run.
+            scrobble(days_ago(6), "A", "one"),
+            scrobble(days_ago(5), "A", "one"),
+            scrobble(days_ago(3), "A", "one"),
+            scrobble(days_ago(2), "A", "one"),
+            scrobble(days_ago(1), "A", "one"),
+            scrobble(days_ago(1), "A", "two"),
+            scrobble(days_ago(0), "A", "one"),
+        ];
+        let s = compute(&scrobbles, None, preset(StatsRange::All), fixed_now());
+
+        assert_eq!(s.current_streak_days, 4);
+    }
+
+    #[test]
+    fn the_current_streak_runs_through_yesterday_while_today_has_no_scrobbles() {
+        let scrobbles = vec![
+            scrobble(days_ago(3), "A", "one"),
+            scrobble(days_ago(2), "A", "one"),
+            scrobble(days_ago(1), "A", "one"),
+        ];
+        let s = compute(&scrobbles, None, preset(StatsRange::All), fixed_now());
+
+        assert_eq!(s.current_streak_days, 3);
+    }
+
+    #[test]
+    fn a_day_without_scrobbles_before_yesterday_breaks_the_current_streak() {
+        let scrobbles = vec![
+            scrobble(days_ago(4), "A", "one"),
+            scrobble(days_ago(3), "A", "one"),
+            scrobble(days_ago(2), "A", "one"),
+        ];
+        let s = compute(&scrobbles, None, preset(StatsRange::All), fixed_now());
+
+        assert_eq!(s.current_streak_days, 0);
+        // The run still counts toward the longest one.
+        assert_eq!(s.longest_streak_days, 3);
+    }
+
+    #[test]
+    fn the_current_streak_is_the_same_whatever_the_period() {
+        let scrobbles: Vec<StatScrobble> =
+            (0..10).rev().map(|days| scrobble(days_ago(days), "A", "one")).collect();
+        let streak = |query| compute(&scrobbles, None, query, fixed_now()).current_streak_days;
+
+        assert_eq!(streak(preset(StatsRange::Day)), 10);
+        assert_eq!(streak(preset(StatsRange::Week)), 10);
+        assert_eq!(streak(preset(StatsRange::All)), 10);
+        // A Period long before the streak began, with no Scrobbles of its own.
+        let year_before = StatsQuery {
+            range: StatsRange::Custom,
+            from: Some(days_ago(730)),
+            to: Some(days_ago(365)),
+        };
+        assert_eq!(streak(year_before), 10);
+    }
+
+    /// The local date `days` before [`fixed_now`]'s, as the summary labels it.
+    fn date_ago(days: u64) -> String {
+        let date = fixed_now().date_naive() - chrono::Days::new(days);
+        date.format("%Y-%m-%d").to_string()
+    }
+
+    /// `(name, count, date)` of the Period's Obsession.
+    fn obsession(s: &StatsSummary) -> (&str, u64, &str) {
+        let obsession = s.obsession.as_ref().expect("a Period with plays has an Obsession");
+        (obsession.song.name.as_str(), obsession.song.count, obsession.date.as_str())
+    }
+
+    #[test]
+    fn the_obsession_is_the_song_played_most_on_one_day() {
+        let scrobbles = vec![
+            // A bigger binge, but before the week.
+            scrobble(days_ago(30), "A", "Binge"),
+            scrobble(days_ago(30), "A", "Binge"),
+            scrobble(days_ago(30), "A", "Binge"),
+            scrobble(days_ago(30), "A", "Binge"),
+            // The most plays in the week, but spread over days.
+            scrobble(days_ago(4), "A", "Steady"),
+            scrobble(days_ago(4), "A", "Steady"),
+            scrobble(days_ago(3), "A", "Steady"),
+            scrobble(days_ago(3), "A", "Steady"),
+            scrobble(days_ago(2), "B", "Hook"),
+            scrobble(days_ago(2), "A", "Steady"),
+            scrobble(days_ago(2), "B", "Hook"),
+            scrobble(days_ago(2), "B", "Hook"),
+            scrobble(days_ago(1), "A", "Steady"),
+        ];
+        let s = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
+
+        assert_eq!(obsession(&s), ("Hook", 3, date_ago(2).as_str()));
+        assert_eq!(s.obsession.unwrap().song.artist.as_deref(), Some("B"));
+    }
+
+    #[test]
+    fn an_obsession_tie_goes_to_the_more_recent_day() {
+        // Several earlier days, so the pick can't come down to which is seen first.
+        let binges = [(6, "Alpha"), (5, "Bravo"), (4, "Charlie"), (1, "Zulu"), (3, "Echo")];
+        let mut scrobbles = Vec::new();
+        for (days, track) in binges {
+            scrobbles.push(scrobble(days_ago(days), "A", track));
+            scrobbles.push(scrobble(days_ago(days), "A", track));
+        }
+        // Scrobbles come oldest first.
+        scrobbles.sort_by_key(|s| s.ts);
+        let s = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
+
+        assert_eq!(obsession(&s), ("Zulu", 2, date_ago(1).as_str()));
+    }
+
+    #[test]
+    fn an_obsession_groups_by_library_match() {
+        let library = merge_library();
+        let scrobbles = vec![
+            // One library Song, scrobbled under two titles.
+            scrobble(days_ago(3), "Artist", "Song"),
+            scrobble(days_ago(3), "Artist", "Song - 2011 Remaster"),
+            scrobble(days_ago(3), "Artist", "Song"),
+            // By name alone, this more recent day would tie and win.
+            scrobble(days_ago(1), "Artist", "Other"),
+            scrobble(days_ago(1), "Artist", "Other"),
+        ];
+        let s = compute(&scrobbles, Some(&library), preset(StatsRange::Week), fixed_now());
+
+        assert_eq!(obsession(&s), ("Song - 2011 Remaster", 3, date_ago(3).as_str()));
+        let song = s.obsession.unwrap().song;
+        assert_eq!((song.id.as_deref(), song.cover_art.as_deref()), (Some("s1"), Some("al-al1")));
+
+        // Without the index, the more recent day wins the tie.
+        let by_name = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
+        assert_eq!(obsession(&by_name), ("Other", 2, date_ago(1).as_str()));
+    }
+
+    #[test]
+    fn a_period_without_scrobbles_has_no_obsession() {
+        let scrobbles = vec![
+            scrobble(days_ago(30), "A", "one"),
+            scrobble(days_ago(30), "A", "one"),
+        ];
+
+        let week = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());
+        assert!(week.obsession.is_none());
+        assert!(compute(&[], None, preset(StatsRange::All), fixed_now()).obsession.is_none());
     }
 }

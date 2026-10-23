@@ -3,8 +3,9 @@
 //! read it, and so do stats.
 //!
 //! It's built from the account's song listing and artist listing, kept on
-//! disk, and rebuilt once a day, after a scan started from Reverb finishes,
-//! and for another account. Each new index is announced to the UI.
+//! disk for each account, and rebuilt once a day, after a scan started from
+//! Reverb finishes, and for another account. Each new index is announced to
+//! the UI.
 
 pub mod index;
 pub mod matcher;
@@ -21,10 +22,12 @@ use reverb_core::subsonic::{SubsonicClient, SubsonicError};
 use tauri::{AppHandle, Emitter, Manager};
 
 use self::index::LibraryIndex;
+use self::store::Listings;
 use crate::error::ReverbError;
 use crate::state::AppState;
 
-/// Told to the UI whenever a new index is current.
+/// Told to the UI whenever a new index is built. A saved one needs no
+/// telling: [`current`] reads it before answering.
 pub const READY_EVENT: &str = "library:index-ready";
 
 const LIBRARY_PAGE: u32 = 1000;
@@ -57,18 +60,31 @@ pub async fn refresh(app: &AppHandle) -> Result<Arc<LibraryIndex>, ReverbError> 
     ensure(app, Need::Fresh).await
 }
 
-/// The signed-in account's index as it stands, without waiting: `None`
-/// until its first one is ready. When it's missing or from an earlier day, a
-/// build starts in the background and [`READY_EVENT`] tells when it's done.
+/// The signed-in account's index as it stands, without waiting for a build:
+/// its saved one (yesterday's too), else `None` until its first one is
+/// built. When it's missing or from an earlier day, a build starts in the
+/// background and [`READY_EVENT`] tells when it's done. Blocking: the saved
+/// index is read from disk the first time it's asked for.
 pub fn current(app: &AppHandle) -> Option<Arc<LibraryIndex>> {
     let state = app.state::<AppState>();
     let account = state.account()?;
-    let built = state.library_index.current().filter(|built| built.account == account);
+    let built = state.library_index.get(&account);
     let stale = built.as_ref().is_none_or(|built| built.date != today());
     if stale && state.library_index.building.try_lock().is_ok() {
         tauri::async_runtime::spawn(warm_up(app.clone()));
     }
     built.map(|built| built.index)
+}
+
+/// Read the signed-in account's saved index at startup, in the background,
+/// so it's at hand by the time the stats page asks.
+pub fn load_saved(app: AppHandle) {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        if let Some(account) = state.account() {
+            state.library_index.get(&account);
+        }
+    });
 }
 
 /// Make sure the index is current, in the background: at startup, and when
@@ -115,11 +131,8 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
     let account = state.account().ok_or(SubsonicError::NotConfigured)?;
     let date = today();
 
-    let handle = app.clone();
-    let saved = blocking(move || handle.state::<AppState>().library_index.read_once()).await?;
-    if saved.is_some_and(|saved| saved.account == account) {
-        announce(app);
-    }
+    let (handle, signed_in) = (app.clone(), account.clone());
+    let current = blocking(move || handle.state::<AppState>().library_index.get(&signed_in)).await?;
     // A build that finished while this call waited was under way when it
     // arrived.
     let shared_build = state.library_index.builds() != builds_before;
@@ -128,18 +141,15 @@ async fn ensure(app: &AppHandle, need: Need) -> Result<Arc<LibraryIndex>, Reverb
         Need::Fresh => shared_build,
         Need::Rebuilt => false,
     };
-    let current = state.library_index.current().filter(|built| built.account == account);
     if let Some(built) = current.filter(|built| fresh_enough && built.date == date) {
         return Ok(built.index);
     }
 
     let songs = fetch_songs(&state.subsonic).await?;
     let artists = fetch_artists(&state.subsonic).await;
+    let listings = Listings { account, date, songs, artists };
     let handle = app.clone();
-    let built = blocking(move || {
-        handle.state::<AppState>().library_index.save(account, date, songs, artists)
-    })
-    .await??;
+    let built = blocking(move || handle.state::<AppState>().library_index.save(listings)).await??;
     log::info!("library index: {} songs", built.index.songs().len());
     announce(app);
     Ok(built.index)

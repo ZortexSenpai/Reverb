@@ -42,8 +42,8 @@ export interface EventMap {
   /** A new set of mixes replaced the cached one in the background. */
   "mixes:updated": null;
   /**
-   * A new Library index is ready: read from disk at startup, or built for a
-   * new day, after a scan started from Reverb, or for another account.
+   * A new Library index is ready: built for a new day, after a scan started
+   * from Reverb, or for another account.
    */
   "library:index-ready": null;
 }

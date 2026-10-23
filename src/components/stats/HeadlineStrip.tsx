@@ -130,11 +130,11 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
       />
       <StatTile
         label={t("stats.playsPerDay")}
-        change={changeBadge(changes?.playsPerDay)}
         value={t.n(summary.playsPerDay, {
           minimumFractionDigits: 1,
           maximumFractionDigits: 1,
         })}
+        change={changeBadge(changes?.playsPerDay)}
         hint={
           summary.firstTs
             ? t("stats.since", {

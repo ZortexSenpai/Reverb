@@ -100,7 +100,7 @@ function Label({ children }: { children: React.ReactNode }) {
 /**
  * One artist, album or Song. `tile` stacks big art over the text, for grids;
  * `row` puts a small cover beside it, for lists; `hero` sets large art beside
- * a large name, for the one entry that leads the page.
+ * a large name, for an entry that stands alone, like the one leading the page.
  */
 export function StatsEntry({
   kind,

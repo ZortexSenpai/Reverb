@@ -68,6 +68,11 @@ export function HeadlineStrip({ summary }: { summary: StatsSummary }) {
         }
       />
       <StatTile
+        label={t("stats.currentStreak")}
+        value={t("stats.streakDays", { n: summary.currentStreakDays })}
+        hint={t("stats.currentStreakHint")}
+      />
+      <StatTile
         label={t("stats.longestStreak")}
         value={t("stats.streakDays", { n: summary.longestStreakDays })}
         hint={t("stats.streakHint")}

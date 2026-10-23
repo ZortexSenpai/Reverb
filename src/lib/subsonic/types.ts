@@ -532,6 +532,14 @@ export interface SessionStats {
   longest: ListeningSession[];
 }
 
+/** The Song played most on a single day of the Period. */
+export interface Obsession {
+  /** Its `count` is that day's plays. */
+  song: TopEntry;
+  /** The local date, `YYYY-MM-DD`. */
+  date: string;
+}
+
 /** An artist first heard in the Period. */
 export interface FirstHeard extends StatsItem {
   ts: number;
@@ -590,9 +598,16 @@ export interface StatsSummary {
   recent: RecentPlay[];
   busiestDay?: TimelinePoint | null;
   longestStreakDays: number;
+  /**
+   * Days in a row with a Scrobble up to today, or up to yesterday while today
+   * has none yet. Whatever the Period.
+   */
+  currentStreakDays: number;
   /** One entry per day for the calendar; empty for short ranges. */
   daily: TimelinePoint[];
   sessions: SessionStats;
+  /** Absent when the Period has no plays. */
+  obsession?: Obsession | null;
   /** Absent for the all-time range, where everything is "new". */
   discovery?: Discovery | null;
   onThisDay: OnThisDay[];

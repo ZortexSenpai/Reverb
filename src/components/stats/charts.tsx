@@ -1,13 +1,13 @@
 // Chart primitives for the stats page. Each dataset gets the form that fits
 // its job: area chart for change-over-time, radial clock for the cyclical
-// hours, horizontal bars for the 7 weekdays, ranked bar-lists for tops.
-// Everything plots ONE measure (plays): a single accent hue carries
-// magnitude, text wears text tokens, grids stay recessive, and every mark
-// has a hover target with a tooltip.
+// hours, horizontal bars for the 7 weekdays. Everything plots ONE measure
+// (plays): a single accent hue carries magnitude, text wears text tokens,
+// grids stay recessive, and every mark has a hover target with a tooltip.
+// Top lists are entries with art, not charts (StatsEntry).
 
 import { useMemo, useRef, useState } from "react";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
-import type { ListeningSession, TimelinePoint, TopEntry } from "../../lib/subsonic/types";
+import type { ListeningSession, TimelinePoint } from "../../lib/subsonic/types";
 
 // ---------------------------------------------------------------------------
 // Area chart (timeline)
@@ -258,46 +258,6 @@ export function BarRows({ items }: { items: { label: string; count: number }[] }
   );
 }
 
-// ---------------------------------------------------------------------------
-// Ranked list (tops)
-// ---------------------------------------------------------------------------
-
-export function TopList({ entries }: { entries: TopEntry[] }) {
-  const t = useT();
-  const max = Math.max(1, ...entries.map((e) => e.count));
-  if (entries.length === 0) {
-    return <p className="px-1 py-4 text-xs text-faint">{t("stats.noPlays")}</p>;
-  }
-  return (
-    <ol className="flex flex-col gap-1.5">
-      {entries.map((entry, i) => (
-        <li key={`${entry.name}-${entry.artist ?? ""}`} className="group">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className={`min-w-0 truncate ${i === 0 ? "text-[15px] font-medium" : "text-sm"}`}>
-              <span
-                className={`mr-1.5 text-xs tabular-nums ${
-                  i < 3 ? "font-semibold text-accent" : "text-faint"
-                }`}
-              >
-                {i + 1}.
-              </span>
-              {entry.name}
-              {entry.artist && <span className="text-dim"> — {entry.artist}</span>}
-            </span>
-            <span className="shrink-0 text-xs tabular-nums text-dim">{t.n(entry.count)}</span>
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-accent"
-              style={{ width: `${(entry.count / max) * 100}%` }}
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 export function StatTile({
   label,
   value,
@@ -525,7 +485,7 @@ export function CalendarHeatmap({ days }: { days: TimelinePoint[] }) {
 // ---------------------------------------------------------------------------
 
 const DAY_HOURS = 24;
-/** Date+artist · the 24-hour track · tracks and length. */
+/** Date+artist · the 24-hour track · songs and length. */
 const SESSION_COLUMNS = "6.5rem 1fr 9rem";
 
 export function SessionIntervals({ sessions }: { sessions: ListeningSession[] }) {
@@ -578,7 +538,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
               />
             </div>
             <span className="text-right whitespace-nowrap tabular-nums text-dim">
-              {t("count.tracks", { n: session.tracks })}
+              {t("count.songs", { n: session.tracks })}
               <span className="text-faint"> · {formatSpan(session.spanMinutes, t)}</span>
             </span>
           </div>

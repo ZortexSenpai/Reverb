@@ -474,9 +474,17 @@ export interface ReverbErrorPayload {
 
 export type StatsRange = "day" | "week" | "month" | "year" | "all" | "custom";
 
-export interface TopEntry {
+/** An artist, album or Song on the stats page. */
+export interface StatsItem {
   name: string;
+  /** For album and Song entries. */
   artist?: string | null;
+  /** The library item's id and cover-art id, for a Library match. */
+  id?: string | null;
+  coverArt?: string | null;
+}
+
+export interface TopEntry extends StatsItem {
   count: number;
 }
 
@@ -528,13 +536,13 @@ export interface OnThisDay {
 export interface StatsSummary {
   totalPlays: number;
   uniqueArtists: number;
-  uniqueTracks: number;
+  uniqueSongs: number;
   uniqueAlbums: number;
   firstTs?: number | null;
   lastTs?: number | null;
   playsPerDay: number;
   topArtists: TopEntry[];
-  topTracks: TopEntry[];
+  topSongs: TopEntry[];
   topAlbums: TopEntry[];
   byHour: number[];
   byWeekday: number[];
@@ -548,6 +556,11 @@ export interface StatsSummary {
   /** Absent for the all-time range, where everything is "new". */
   discovery?: Discovery | null;
   onThisDay: OnThisDay[];
+  /**
+   * Whether the Library index was there to match Scrobbles against. Until it
+   * is, entries are grouped by name and have no art.
+   */
+  libraryAvailable: boolean;
 }
 
 export interface LastfmStatus {

@@ -1,12 +1,17 @@
 //! The Library index itself: the account's library Songs and Artists,
 //! indexed by name so Scrobbles find their Library match.
 
+// Mixes only match Songs; the rest is for the stats aggregation.
+#![cfg_attr(not(test), expect(dead_code, reason = "the stats aggregation reads the lookups"))]
+
 use std::collections::{HashMap, HashSet};
 
 use reverb_core::subsonic::models::{ArtistId3, Child};
 
 use super::matcher::{credit_keys, credited_artists, fold, loose_title, name_key};
 
+/// One account's library, ready for matching. Build it with
+/// [`LibraryIndex::new`]; tests do so from hand-built Songs.
 pub struct LibraryIndex {
     /// Each library Song once, in listing order.
     songs: Vec<Child>,
@@ -101,7 +106,8 @@ impl LibraryIndex {
     /// The library Artist a Scrobble credited to `artist` matches: the
     /// whole credit first, then the first of its artists in the library.
     pub fn find_artist(&self, artist: &str) -> Option<&LibraryArtist> {
-        credit_keys(artist).iter().find_map(|key| self.artist_names.get(key)).map(|&i| &self.artists[i])
+        let at = credit_keys(artist).iter().find_map(|key| self.artist_names.get(key).copied())?;
+        Some(&self.artists[at])
     }
 
     /// Every library Song, each once.

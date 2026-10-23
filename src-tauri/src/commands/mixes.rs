@@ -1,24 +1,20 @@
 //! "Made for you" mixes (see `crate::mixes`). Making them reads the whole
-//! library listing, so a set is cached and only rebuilt for a new day, a
+//! Library index, so a set is cached and only rebuilt for a new day, a
 //! different account, or on request.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use chrono::Local;
-use reverb_core::subsonic::client::SongListRequest;
-use reverb_core::subsonic::models::Child;
 use reverb_core::subsonic::{SubsonicClient, SubsonicError};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::ReverbError;
+use crate::library_index;
 use crate::mixes::compute::{build_profile, generate, Mix, MixKind};
 use crate::mixes::store::MixSet;
 use crate::state::AppState;
 
-const LIBRARY_PAGE: u32 = 1000;
-/// Past this, the library listing stops (and mixes come from what was read).
-const MAX_LIBRARY_SONGS: u32 = 250_000;
 /// Favourite artists whose similar artists get looked up.
 const SIMILAR_SEEDS: usize = 12;
 
@@ -59,9 +55,8 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
         return Ok((set.mixes.clone(), false));
     }
 
-    let songs = fetch_library(&state.subsonic).await?;
+    let library = library_index::get(app).await?;
     let scrobbles = state.stats.all_scrobbles()?;
-    let library = crate::library_index::index::LibraryIndex::new(songs, Vec::new());
     let profile = build_profile(&library, &scrobbles, now.timestamp());
     let (library, unplayed) = profile.coverage();
     log::info!(
@@ -86,25 +81,6 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
 
     state.mixes.save(MixSet { account, date, week, has_history, mixes: mixes.clone() })?;
     Ok((mixes, true))
-}
-
-/// Every song with its play stats, page by page through the song listing
-/// (Navidrome's native API, or search3 on other servers).
-async fn fetch_library(client: &SubsonicClient) -> Result<Vec<Child>, ReverbError> {
-    let mut songs = Vec::new();
-    let mut offset = 0;
-    while offset < MAX_LIBRARY_SONGS {
-        let page = client
-            .get_songs_sorted(&SongListRequest { size: LIBRARY_PAGE, offset, ..Default::default() })
-            .await?;
-        let count = page.songs.len() as u32;
-        songs.extend(page.songs);
-        offset += LIBRARY_PAGE;
-        if count < LIBRARY_PAGE || page.total.is_some_and(|total| u64::from(offset) >= total) {
-            break;
-        }
-    }
-    Ok(songs)
 }
 
 /// Similar artists for each seed, by name (from Navidrome's getArtistInfo2,

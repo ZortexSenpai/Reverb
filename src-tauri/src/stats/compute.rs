@@ -12,15 +12,24 @@ use super::grouping::{Group, GroupKey, Grouper, Tally};
 use super::store::StatScrobble;
 use crate::library_index::index::{LibraryIndex, LibrarySong};
 
+/// What an entry's Library match gives it: the library item's id, for links
+/// and menus, and its cover-art id.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryMatch {
+    pub id: String,
+    pub cover_art: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopEntry {
     pub name: String,
     /// Artist for album and Song entries.
     pub artist: Option<String>,
-    /// The library item's id and cover-art id, for a Library match.
-    pub id: Option<String>,
-    pub cover_art: Option<String>,
+    /// Absent without a Library match.
+    #[serde(flatten)]
+    pub matched: Option<LibraryMatch>,
     pub count: u64,
     /// Places moved since the Previous period, for a top-list entry. Absent
     /// for all time, which has none.
@@ -62,9 +71,9 @@ pub struct RecentPlay {
     pub name: String,
     pub artist: String,
     pub album: Option<String>,
-    /// The library Song's id and cover-art id, for a Library match.
-    pub id: Option<String>,
-    pub cover_art: Option<String>,
+    /// The library Song, absent without a Library match.
+    #[serde(flatten)]
+    pub matched: Option<LibraryMatch>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -205,9 +214,9 @@ pub struct Discovery {
 #[serde(rename_all = "camelCase")]
 pub struct FirstHeard {
     pub name: String,
-    /// The library Artist's id and cover-art id, for a Library match.
-    pub id: Option<String>,
-    pub cover_art: Option<String>,
+    /// The library Artist, absent without a Library match.
+    #[serde(flatten)]
+    pub matched: Option<LibraryMatch>,
     pub ts: i64,
     /// Scrobbles since, within the Period.
     pub plays: u64,
@@ -484,8 +493,7 @@ pub fn compute(
                 name: song.name.to_owned(),
                 artist: song.artist.unwrap_or(&s.artist).to_owned(),
                 album: grouper.album(s).map(|album| album.name.to_owned()),
-                id: song.id.map(str::to_owned),
-                cover_art: song.cover_art.map(str::to_owned),
+                matched: song.matched.map(Into::into),
             }
         })
         .collect();
@@ -832,8 +840,7 @@ fn discover<'a>(
         .filter(|(_, ts, _)| in_period(*ts))
         .map(|(artist, ts, plays)| FirstHeard {
             name: artist.name.to_owned(),
-            id: artist.id.map(str::to_owned),
-            cover_art: artist.cover_art.map(str::to_owned),
+            matched: artist.matched.map(Into::into),
             ts,
             plays,
         })
@@ -1275,8 +1282,7 @@ mod tests {
         let artists: Vec<&str> = over_time.iter().map(|a| a.artist.name.as_str()).collect();
         // F ties D and E on plays but ranks sixth by name.
         assert_eq!(artists, ["Artist", "B", "C", "D", "E"]);
-        assert_eq!(over_time[0].artist.id.as_deref(), Some("a"));
-        assert_eq!(over_time[0].artist.cover_art.as_deref(), Some("ar-a"));
+        assert_eq!(ids(&over_time[0].artist.matched), (Some("a"), Some("ar-a")));
 
         let labels = |points: &[TimelinePoint]| -> Vec<String> {
             points.iter().map(|p| p.label.clone()).collect()
@@ -1325,6 +1331,12 @@ mod tests {
         scrobbles
     }
 
+    /// A Library match's `(id, cover art)`, both absent without one.
+    fn ids(matched: &Option<LibraryMatch>) -> (Option<&str>, Option<&str>) {
+        let matched = matched.as_ref();
+        (matched.map(|m| m.id.as_str()), matched.and_then(|m| m.cover_art.as_deref()))
+    }
+
     fn names(entries: &[TopEntry]) -> Vec<(&str, Option<&str>, u64)> {
         entries.iter().map(|e| (e.name.as_str(), e.artist.as_deref(), e.count)).collect()
     }
@@ -1358,7 +1370,7 @@ mod tests {
             ]
         );
         let all = s.top_artists.iter().chain(&s.top_songs).chain(&s.top_albums);
-        assert!(all.into_iter().all(|e| e.id.is_none() && e.cover_art.is_none()));
+        assert!(all.into_iter().all(|e| e.matched.is_none()));
     }
 
     /// The library [`merge_candidates`] match: one album "Album" by Artist
@@ -1385,8 +1397,7 @@ mod tests {
         assert!(s.library_available);
         let artist = entry(&s.top_artists, "Artist");
         assert_eq!(artist.count, 3);
-        assert_eq!(artist.id.as_deref(), Some("a"));
-        assert_eq!(artist.cover_art.as_deref(), Some("ar-a"));
+        assert_eq!(ids(&artist.matched), (Some("a"), Some("ar-a")));
         assert!(s.top_artists.iter().all(|e| e.name != "Artist feat. Guest"));
     }
 
@@ -1397,8 +1408,7 @@ mod tests {
 
         let song = entry(&s.top_songs, "Song - 2011 Remaster");
         assert_eq!((song.artist.as_deref(), song.count), (Some("Artist"), 2));
-        assert_eq!(song.id.as_deref(), Some("s1"));
-        assert_eq!(song.cover_art.as_deref(), Some("al-al1"));
+        assert_eq!(ids(&song.matched), (Some("s1"), Some("al-al1")));
         assert!(s.top_songs.iter().all(|e| e.name != "Song"));
         assert_eq!(s.unique_songs, 4);
     }
@@ -1410,8 +1420,7 @@ mod tests {
 
         let hits = entry(&s.top_albums, "Hits");
         assert_eq!(hits.count, 2);
-        assert_eq!(hits.id.as_deref(), Some("comp"));
-        assert_eq!(hits.cover_art.as_deref(), Some("al-comp"));
+        assert_eq!(ids(&hits.matched), (Some("comp"), Some("al-comp")));
         // Its Songs are by different artists, so it names none of them.
         assert_eq!(hits.artist, None);
         // "Artist feat. Guest" is on Artist's album too.
@@ -1428,17 +1437,17 @@ mod tests {
         let hero = s.hero.expect("a Period with plays has a hero");
         let artist = &hero.artist;
         assert_eq!((artist.name.as_str(), artist.count), ("Artist", 3));
-        assert_eq!((artist.id.as_deref(), artist.cover_art.as_deref()), (Some("a"), Some("ar-a")));
+        assert_eq!(ids(&artist.matched), (Some("a"), Some("ar-a")));
         // 3 of the Period's 5 plays.
         assert_eq!(hero.share, 0.6);
         let album = hero.album.expect("the Scrobbles name albums");
         assert_eq!(
-            (album.name.as_str(), album.id.as_deref(), album.count),
+            (album.name.as_str(), ids(&album.matched).0, album.count),
             ("Album", Some("al1"), 3)
         );
         let song = hero.song.expect("the Period has Songs");
         assert_eq!(
-            (song.name.as_str(), song.id.as_deref(), song.count),
+            (song.name.as_str(), ids(&song.matched).0, song.count),
             ("Song - 2011 Remaster", Some("s1"), 2)
         );
     }
@@ -1463,7 +1472,7 @@ mod tests {
         assert!(single.album.is_none());
         assert_eq!(single.song.map(|s| s.name).as_deref(), Some("one"));
         // An artist with no Library match: the page shows a monogram.
-        assert_eq!((single.artist.id, single.artist.cover_art), (None, None));
+        assert!(single.artist.matched.is_none());
 
         // No plays, no hero.
         assert!(hero(&[]).is_none());
@@ -1482,7 +1491,7 @@ mod tests {
         let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
 
         let artists: Vec<(&str, Option<&str>, u64)> =
-            s.top_artists.iter().map(|e| (e.name.as_str(), e.id.as_deref(), e.count)).collect();
+            s.top_artists.iter().map(|e| (e.name.as_str(), ids(&e.matched).0, e.count)).collect();
         assert_eq!(artists, [("Simon & Garfunkel", Some("sg"), 2), ("Simon", Some("s"), 1)]);
     }
 
@@ -1501,7 +1510,7 @@ mod tests {
         let s = compute(&scrobbles, Some(&library), preset(StatsRange::All), fixed_now());
 
         let guest = entry(&s.top_artists, "Guest");
-        assert_eq!((guest.id.as_deref(), guest.cover_art.as_deref()), (Some("g"), Some("ar-g")));
+        assert_eq!(ids(&guest.matched), (Some("g"), Some("ar-g")));
     }
 
     #[test]
@@ -1524,11 +1533,11 @@ mod tests {
             [("Stranger album", Some("Stranger"), 2), ("Artist album", Some("Artist"), 1)]
         );
         let stranger = entry(&s.top_artists, "Stranger");
-        assert_eq!((stranger.id.as_deref(), stranger.cover_art.as_deref()), (None, None));
+        assert!(stranger.matched.is_none());
         let unmatched = s.top_songs.iter().chain(&s.top_albums);
-        assert!(unmatched.into_iter().all(|e| e.id.is_none() && e.cover_art.is_none()));
+        assert!(unmatched.into_iter().all(|e| e.matched.is_none()));
         // The artist is in the library even though this Song isn't.
-        assert_eq!(entry(&s.top_artists, "Artist").id.as_deref(), Some("a"));
+        assert_eq!(ids(&entry(&s.top_artists, "Artist").matched).0, Some("a"));
     }
 
     /// A library Song by "Artist" with a genre list, as OpenSubsonic sends it.
@@ -1723,7 +1732,13 @@ mod tests {
     /// `(name, id, cover art)` of each artist New to you lists.
     fn first_heard(discovery: &Discovery) -> Vec<(&str, Option<&str>, Option<&str>)> {
         let first = &discovery.first_artists;
-        first.iter().map(|a| (a.name.as_str(), a.id.as_deref(), a.cover_art.as_deref())).collect()
+        first
+            .iter()
+            .map(|a| {
+                let (id, art) = ids(&a.matched);
+                (a.name.as_str(), id, art)
+            })
+            .collect()
     }
 
     #[test]
@@ -1792,7 +1807,10 @@ mod tests {
         let songs: Vec<(&str, Option<&str>, Option<&str>, u64)> = s.on_this_day[0]
             .songs
             .iter()
-            .map(|e| (e.name.as_str(), e.id.as_deref(), e.cover_art.as_deref(), e.count))
+            .map(|e| {
+                let (id, art) = ids(&e.matched);
+                (e.name.as_str(), id, art, e.count)
+            })
             .collect();
         assert_eq!(
             songs,
@@ -1814,7 +1832,7 @@ mod tests {
             .recent
             .iter()
             .map(|p| {
-                let (id, art) = (p.id.as_deref(), p.cover_art.as_deref());
+                let (id, art) = ids(&p.matched);
                 (p.name.as_str(), p.artist.as_str(), p.album.as_deref(), id, art)
             })
             .collect();
@@ -1962,7 +1980,7 @@ mod tests {
 
         assert_eq!(obsession(&s), ("Song - 2011 Remaster", 3, date_ago(3).as_str()));
         let song = s.obsession.unwrap().song;
-        assert_eq!((song.id.as_deref(), song.cover_art.as_deref()), (Some("s1"), Some("al-al1")));
+        assert_eq!(ids(&song.matched), (Some("s1"), Some("al-al1")));
 
         // Without the index, the more recent day wins the tie.
         let by_name = compute(&scrobbles, None, preset(StatsRange::Week), fixed_now());

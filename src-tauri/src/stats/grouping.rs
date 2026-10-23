@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use super::compute::TopEntry;
+use super::compute::{LibraryMatch, TopEntry};
 use super::store::StatScrobble;
 use crate::library_index::index::{LibraryArtist, LibraryIndex, LibrarySong};
 
@@ -15,9 +15,21 @@ pub struct Group<'a> {
     pub name: &'a str,
     /// The artist, for album and Song entries.
     pub artist: Option<&'a str>,
-    /// The library item's id and cover-art id, for a Library match.
-    pub id: Option<&'a str>,
+    /// Absent without a Library match.
+    pub matched: Option<MatchRef<'a>>,
+}
+
+/// A [`LibraryMatch`] as the index holds it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MatchRef<'a> {
+    pub id: &'a str,
     pub cover_art: Option<&'a str>,
+}
+
+impl From<MatchRef<'_>> for LibraryMatch {
+    fn from(matched: MatchRef<'_>) -> Self {
+        Self { id: matched.id.to_owned(), cover_art: matched.cover_art.map(str::to_owned) }
+    }
 }
 
 /// What a [`Group`] is counted under: its library item, else its names.
@@ -30,12 +42,12 @@ pub enum GroupKey<'a> {
 impl<'a> Group<'a> {
     /// An entry without a Library match.
     pub fn by_name(name: &'a str, artist: Option<&'a str>) -> Self {
-        Self { name, artist, id: None, cover_art: None }
+        Self { name, artist, matched: None }
     }
 
     pub fn key(&self) -> GroupKey<'a> {
-        match self.id {
-            Some(id) => GroupKey::Library(id),
+        match self.matched {
+            Some(matched) => GroupKey::Library(matched.id),
             None => GroupKey::Name(self.name, self.artist),
         }
     }
@@ -44,8 +56,8 @@ impl<'a> Group<'a> {
 impl TopEntry {
     /// What the entry was counted under, to pick out its Scrobbles again.
     pub fn key(&self) -> GroupKey<'_> {
-        match &self.id {
-            Some(id) => GroupKey::Library(id),
+        match &self.matched {
+            Some(matched) => GroupKey::Library(&matched.id),
             None => GroupKey::Name(&self.name, self.artist.as_deref()),
         }
     }
@@ -74,8 +86,7 @@ impl<'a> Grouper<'a> {
             Some(artist) => Group {
                 name: &artist.name,
                 artist: None,
-                id: Some(&artist.id),
-                cover_art: artist.cover_art.as_deref(),
+                matched: Some(MatchRef { id: &artist.id, cover_art: artist.cover_art.as_deref() }),
             },
             None => Group::by_name(credit, None),
         }
@@ -87,8 +98,7 @@ impl<'a> Grouper<'a> {
             Some(song) => Group {
                 name: song.title(),
                 artist: Some(song.artist().unwrap_or(&scrobble.artist)),
-                id: Some(song.id()),
-                cover_art: song.cover_art(),
+                matched: Some(MatchRef { id: song.id(), cover_art: song.cover_art() }),
             },
             None => Group::by_name(&scrobble.track, Some(&scrobble.artist)),
         }
@@ -104,8 +114,7 @@ impl<'a> Grouper<'a> {
         Some(Group {
             name: album.name,
             artist: Some(self.artist(scrobble).name),
-            id: Some(album.id),
-            cover_art: album.cover_art,
+            matched: Some(MatchRef { id: album.id, cover_art: album.cover_art }),
         })
     }
 
@@ -151,8 +160,7 @@ impl<'a> Tally<'a> {
             .map(|(group, count)| TopEntry {
                 name: group.name.to_owned(),
                 artist: group.artist.map(str::to_owned),
-                id: group.id.map(str::to_owned),
-                cover_art: group.cover_art.map(str::to_owned),
+                matched: group.matched.map(Into::into),
                 count,
                 movement: None,
             })

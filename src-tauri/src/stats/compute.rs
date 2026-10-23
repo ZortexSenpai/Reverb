@@ -435,35 +435,24 @@ pub fn compute(
     let bucket = Bucket::for_span(end - start);
 
     let mut grouper = Grouper::new(library);
-    let mut artists = Tally::default();
-    let mut songs = Tally::default();
-    let mut albums = Tally::default();
-    let mut from_library = FromLibrary::default();
+    let counted = Counted::of(&filtered, &mut grouper);
+    let headline = counted.headline(&filtered);
+    let Counted { artists, songs, albums, library: from_library, days: day_counts } = counted;
+
     let mut by_hour = vec![0u64; 24];
     let mut by_weekday = vec![0u64; 7];
     let mut buckets: HashMap<String, u64> = HashMap::new();
-    let mut day_counts: HashMap<i32, u64> = HashMap::new();
     let mut songs_by_day: HashMap<i32, Tally> = HashMap::new();
-
     for s in &filtered {
-        let song = grouper.song(s);
-        artists.add(grouper.artist(s));
-        songs.add(song);
-        if let Some(album) = grouper.album(s) {
-            albums.add(album);
-        }
-        from_library.add(grouper.library_song(s));
         if let Some(local) = Local.timestamp_opt(s.ts, 0).single() {
             let day = local.date_naive().num_days_from_ce();
             by_hour[local.hour() as usize] += 1;
             by_weekday[local.weekday().num_days_from_monday() as usize] += 1;
-            *day_counts.entry(day).or_default() += 1;
-            songs_by_day.entry(day).or_default().add(song);
+            songs_by_day.entry(day).or_default().add(grouper.song(s));
             *buckets.entry(bucket.key(local.naive_local())).or_default() += 1;
         }
     }
 
-    // Busiest single day + longest consecutive-days streak.
     let busiest_day = day_counts.iter().max_by_key(|(_, count)| **count).and_then(
         |(day, count)| {
             chrono::NaiveDate::from_num_days_from_ce_opt(*day).map(|date| TimelinePoint {
@@ -472,7 +461,6 @@ pub fn compute(
             })
         },
     );
-    let longest_streak_days = longest_streak(day_counts.keys().copied());
 
     // Each day's most played Song, then the day it was played most: a tie
     // goes to the more recent day.
@@ -529,7 +517,6 @@ pub fn compute(
 
     // The leading artists are only known once everything is counted, so
     // their plays are bucketed in a second pass.
-    let unique_artists = artists.len();
     let top_artists = top(artists, previous.as_ref().map(|p| &p.artists[..]));
     let leaders: Vec<&TopEntry> = top_artists.iter().take(OVER_TIME_ARTISTS).collect();
     let mut leader_buckets = vec![HashMap::<String, u64>::new(); leaders.len()];
@@ -571,40 +558,25 @@ pub fn compute(
     let discovery = from.map(|start| discover(scrobbles, &mut grouper, start, to));
     let on_this_day = on_this_day(scrobbles, &mut grouper, now.date_naive());
 
-    let first_ts = filtered.first().map(|s| s.ts);
-    let last_ts = filtered.last().map(|s| s.ts);
-    let plays_per_day = plays_per_day(&filtered);
-
-    let (unique_songs, unique_albums) = (songs.len(), albums.len());
     let top_songs = top(songs, previous.as_ref().map(|p| &p.songs[..]));
     let top_albums = top(albums, previous.as_ref().map(|p| &p.albums[..]));
     let hero = top_artists.first().map(|artist| Hero {
         artist: artist.clone(),
         share: artist.count as f64 / filtered.len() as f64,
         // A single Song's album would only show its cover again.
-        album: top_albums.first().filter(|_| unique_songs > 1).cloned(),
+        album: top_albums.first().filter(|_| headline.songs > 1).cloned(),
         song: top_songs.first().cloned(),
     });
-
-    let headline = Headline {
-        plays: filtered.len(),
-        listening_secs: from_library.listening_secs(),
-        artists: unique_artists,
-        albums: unique_albums,
-        songs: unique_songs,
-        plays_per_day,
-        longest_streak: longest_streak_days,
-    };
     let changes = previous.as_ref().map(|previous| headline.since(&previous.headline));
 
     StatsSummary {
-        total_plays: filtered.len() as u64,
-        unique_artists: unique_artists as u64,
-        unique_songs: unique_songs as u64,
-        unique_albums: unique_albums as u64,
-        first_ts,
-        last_ts,
-        plays_per_day,
+        total_plays: headline.plays as u64,
+        unique_artists: headline.artists as u64,
+        unique_songs: headline.songs as u64,
+        unique_albums: headline.albums as u64,
+        first_ts: filtered.first().map(|s| s.ts),
+        last_ts: filtered.last().map(|s| s.ts),
+        plays_per_day: headline.plays_per_day,
         hero,
         top_artists,
         top_songs,
@@ -615,7 +587,7 @@ pub fn compute(
         top_artists_over_time,
         recent,
         busiest_day,
-        longest_streak_days,
+        longest_streak_days: headline.longest_streak,
         current_streak_days: current_streak(scrobbles, now.date_naive()),
         daily,
         sessions,
@@ -658,6 +630,53 @@ fn longest_streak(days: impl IntoIterator<Item = i32>) -> u32 {
         prev = Some(day);
     }
     longest
+}
+
+/// What a Period's Scrobbles add up to: its entries, what their Library
+/// matches know, and its days. The Period and its Previous period are
+/// counted alike, so they compare like with like.
+struct Counted<'a> {
+    artists: Tally<'a>,
+    songs: Tally<'a>,
+    albums: Tally<'a>,
+    library: FromLibrary<'a>,
+    /// Scrobbles per local day, by days from the common era.
+    days: HashMap<i32, u64>,
+}
+
+impl<'a> Counted<'a> {
+    fn of(plays: &[&'a StatScrobble], grouper: &mut Grouper<'a>) -> Self {
+        let mut artists = Tally::default();
+        let mut songs = Tally::default();
+        let mut albums = Tally::default();
+        let mut library = FromLibrary::default();
+        let mut days: HashMap<i32, u64> = HashMap::new();
+        for &s in plays {
+            artists.add(grouper.artist(s));
+            songs.add(grouper.song(s));
+            if let Some(album) = grouper.album(s) {
+                albums.add(album);
+            }
+            library.add(grouper.library_song(s));
+            if let Some(local) = local_naive(s.ts) {
+                *days.entry(local.date().num_days_from_ce()).or_default() += 1;
+            }
+        }
+        Self { artists, songs, albums, library, days }
+    }
+
+    /// The headline counts of `plays`, the Scrobbles these were counted from.
+    fn headline(&self, plays: &[&StatScrobble]) -> Headline {
+        Headline {
+            plays: plays.len(),
+            listening_secs: self.library.listening_secs(),
+            artists: self.artists.len(),
+            albums: self.albums.len(),
+            songs: self.songs.len(),
+            plays_per_day: plays_per_day(plays),
+            longest_streak: longest_streak(self.days.keys().copied()),
+        }
+    }
 }
 
 /// The headline counts a Period is compared on.
@@ -709,30 +728,13 @@ impl Previous {
         (from, to): (i64, i64),
     ) -> Self {
         let plays: Vec<&StatScrobble> = all.iter().filter(|s| s.ts >= from && s.ts < to).collect();
-        let mut artists = Tally::default();
-        let mut songs = Tally::default();
-        let mut albums = Tally::default();
-        let mut from_library = FromLibrary::default();
-        for &s in &plays {
-            artists.add(grouper.artist(s));
-            songs.add(grouper.song(s));
-            if let Some(album) = grouper.album(s) {
-                albums.add(album);
-            }
-            from_library.add(grouper.library_song(s));
+        let counted = Counted::of(&plays, grouper);
+        Self {
+            headline: counted.headline(&plays),
+            artists: counted.artists.ranked(),
+            songs: counted.songs.ranked(),
+            albums: counted.albums.ranked(),
         }
-        let days =
-            plays.iter().filter_map(|s| local_naive(s.ts)).map(|t| t.date().num_days_from_ce());
-        let headline = Headline {
-            plays: plays.len(),
-            listening_secs: from_library.listening_secs(),
-            artists: artists.len(),
-            albums: albums.len(),
-            songs: songs.len(),
-            plays_per_day: plays_per_day(&plays),
-            longest_streak: longest_streak(days),
-        };
-        Self { headline, artists: artists.ranked(), songs: songs.ranked(), albums: albums.ranked() }
     }
 }
 

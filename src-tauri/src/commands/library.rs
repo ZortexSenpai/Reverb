@@ -5,9 +5,10 @@ use std::collections::HashSet;
 
 use reverb_core::subsonic::client::{SongListRequest, StarKind};
 use reverb_core::subsonic::models::*;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::error::ReverbError;
+use crate::library_index;
 use crate::state::AppState;
 
 // The Subsonic album list genuinely has this many independent filters.
@@ -342,8 +343,13 @@ pub async fn library_save_play_queue(
 }
 
 #[tauri::command]
-pub async fn library_start_scan(state: State<'_, AppState>) -> Result<ScanStatus, ReverbError> {
-    Ok(state.subsonic.start_scan().await?)
+pub async fn library_start_scan(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<ScanStatus, ReverbError> {
+    let status = state.subsonic.start_scan().await?;
+    library_index::rebuild_after_scan(app);
+    Ok(status)
 }
 
 #[tauri::command]

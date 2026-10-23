@@ -41,6 +41,11 @@ export interface EventMap {
   "eq:state": import("../subsonic/types").EqState;
   /** A new set of mixes replaced the cached one in the background. */
   "mixes:updated": null;
+  /**
+   * A new Library index is ready: read from disk at startup, or built for a
+   * new day, after a scan started from Reverb, or for another account.
+   */
+  "library:index-ready": null;
 }
 
 export function on<K extends keyof EventMap>(

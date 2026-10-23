@@ -4,6 +4,7 @@ use reverb_core::audio::{EngineHandle, PlaybackState};
 use reverb_core::subsonic::SubsonicClient;
 use serde::Serialize;
 
+use crate::library_index::store::LibraryIndexStore;
 use crate::mixes::store::MixStore;
 use crate::persistence::keychain::Keychain;
 use crate::persistence::settings::SettingsStore;
@@ -43,13 +44,15 @@ pub struct AppState {
     pub keychain: Keychain,
     pub player: Arc<Mutex<PlayerSnapshot>>,
     pub stats: StatsStore,
+    pub library_index: LibraryIndexStore,
     pub mixes: MixStore,
     pub play_history: PlayHistoryStore,
 }
 
 impl AppState {
-    /// The signed-in account as `user@server_url`, what the mixes and the
-    /// Play History are kept under: song ids mean nothing on another server.
+    /// The signed-in account as `user@server_url`, what the Library index,
+    /// the mixes and the Play History are kept under: song ids mean nothing
+    /// on another server.
     /// `None` when signed out.
     pub fn account(&self) -> Option<String> {
         self.subsonic.credentials().map(|creds| format!("{}@{}", creds.username, creds.server_url))

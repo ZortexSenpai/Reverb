@@ -546,7 +546,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
             onMouseLeave={() => setHover(null)}
             title={t("chart.sessionTitle", {
               date: t.d(start, { dateStyle: "medium", timeStyle: "short" }),
-              n: session.tracks,
+              n: session.songs,
               span: formatSpan(session.spanMinutes, t),
             })}
           >
@@ -572,7 +572,7 @@ export function SessionIntervals({ sessions }: { sessions: ListeningSession[] })
               />
             </div>
             <span className="text-right whitespace-nowrap tabular-nums text-dim">
-              {t("count.songs", { n: session.tracks })}
+              {t("count.songs", { n: session.songs })}
               <span className="text-faint"> · {formatSpan(session.spanMinutes, t)}</span>
             </span>
           </div>

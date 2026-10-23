@@ -545,14 +545,14 @@ export interface RecentPlay extends StatsItem {
 /** A run of plays with no long gap between them. */
 export interface ListeningSession {
   startTs: number;
-  tracks: number;
+  songs: number;
   spanMinutes: number;
   topArtist: string;
 }
 
 export interface SessionStats {
   count: number;
-  medianTracks: number;
+  medianSongs: number;
   /** Biggest first. */
   longest: ListeningSession[];
 }

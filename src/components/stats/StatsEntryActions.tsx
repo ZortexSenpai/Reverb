@@ -9,7 +9,7 @@ import type { ReactElement } from "react";
 import { useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { AlbumMenuItems, ArtistMenuItems, menuContentClass } from "../library/EntityContextMenu";
-import { TrackMenuItems } from "../library/TrackContextMenu";
+import { SongMenuItems } from "../library/TrackContextMenu";
 import { useT } from "../../lib/i18n";
 import { errorMessage } from "../../lib/ipc/commands";
 import {
@@ -111,7 +111,7 @@ function SongItems({ id }: { id: string }) {
   const song = useSong(id);
   if (!song.data) return <Pending query={song} />;
   const { playNow } = usePlayerStore.getState();
-  return <TrackMenuItems song={song.data} context={[song.data]} index={0} onPlayNow={playNow} />;
+  return <SongMenuItems song={song.data} context={[song.data]} index={0} onPlayNow={playNow} />;
 }
 
 /** One line in place of the menu while the item loads, or if it can't. */

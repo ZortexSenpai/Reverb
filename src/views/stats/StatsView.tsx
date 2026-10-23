@@ -459,7 +459,7 @@ export function StatsView() {
                   summary.sessions.count > 0
                     ? t("stats.sessionsHint", {
                         sessions: t("count.sessions", { n: summary.sessions.count }),
-                        median: summary.sessions.medianTracks,
+                        median: summary.sessions.medianSongs,
                       })
                     : undefined
                 }

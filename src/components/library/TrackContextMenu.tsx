@@ -46,7 +46,7 @@ interface Props {
 }
 
 /** What the menu acts on, for a menu whose trigger lives elsewhere. */
-export type TrackMenuProps = Omit<Props, "children">;
+export type SongMenuProps = Omit<Props, "children">;
 
 const itemClass =
   "flex cursor-pointer items-center gap-2.5 rounded px-2.5 py-1.5 text-sm text-text outline-none select-none data-highlighted:bg-surface-2";
@@ -57,7 +57,7 @@ export function TrackContextMenu({ children, ...menu }: Props) {
       <ContextMenu.Trigger asChild>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Content className={menuContentClass}>
-          <TrackMenuItems {...menu} />
+          <SongMenuItems {...menu} />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
@@ -65,14 +65,14 @@ export function TrackContextMenu({ children, ...menu }: Props) {
 }
 
 /** The menu's items, inside a `ContextMenu.Content`; they mount only while it's open. */
-export function TrackMenuItems({
+export function SongMenuItems({
   song,
   context,
   index,
   targets,
   onRemoveFromPlaylist,
   onPlayNow,
-}: TrackMenuProps) {
+}: SongMenuProps) {
   const t = useT();
   const navigate = useNavigate();
   const setStar = useStarMutation();

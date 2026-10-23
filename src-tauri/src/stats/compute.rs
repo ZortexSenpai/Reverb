@@ -160,14 +160,14 @@ pub struct Hero {
 }
 
 /// Listening broken into sittings — runs of plays with no long gap. Scrobbles
-/// carry no track lengths, so a session's "span" is first play → last play.
+/// carry no Song lengths, so a session's "span" is first play → last play.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionStats {
     pub count: u64,
-    /// Typical sitting, in tracks.
-    pub median_tracks: u64,
-    /// Longest sittings by track count, biggest first.
+    /// Typical sitting, in Songs played.
+    pub median_songs: u64,
+    /// Longest sittings by Songs played, biggest first.
     pub longest: Vec<Session>,
 }
 
@@ -175,7 +175,7 @@ pub struct SessionStats {
 #[serde(rename_all = "camelCase")]
 pub struct Session {
     pub start_ts: i64,
-    pub tracks: u64,
+    pub songs: u64,
     pub span_minutes: u64,
     /// Whoever dominated the sitting.
     pub top_artist: String,
@@ -739,7 +739,7 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
     struct Open<'a> {
         start: i64,
         last: i64,
-        tracks: u64,
+        songs: u64,
         artists: HashMap<&'a str, u64>,
     }
 
@@ -753,7 +753,7 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
                 .unwrap_or_default();
             Session {
                 start_ts: self.start,
-                tracks: self.tracks,
+                songs: self.songs,
                 span_minutes: ((self.last - self.start) / 60) as u64,
                 top_artist,
             }
@@ -767,7 +767,7 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
         match open.as_mut() {
             Some(run) if play.ts - run.last <= SESSION_GAP_SECS => {
                 run.last = play.ts;
-                run.tracks += 1;
+                run.songs += 1;
                 *run.artists.entry(play.artist.as_str()).or_default() += 1;
             }
             _ => {
@@ -777,7 +777,7 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
                 open = Some(Open {
                     start: play.ts,
                     last: play.ts,
-                    tracks: 1,
+                    songs: 1,
                     artists: HashMap::from([(play.artist.as_str(), 1)]),
                 });
             }
@@ -787,15 +787,15 @@ fn sessionize(plays: &[&StatScrobble]) -> SessionStats {
         sessions.push(run.finish());
     }
 
-    let mut sizes: Vec<u64> = sessions.iter().map(|s| s.tracks).collect();
+    let mut sizes: Vec<u64> = sessions.iter().map(|s| s.songs).collect();
     sizes.sort_unstable();
-    let median_tracks = sizes.get(sizes.len() / 2).copied().unwrap_or(0);
+    let median_songs = sizes.get(sizes.len() / 2).copied().unwrap_or(0);
     let count = sessions.len() as u64;
 
     sessions
-        .sort_by(|a, b| b.tracks.cmp(&a.tracks).then_with(|| b.span_minutes.cmp(&a.span_minutes)));
+        .sort_by(|a, b| b.songs.cmp(&a.songs).then_with(|| b.span_minutes.cmp(&a.span_minutes)));
     sessions.truncate(TOP_SESSIONS);
-    SessionStats { count, median_tracks, longest: sessions }
+    SessionStats { count, median_songs, longest: sessions }
 }
 
 /// Artists and Songs whose *first ever* play falls inside the window, grouped
@@ -1093,12 +1093,12 @@ mod tests {
         ];
         let s = compute_now(&scrobbles, preset(StatsRange::Day)).sessions;
         assert_eq!(s.count, 2);
-        assert_eq!(s.median_tracks, 3);
-        // Longest first: 3 tracks over the ~6 minutes between first and last.
-        assert_eq!(s.longest[0].tracks, 3);
+        assert_eq!(s.median_songs, 3);
+        // Longest first: 3 Songs over the ~6 minutes between first and last.
+        assert_eq!(s.longest[0].songs, 3);
         assert_eq!(s.longest[0].span_minutes, 6);
         assert_eq!(s.longest[0].top_artist, "A");
-        assert_eq!(s.longest[1].tracks, 2);
+        assert_eq!(s.longest[1].songs, 2);
         assert_eq!(s.longest[1].top_artist, "C");
     }
 

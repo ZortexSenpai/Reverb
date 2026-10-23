@@ -493,10 +493,10 @@ export interface TimelinePoint {
   count: number;
 }
 
-export interface RecentPlay {
+/** A Scrobble, as the Song it counts toward. */
+export interface RecentPlay extends StatsItem {
   ts: number;
   artist: string;
-  track: string;
   album?: string | null;
 }
 
@@ -515,22 +515,23 @@ export interface SessionStats {
   longest: ListeningSession[];
 }
 
-export interface FirstHeard {
-  name: string;
+/** An artist first heard in the Period. */
+export interface FirstHeard extends StatsItem {
   ts: number;
   plays: number;
 }
 
 export interface Discovery {
   newArtists: number;
-  newTracks: number;
+  newSongs: number;
   firstArtists: FirstHeard[];
 }
 
 export interface OnThisDay {
   year: number;
   plays: number;
-  tracks: TopEntry[];
+  /** That day's most played Songs. */
+  songs: TopEntry[];
 }
 
 export interface StatsSummary {

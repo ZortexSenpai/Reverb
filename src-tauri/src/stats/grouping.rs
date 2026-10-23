@@ -162,6 +162,7 @@ impl<'a> Tally<'a> {
                 id: group.id.map(str::to_owned),
                 cover_art: group.cover_art.map(str::to_owned),
                 count,
+                movement: None,
             })
             .collect()
     }

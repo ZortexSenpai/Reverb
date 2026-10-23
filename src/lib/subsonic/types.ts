@@ -484,8 +484,33 @@ export interface StatsItem {
   coverArt?: string | null;
 }
 
+/** A top-list entry's change of place since the Previous period. */
+export type RankMovement =
+  /** Places up, or down when negative: from 40th to 3rd is 37. */
+  | { kind: "moved"; places: number }
+  /** No Scrobbles in the Previous period. */
+  | { kind: "new" };
+
 export interface TopEntry extends StatsItem {
   count: number;
+  /** Since the Previous period, for a top-list entry. Absent for all time. */
+  movement?: RankMovement | null;
+}
+
+/**
+ * Each headline count's change since the Previous period, relative to what it
+ * was then: 0.12 for 12% more. Absent when it was nothing then. The current
+ * Streak and the Busiest day have none.
+ */
+export interface HeadlineChanges {
+  plays?: number | null;
+  /** Also absent when either Period has no library Song length to go by. */
+  listeningTime?: number | null;
+  artists?: number | null;
+  albums?: number | null;
+  songs?: number | null;
+  playsPerDay?: number | null;
+  longestStreak?: number | null;
 }
 
 /** The Period's #1 artist, album and Song. */
@@ -632,6 +657,8 @@ export interface StatsSummary {
   decades?: Breakdown<DecadePlays> | null;
   /** Estimated from library Songs' lengths. Absent until the Library index is there. */
   listeningTime?: ListeningTime | null;
+  /** Since the Previous period. Absent for all time, which has none. */
+  changes?: HeadlineChanges | null;
 }
 
 export interface LastfmStatus {

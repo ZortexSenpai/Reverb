@@ -620,6 +620,12 @@ export const de: Messages = {
   "stats.topAlbum": "Top-Album",
   "stats.topSong": "Top-Titel",
   "stats.shareOfPlays": "{share} aller Wiedergaben",
+  "stats.vsPrevious": "im Vergleich zum vorherigen Zeitraum",
+  "stats.movementNew": "neu",
+  "stats.movementNewHint": "im vorherigen Zeitraum nicht gehört",
+  "stats.movementUp": "{n, plural, one {# Platz} other {# Plätze}} höher als im vorherigen Zeitraum",
+  "stats.movementDown": "{n, plural, one {# Platz} other {# Plätze}} tiefer als im vorherigen Zeitraum",
+  "stats.movementSame": "gleicher Platz wie im vorherigen Zeitraum",
   "stats.onThisDay": "An diesem Tag, {year}",
   "stats.recentScrobbles": "Letzte Scrobbles",
 

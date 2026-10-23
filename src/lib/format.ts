@@ -3,6 +3,7 @@
 // caller — which already has `useT()` — decides the language.
 
 import type { T } from "./i18n/core";
+import type { RankMovement } from "./subsonic/types";
 
 export function formatDuration(totalSeconds: number | undefined): string {
   if (totalSeconds == null || !Number.isFinite(totalSeconds)) return "–:––";
@@ -42,6 +43,19 @@ export function formatCoverage(share: number, t: T): string {
   return t("stats.coverage", {
     share: t.n(share, { style: "percent", maximumFractionDigits: 0 }),
   });
+}
+
+/** "+12%": a count's change since the Previous period, unsigned when it rounds to 0. */
+export function formatChange(change: number, t: T): string {
+  return t.n(change, { style: "percent", signDisplay: "exceptZero", maximumFractionDigits: 0 });
+}
+
+/** "▲37", "▼3", "=" or "new": a top-list entry's places moved since the Previous period. */
+export function formatMovement(movement: RankMovement, t: T): string {
+  if (movement.kind === "new") return t("stats.movementNew");
+  const { places } = movement;
+  if (places === 0) return "=";
+  return `${places > 0 ? "▲" : "▼"}${t.n(Math.abs(places))}`;
 }
 
 /** "44.1 kHz" — sample rates are quoted in kHz everywhere in the UI. */

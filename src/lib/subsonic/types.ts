@@ -493,6 +493,13 @@ export interface TimelinePoint {
   count: number;
 }
 
+/** One of the Period's top artists, played per bucket of the activity timeline. */
+export interface ArtistTimeline {
+  artist: TopEntry;
+  /** The same buckets, with the same labels, as `StatsSummary.timeline`. */
+  timeline: TimelinePoint[];
+}
+
 /** A Scrobble, as the Song it counts toward. */
 export interface RecentPlay extends StatsItem {
   ts: number;
@@ -548,6 +555,8 @@ export interface StatsSummary {
   byHour: number[];
   byWeekday: number[];
   timeline: TimelinePoint[];
+  /** The five most played artists, most played first. */
+  topArtistsOverTime: ArtistTimeline[];
   recent: RecentPlay[];
   busiestDay?: TimelinePoint | null;
   longestStreakDays: number;

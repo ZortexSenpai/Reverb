@@ -42,6 +42,16 @@ impl<'a> Group<'a> {
     }
 }
 
+impl TopEntry {
+    /// What the entry was counted under, to pick out its Scrobbles again.
+    pub fn key(&self) -> GroupKey<'_> {
+        match &self.id {
+            Some(id) => GroupKey::Library(id),
+            None => GroupKey::Name(&self.name, self.artist.as_deref()),
+        }
+    }
+}
+
 /// Finds the entries Scrobbles count toward, looking each artist, and each
 /// artist and title, up in the library once.
 pub struct Grouper<'a> {

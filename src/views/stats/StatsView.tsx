@@ -11,6 +11,7 @@ import {
   SessionIntervals,
   StatTile,
 } from "../../components/stats/charts";
+import { ArtistsOverTime } from "../../components/stats/ArtistsOverTime";
 import { StatsEntry, statsEntryKey, type StatsEntryKind } from "../../components/stats/StatsEntry";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -344,6 +345,12 @@ export function StatsView() {
             <Section title={t("stats.activity")}>
               <AreaChart points={summary.timeline} />
             </Section>
+
+            {summary.topArtistsOverTime.length > 0 && (
+              <Section title={t("stats.topArtistsOverTime")} hint={t("stats.overTimeHint")}>
+                <ArtistsOverTime artists={summary.topArtistsOverTime} />
+              </Section>
+            )}
 
             {summary.daily.length > 0 && (
               <Section

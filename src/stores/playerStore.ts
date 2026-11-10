@@ -54,9 +54,8 @@ interface PlayerStore {
   playNow: (song: Song) => void;
   addToQueue: (songs: Song[]) => void;
   removeFromQueue: (queueId: string) => void;
+  /** Move the item at `from` to `to` (drag-reorder in the queue panel); the current one keeps playing. */
   moveInQueue: (from: number, to: number) => void;
-  /** Replace everything after the current track (drag-reorder in the queue panel). */
-  setUpcoming: (items: QueueItem[]) => void;
   jumpTo: (queueId: string) => void;
   /** Drop everything except the playing track (if any). */
   clearQueue: () => void;
@@ -297,12 +296,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => {
       }
       const nextQueue = queue.filter((it) => it.queueId !== queueId);
       set({ queue: nextQueue, queueIndex: idx < queueIndex ? queueIndex - 1 : queueIndex });
-      syncNext();
-    },
-
-    setUpcoming: (items) => {
-      const { queue, queueIndex } = get();
-      set({ queue: [...queue.slice(0, queueIndex + 1), ...items] });
       syncNext();
     },
 

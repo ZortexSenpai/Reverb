@@ -1,6 +1,6 @@
-// A release's CHANGELOG.md section, rendered as Markdown. The notes come from
-// the release manifest on GitHub, so raw HTML is never rendered, only shown
-// as text, and links leave the app for the browser.
+// A release's notes, rendered as Markdown. The notes come from the release
+// manifest on GitHub, so raw HTML is never rendered, only shown as text, and
+// links leave the app for the browser.
 
 import Markdown from "markdown-to-jsx/react";
 import type { ReactNode } from "react";
@@ -38,8 +38,9 @@ const OPTIONS = {
 };
 
 /**
- * release-please opens each section with its own "## [1.0.1](compare) (date)"
- * heading. The panel already titles the version and date, so drop it.
+ * Release notes open with their own "## [1.0.1](compare) (date)" heading
+ * (scripts/next-version.mjs). The panel already titles the version and date,
+ * so drop it.
  */
 function withoutVersionHeading(markdown: string): string {
   return markdown.replace(/^\s*#{1,6}\s*\[?v?\d+\.\d+\.\d+[^\n]*\n*/, "");

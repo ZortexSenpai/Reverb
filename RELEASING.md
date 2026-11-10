@@ -1,43 +1,43 @@
 # Releasing Reverb
 
-Releases are cut by merging a pull request. Nobody edits a version number by
-hand, builds on their own machine, or uploads files. This page covers how
-that works, what it depends on, and what to do when it goes wrong.
+Releases are cut by merging to `main`. Nobody picks a version number, edits
+one by hand, builds on their own machine, or uploads files. This page covers
+how that works, what it depends on, and what to do when it goes wrong.
 
 ## How a release happens
 
-1. **Commit to `main` with conventional commit messages.** `feat: …` and
-   `fix: …` (optionally scoped, `fix(queue): …`) go into the changelog.
+1. **Commit with conventional commit messages.** `feat: …`, `fix: …` and
+   `perf: …` (optionally scoped, `fix(queue): …`) go into the release notes.
    Other types (`chore:`, `ci:`, `build:`, `docs:`, `refactor:`, `test:`) are
-   left out of it. So are messages that don't follow the convention at all;
-   they never block anything.
-2. **release-please keeps a release PR open** ("chore(main): release X.Y.Z").
-   It holds the next version bump and its `CHANGELOG.md` section, and every
-   push to `main` updates it. The bump touches `package.json`,
-   `package-lock.json`, the Cargo workspace version in `Cargo.toml`, and the
-   `reverb` and `reverb-core` entries in `Cargo.lock`. `tauri.conf.json` has
-   no version of its own; it inherits the Cargo one.
-3. **CI runs on the release PR like on any other.** That only happens
-   because release-please opens it with `RELEASE_PLEASE_TOKEN` (see
-   [Secrets](#secrets)). The `main` ruleset won't let it merge until these
+   left out of them. So are messages that don't follow the convention at all;
+   they never block anything. Merge commits are skipped, and the commits they
+   bring in are the ones counted. A squash merge's message is the PR title,
+   so give such a PR a conventional title.
+2. **Merge to `main`.** The `main` ruleset only lets a commit in once these
    checks pass:
    - Frontend tests and type check
    - Version consistency
    - Rust tests (linux)
    - Rust tests (macos)
    - Rust tests (windows)
-
-   The version consistency check (`npm run check:versions`) fails if the
-   bump missed any of the files above.
-4. **Merging the release PR** makes release-please create a **draft**
-   release for `vX.Y.Z`, tag included. The release body is that version's
-   `CHANGELOG.md` section.
-5. **In the same workflow run** (`.github/workflows/release.yml`):
+3. **Every push to `main` runs the release workflow**
+   (`.github/workflows/release.yml`). Its first job, *Next version*, runs
+   `scripts/next-version.mjs`. It reads the commits since the newest stable
+   `vX.Y.Z` tag that `main` descends from, and picks the version by the
+   [versioning rule](#versioning-rule). If none of them calls for a release
+   (a push of only `docs:` or `chore:` commits, say), the run stops there.
+4. **Otherwise it tags the pushed commit `vX.Y.Z`** and opens a **draft**
+   release for it. The release notes list the breaking changes, features,
+   bug fixes and performance improvements since the last release, each
+   linked to its commit.
+5. **In the same workflow run:**
    1. *Check signing key* signs a probe file with the signing secret and
       checks it against the public key in `tauri.conf.json`. A mismatch
       stops the release before any build starts.
-   2. *Build* runs three jobs, each uploading its bundles, `.sig` files and
-      its entries in `latest.json` to the draft:
+   2. *Build* runs three jobs. Each one first writes the version into the
+      files that hold it (`scripts/set-version.mjs`, then
+      `npm run check:versions` to prove none was missed), then uploads its
+      bundles, `.sig` files and its entries in `latest.json` to the draft:
 
       | Job | Runner | Uploads |
       |---|---|---|
@@ -62,11 +62,30 @@ them itself. `latest.json` points each platform at its file through the
 GitHub API (`api.github.com/repos/…/releases/assets/<id>`), and the app
 checks every download's signature before installing it.
 
+### Where the version lives
+
+Only in the release's tag. In the repository, `package.json`,
+`package-lock.json`, the Cargo workspace version in `Cargo.toml` and the
+`reverb` and `reverb-core` entries in `Cargo.lock` all hold the placeholder
+**0.0.0**, and nothing commits a version back to `main`. Leave them at
+0.0.0. The *Version consistency* check fails if they disagree, because
+`set-version.mjs` relies on all of them being there. `tauri.conf.json` has
+no version of its own; it inherits the Cargo one. The reasons are in
+`docs/adr/0002-release-version-lives-in-the-tag.md`.
+
+### Release notes
+
+The notes live on the GitHub release, and the app shows them before it
+installs an update. The app reads them from `latest.json`, which copied them
+at build time, so editing a published release's notes on GitHub doesn't
+change what installs show. `CHANGELOG.md` stops at 1.0.0.
+
 ## Versioning rule
 
-Versions are SemVer and tags are `vX.Y.Z`.
+Versions are SemVer and tags are `vX.Y.Z`. The release takes the biggest
+bump that any commit since the last release calls for.
 
-- `fix:` → **patch** (1.4.2 → 1.4.3)
+- `fix:` or `perf:` → **patch** (1.4.2 → 1.4.3)
 - `feat:` → **minor** (1.4.2 → 1.5.0)
 - **Major** (1.4.2 → 2.0.0) only for changes that break something *for
   listeners*:
@@ -74,8 +93,11 @@ Versions are SemVer and tags are `vX.Y.Z`.
   - raising the minimum Navidrome version
   - resetting user settings
 
-  Mark these with `!` (`feat!: …`) or a `BREAKING CHANGE:` footer.
-  Breaking changes to internal code don't count.
+  Mark these with `!` (`feat!: …`) or a `BREAKING CHANGE:` footer. Either
+  one makes a major release whatever the type, so don't use them for
+  breaking changes to internal code.
+- Anything else → **no release**. The commits wait and go out with the next
+  release that has a `feat:`, `fix:` or `perf:`.
 
 Settings must stay readable across updates: new versions only add fields,
 each with a default. Changing an existing field's type needs a deliberate
@@ -90,21 +112,10 @@ gone until they restore it.
 |---|---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | The updater signing key (from `tauri signer generate`) | Check signing key, Build |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Its password | Check signing key, Build |
-| `RELEASE_PLEASE_TOKEN` | A fine-grained personal access token for this repository only, with read/write access to Contents, Pull requests and Issues | Release PR |
 
-`GITHUB_TOKEN` is provided by Actions and needs no setup.
-
-**Why `RELEASE_PLEASE_TOKEN`:** GitHub runs no workflows for a pull request
-pushed with `GITHUB_TOKEN`. Without the PAT, CI never reports on the release
-PR, and the ruleset's required checks would block it forever.
-
-- If the secret is missing, release-please falls back to `GITHUB_TOKEN`.
-  Releases still work, but merging the release PR then needs the admin
-  bypass, with no checks run.
-- The fallback also needs **Settings → Actions → General → Allow GitHub
-  Actions to create and approve pull requests** turned on.
-- Fine-grained tokens expire. When this one does, the *Release PR* job fails
-  with "Bad credentials". Generate a new token and replace the secret.
+`GITHUB_TOKEN` is provided by Actions and needs no setup. It creates the
+tag and the draft. (`RELEASE_PLEASE_TOKEN`, from when release-please cut
+releases, is no longer used and can be deleted.)
 
 The **public** key is not a secret. It lives in `src-tauri/tauri.conf.json`
 under `plugins.updater.pubkey`, and every install checks downloads against
@@ -143,28 +154,31 @@ installs keep seeing the previous release. To recover:
    jobs**. tauri-action replaces any files the failed attempt uploaded, and
    *Publish release* runs again once all three builds are green. A job that
    failed with "The job was not acquired by Runner" never ran at all
-   (GitHub had no runner free), so a re-run is all it needs.
+   (GitHub had no runner free), so a re-run is all it needs. Don't use
+   *Re-run all jobs*: *Next version* would find the commit already tagged
+   and release nothing.
 2. If *Publish release* says `latest.json` is missing a platform, re-run
    that platform's build job. Each build merges its entries into
    `latest.json`, so the re-run puts the missing ones back.
 3. If the failure needs a code change, a re-run can't help: it builds the
    release commit again. Skip the version instead:
    1. Leave the draft unpublished.
-   2. Land the fix on `main`, and merge the next release PR (vX.Y.Z+1).
-      release-please only opens one once a `feat:` or `fix:` commit has
-      landed since the last release, `release-as` or not, so give the fix
-      one of those types. For a pre-release, also bump `release-as` (say
-      to `1.3.0-rc.2`).
+   2. Land the fix on `main` as a `fix:`. Its push releases vX.Y.Z+1 on its
+      own: the failed version's tag already exists, so the next release
+      counts from it.
    3. Once that release is out, delete the stale draft with
-      `gh release delete vX.Y.Z`. Keep its tag, because release-please's
-      history counts on it.
+      `gh release delete vX.Y.Z`. Keep its tag, because the next version is
+      worked out from it.
+4. If *Next version* failed after pushing the tag but before opening the
+   draft, there's nothing to skip. Delete the tag
+   (`git push origin :refs/tags/vX.Y.Z`) and re-run the job.
 
 ## Fixing a bad release
 
 Fix forward. There is no rollback or downgrade in the app.
 
-1. Land the fix (`fix: …`) and merge the release PR. Installs on the bad
-   version update to the fix like any other update.
+1. Land the fix (`fix: …`) on `main`. It releases on its own, and installs
+   on the bad version update to the fix like any other update.
 2. Optionally, mark the bad release as a **pre-release**:
 
    ```sh
@@ -182,16 +196,18 @@ Pre-releases are for installing by hand, to try a build before it reaches
 anyone. The updater never offers them, because GitHub's "latest" skips
 pre-releases.
 
-To cut one through the same pipeline, set these in
-`release-please-config.json` for one release PR, then remove them again:
+To cut one, open **Actions → Release → Run workflow**, pick the branch, and
+enter a pre-release identifier such as `rc`. The version is the one the
+branch's commits call for, plus `-rc.N`, with N one past the `rc` tags that
+version already has. A branch with a `feat:` since v1.2.0 gives
+`v1.3.0-rc.1`, and running it again after more commits gives `v1.3.0-rc.2`.
+When the branch merges, the push to `main` releases `v1.3.0` as usual, with
+notes covering everything since v1.2.0.
 
-```json
-"release-as": "1.3.0-rc.1",
-"prerelease": true
-```
-
-(`release-as` is deprecated upstream in favour of a `Release-As: 1.3.0-rc.1`
-commit footer. Either works.)
+Run it on the branch before merging. `main` releases every releasable push
+straight away, so there's no unreleased work left on `main` to pre-release.
+Left empty on `main`, the identifier retries a normal release (for a run
+that was cancelled, say). Left empty on any other branch, the run refuses.
 
 The Linux build of a pre-release takes about 5 minutes longer. Tauri can't
 bundle an `.rpm` for a version with a `-` in it yet
@@ -209,30 +225,11 @@ The `.deb` gets it the other way round: dpkg reads `1.3.0-rc.1` as
 still installs 1.3.0 over it (it runs `dpkg -i`, which only warns), but apt
 treats installing 1.3.0 by hand as a downgrade.
 
-## First release
+## Before 1.0.1
 
-The pipeline is proved with a release candidate before 1.0.0 ships.
-`release-please-config.json` starts out set up for it.
-
-1. Generate the signing key and store the secrets (#4). Paste the public key
-   into `plugins.updater.pubkey` in `tauri.conf.json`, replacing the
-   placeholder. Until then, *Check signing key* fails on purpose. Also create
-   `RELEASE_PLEASE_TOKEN`, so CI runs on the release PR.
-2. Merge the release PR for **v1.0.0-rc.2** (`release-as: 1.0.0-rc.2`,
-   `prerelease: true`). Check that the pre-release has every bundle with its
-   `.sig` and a complete `latest.json`. Then install it by hand on each OS
-   (#5).
-   - v1.0.0-rc.1 never got past a draft. Its Linux build failed on the rpm
-     (see [Pre-releases](#pre-releases)), so it was skipped as in
-     [When a build fails](#when-a-build-fails). Once rc.2 is out, delete
-     that draft with `gh release delete v1.0.0-rc.1` and keep its tag.
-3. Delete the old local tag that was never pushed (`git tag -d v1.0.0`).
-   Set `release-as` to `1.0.0` and remove `prerelease`. The release PR
-   shows up once a `feat:` or `fix:` has landed since the release
-   candidate. Merge it, and check that **v1.0.0** is GitHub's latest
-   release (#10).
-4. Remove `release-as` from the config. From here on, versions follow the
-   commits.
+Up to 1.0.0, release-please cut releases from a release PR, and kept
+`CHANGELOG.md`. The v1.0.0-rc.1 tag has no release: its Linux build failed,
+and the version was skipped.
 
 1.0.0 is the first build with the updater. Anything installed before it,
 including locally built 0.1.0 packages, has to be replaced by hand once.
@@ -246,7 +243,8 @@ glibc it was built against, and 22.04 sets that floor at **2.35**: Ubuntu
 GitHub will retire that runner. Moving to `ubuntu-24.04` raises the floor to
 **glibc 2.39**, which drops Debian 12 (and Ubuntu 22.04). Under the
 versioning rule that is a **major** release. Ship the runner change as
-`feat!:` and say in the changelog which distros it leaves behind.
+`feat!:`, with a `BREAKING CHANGE:` footer saying which distros it
+leaves behind, so the release notes say it too.
 
 ## Local builds
 
@@ -259,7 +257,8 @@ npm run tauri build -- --no-sign
 
 `scripts/install-local.sh` already does. A local build is only for the
 machine that built it: it carries that machine's glibc floor and can't
-update itself.
+update itself. It also says it is version 0.0.0, the repository's
+placeholder ([Where the version lives](#where-the-version-lives)).
 
 ## Platform findings
 

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import { EQ_PATH } from "../components/eq/EqSection";
 import { usePlayerStore } from "../stores/playerStore";
 import { useUiStore } from "../stores/uiStore";
 import { positionClock } from "./playback/positionClock";
@@ -49,7 +50,7 @@ export function useGlobalShortcuts() {
         case "E":
           if (mod) {
             e.preventDefault();
-            navigate("/settings");
+            navigate(EQ_PATH);
           }
           break;
         case "m":

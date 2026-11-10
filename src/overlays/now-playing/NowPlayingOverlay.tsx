@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { EQ_PATH } from "../../components/eq/EqSection";
 import { ArtistLinks } from "../../components/library/ArtistLinks";
 import { CoverImage } from "../../components/library/CoverImage";
 import { EntityGenreBubbles } from "../../components/library/GenreBubbles";
@@ -106,7 +107,7 @@ export function NowPlayingOverlay() {
                 label={t("player.eqInSettings")}
                 onClick={() => {
                   setOpen(false);
-                  navigate("/settings");
+                  navigate(EQ_PATH);
                 }}
               >
                 <SlidersVertical className="size-4" />

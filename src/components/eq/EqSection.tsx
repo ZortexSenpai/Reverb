@@ -10,6 +10,13 @@ import { EqBandRow } from "./EqBandRow";
 import { EqCurve } from "./EqCurve";
 import { EqPresetMenu } from "./EqPresetMenu";
 
+/**
+ * The EQ has no view of its own, so its entry points (player bar, full-screen
+ * player, Ctrl+E) link to the Settings view scrolled to this section.
+ */
+export const EQ_SECTION_ID = "eq";
+export const EQ_PATH = `/settings#${EQ_SECTION_ID}`;
+
 function HydrateError() {
   const t = useT();
   const error = useEqStore((s) => s.hydrateError);

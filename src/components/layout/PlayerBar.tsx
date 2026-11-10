@@ -4,6 +4,7 @@ import { playerBarAccent } from "../../lib/themes/genshin";
 import { usePlayerStore } from "../../stores/playerStore";
 import { usePrefsStore } from "../../stores/prefsStore";
 import { useUiStore } from "../../stores/uiStore";
+import { EQ_PATH } from "../eq/EqSection";
 import { ArtistLinks } from "../library/ArtistLinks";
 import { CoverImage } from "../library/CoverImage";
 import { StarButton } from "../library/StarButton";
@@ -93,7 +94,7 @@ export function PlayerBar() {
       {/* Right controls */}
       <div className="flex w-64 items-center justify-end gap-1">
         <SignalPathIndicator />
-        <IconButton label={t("player.eqInSettings")} onClick={() => navigate("/settings")}>
+        <IconButton label={t("player.eqInSettings")} onClick={() => navigate(EQ_PATH)}>
           <SlidersVertical className="size-4" />
         </IconButton>
         <IconButton

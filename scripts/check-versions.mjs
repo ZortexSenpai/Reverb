@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Fail when the places Reverb's version is written down disagree.
 //
-// release-please owns the version: its release PR bumps package.json and
-// package-lock.json (the `node` release type), the Cargo workspace version
-// (an `extra-files` entry) and both workspace crates in Cargo.lock. A bump
-// that missed one of them would build a release whose parts disagree about
-// what they are, so CI runs this on every push and PR, the release PR
-// included. The Tauri config has no version of its own; it inherits the
-// Cargo one.
+// The version lives in package.json, package-lock.json, the Cargo workspace
+// version and both workspace crates in Cargo.lock. In the repository they
+// all hold the placeholder 0.0.0; each release build stamps its tag's
+// version into all of them with set-version.mjs, then runs this. A file that
+// was missed would build a release whose parts disagree about what they are,
+// so CI also runs it on every push and PR. The Tauri config has no version
+// of its own; it inherits the Cargo one.
 //
 //     node scripts/check-versions.mjs
 
@@ -62,8 +62,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`${label.padEnd(width)}  ${version ?? "(missing)"}`);
   }
   if (!ok) {
-    console.error("\nVersions disagree. release-please bumps all of these together;");
-    console.error("a hand edit or a half-applied release PR leaves them out of step.");
+    console.error("\nVersions disagree. They hold the placeholder 0.0.0 and only a release");
+    console.error("build changes them, all together (scripts/set-version.mjs). See RELEASING.md.");
     process.exit(1);
   }
   console.log("\nAll versions agree.");

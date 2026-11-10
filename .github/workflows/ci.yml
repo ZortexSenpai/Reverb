@@ -1,13 +1,13 @@
 # Tests, type check and version consistency on every push and PR.
 #
-# The job names are what the `main` ruleset requires before a PR can merge
-# (the release PR included), so renaming one means updating the ruleset too.
+# The job names are what the `main` ruleset requires before a PR can merge,
+# so renaming one means updating the ruleset too.
 
 name: CI
 
 on:
-  # Branches only: the tag release-please pushes for a release is the commit
-  # that was just tested on main.
+  # Branches only: a release tag marks a commit that was already tested on
+  # its way to main.
   push:
     branches: ["**"]
   pull_request:

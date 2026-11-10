@@ -1,23 +1,32 @@
-# Release PR → draft release → all-platform builds → publish. See RELEASING.md.
+# Push to main → next version → draft release → all-platform builds → publish.
+# See RELEASING.md.
 #
-# release-please keeps a release PR open with the next version bump and its
-# CHANGELOG.md section. Merging it creates a *draft* release (and its tag), and
-# the build jobs below then run in this same workflow: a release created with
-# the default GITHUB_TOKEN never triggers another workflow. The draft is
-# published only once every platform has uploaded its bundles, signatures and
-# latest.json entries, so installs never see a "latest" release without files.
+# Every push to main runs scripts/next-version.mjs over the conventional
+# commits since the last stable vX.Y.Z tag. If they call for a release, it tags
+# the pushed commit and opens a *draft* release with the notes, and the build
+# jobs below stamp that version into the build and upload to the draft. The
+# draft is published only once every platform has uploaded its bundles,
+# signatures and latest.json entries, so installs never see a "latest" release
+# without files. A push with nothing releasable (docs:, chore:, ...) stops
+# after the first job.
 
 name: Release
 
 on:
   push:
     branches: [main]
+  # Pre-releases, and a manual retry of a normal release. See RELEASING.md.
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: >-
+          Pre-release identifier, like rc, for a vX.Y.Z-rc.N pre-release. Works
+          on any branch. Leave empty for a normal release, which only main makes.
+        required: false
+        default: ""
 
 permissions:
   contents: write
-  pull-requests: write
-  # release-please labels its PRs, and labels go through the issues API.
-  issues: write
 
 # Never cancel a run that may be halfway through uploading to a draft.
 concurrency:
@@ -25,30 +34,57 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-please:
-    name: Release PR
+  version:
+    name: Next version
     runs-on: ubuntu-latest
     outputs:
-      created: ${{ steps.release.outputs.release_created }}
-      id: ${{ steps.release.outputs.id }}
-      tag: ${{ steps.release.outputs.tag_name }}
-      body: ${{ steps.release.outputs.body }}
+      created: ${{ steps.draft.outputs.created }}
+      id: ${{ steps.draft.outputs.id }}
+      tag: ${{ steps.next.outputs.tag }}
+      version: ${{ steps.next.outputs.version }}
+      notes: ${{ steps.next.outputs.notes }}
     steps:
-      - uses: googleapis/release-please-action@v5
-        id: release
+      - uses: actions/checkout@v7
         with:
-          # A release PR pushed with the default GITHUB_TOKEN triggers no
-          # workflows, so CI would never report on it and the ruleset could
-          # never let it merge. The PAT makes it an ordinary PR. Without the
-          # secret, everything else still works, but CI skips the release PR.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          # Every commit and tag: the version comes from the history since the
+          # last release tag.
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Work out the next version from the commits
+        id: next
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          if [ -z "$PRERELEASE" ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Only main makes normal releases. To release $GITHUB_REF_NAME, give a pre-release identifier such as rc."
+            exit 1
+          fi
+          node scripts/next-version.mjs --prerelease "$PRERELEASE" --notes-file "$RUNNER_TEMP/notes.md"
+      # The tag goes up now, not when the draft is published: a release whose
+      # build fails keeps its version, and the next push moves past it
+      # (RELEASING.md, When a build fails).
+      - name: Tag the commit and open a draft release
+        id: draft
+        if: steps.next.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.next.outputs.tag }}
+          PRERELEASE: ${{ steps.next.outputs.prerelease }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          id=$(jq -n --arg tag "$TAG" --rawfile body "$RUNNER_TEMP/notes.md" --argjson prerelease "$PRERELEASE" \
+              '{tag_name: $tag, name: $tag, body: $body, draft: true, prerelease: $prerelease}' \
+            | gh api "repos/$GITHUB_REPOSITORY/releases" --input - --jq .id)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+          { echo "Draft release **$TAG** opened."; echo; cat "$RUNNER_TEMP/notes.md"; } >> "$GITHUB_STEP_SUMMARY"
 
   signing-key:
     name: Check signing key
-    needs: release-please
-    if: needs.release-please.outputs.created == 'true'
+    needs: version
+    if: needs.version.outputs.created == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -71,7 +107,7 @@ jobs:
 
   build:
     name: Build (${{ matrix.platform }})
-    needs: [release-please, signing-key]
+    needs: [version, signing-key]
     strategy:
       fail-fast: false
       matrix:
@@ -92,6 +128,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
+      # The repository holds the placeholder 0.0.0; the release's version is
+      # only in its tag. Write it into every file that carries the version
+      # before anything builds, and check none was missed.
+      - name: Stamp the release version
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: node scripts/set-version.mjs "$VERSION" && node scripts/check-versions.mjs
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         # As in CI, plus what the AppImage bundler shells out to.
@@ -116,7 +160,7 @@ jobs:
       # RELEASING.md (Pre-releases) says when to remove this.
       - name: Build a Tauri CLI that can bundle a pre-release rpm
         id: tauri-cli
-        if: runner.os == 'Linux' && contains(needs.release-please.outputs.tag, '-')
+        if: runner.os == 'Linux' && contains(needs.version.outputs.tag, '-')
         env:
           # It only has to bundle, not be small: skip the slow LTO build.
           CARGO_PROFILE_RELEASE_LTO: "false"
@@ -141,11 +185,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          # Upload to the draft release-please created rather than a new one.
-          releaseId: ${{ needs.release-please.outputs.id }}
-          # Becomes `notes` in latest.json: the release's CHANGELOG.md section,
-          # which the app shows before installing.
-          releaseBody: ${{ needs.release-please.outputs.body }}
+          # Upload to the draft the version job opened rather than a new one.
+          releaseId: ${{ needs.version.outputs.id }}
+          # Becomes `notes` in latest.json: the release notes, which the app
+          # shows before installing.
+          releaseBody: ${{ needs.version.outputs.notes }}
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
           # The patched CLI from the step above, if it ran. Empty means npm's.
@@ -155,11 +199,11 @@ jobs:
     name: Publish release
     # Skipped unless every build succeeded: a failed platform leaves the draft
     # for a re-run, and existing installs keep seeing the previous release.
-    needs: [release-please, build]
+    needs: [version, build]
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_ID: ${{ needs.release-please.outputs.id }}
+      RELEASE_ID: ${{ needs.version.outputs.id }}
     steps:
       # Each build merges its platforms into latest.json, so a lost update
       # between two of them would leave a platform out. Check before going live.

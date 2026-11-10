@@ -7,7 +7,7 @@
 /** What the UI shows about a found update. */
 export interface UpdateInfo {
   version: string;
-  /** Release notes, Markdown (the release's CHANGELOG.md section). */
+  /** Release notes, Markdown (the GitHub release's body). */
   notes: string;
   /** When the release was published, as the manifest gives it. */
   date: string | null;

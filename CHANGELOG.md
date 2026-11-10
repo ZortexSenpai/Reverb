@@ -1,12 +1,8 @@
 # Changelog
 
-## [1.0.0](https://github.com/ZortexSenpai/Reverb/compare/v1.0.0...v1.0.0) (2026-11-10)
-
-
-### Bug Fixes
-
-* fixed playerbar parametric eq button link ([e5a5d1e](https://github.com/ZortexSenpai/Reverb/commit/e5a5d1ebf50c9fd69372be55e6675e061eab24d2))
-* fixed playerbar parametric eq button link ([a55ad19](https://github.com/ZortexSenpai/Reverb/commit/a55ad19a17c7aa22dd9ff06c4297f12e5411bb9c))
+Releases after 1.0.0 are listed with their notes on
+[GitHub Releases](https://github.com/ZortexSenpai/Reverb/releases). This
+file is no longer updated; see RELEASING.md.
 
 ## [1.0.0](https://github.com/ZortexSenpai/Reverb/compare/v1.0.0-rc.2...v1.0.0) (2026-10-22)
 

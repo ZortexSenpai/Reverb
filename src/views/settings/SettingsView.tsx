@@ -17,7 +17,8 @@ import {
   Volume2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { EqSection } from "../../components/eq/EqSection";
+import { useLocation } from "react-router";
+import { EQ_SECTION_ID, EqSection } from "../../components/eq/EqSection";
 import { NAV_ITEMS } from "../../components/layout/navItems";
 import { Button, IconButton } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -1204,17 +1205,31 @@ function AboutSection() {
 
 export function SettingsView() {
   const t = useT();
+  const location = useLocation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Jump to the section the URL's hash names (the EQ buttons link to #eq).
+  // Keyed on the location key as well, so following the same link again
+  // re-scrolls after the user has scrolled away. Only this pane scrolls:
+  // scrollIntoView would also shift the app shell's overflow-hidden ancestors.
+  useEffect(() => {
+    const pane = scrollRef.current;
+    const target = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+    if (!pane || !target || !pane.contains(target)) return;
+    pane.scrollTop += target.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+  }, [location.key, location.hash]);
+
   return (
     <div className="flex h-full flex-col">
       <div className="px-6 py-4">
         <h1 className="text-2xl font-semibold">{t("nav.settings")}</h1>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
         <AppearanceSection />
         <FullScreenPlayerSection />
         <PlaybackSection />
         <AudioSection />
-        <div className="mt-4">
+        <div id={EQ_SECTION_ID} className="mt-4">
           <EqSection />
         </div>
         <StatsSourcesSection />

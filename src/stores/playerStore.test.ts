@@ -185,6 +185,45 @@ describe("playNow", () => {
   });
 });
 
+describe("moveInQueue", () => {
+  const ids = () => usePlayerStore.getState().queue.map((i) => i.queueId);
+
+  beforeEach(() => {
+    invoke.mockClear();
+    usePlayerStore.setState({
+      queue: ["q1", "q2", "q3", "q4", "q5"].map((id) => item(id, song(id))),
+      queueIndex: 1,
+    });
+  });
+
+  it("moves an upcoming item down, and the ones it passes up", () => {
+    usePlayerStore.getState().moveInQueue(2, 4);
+
+    expect(ids()).toEqual(["q1", "q2", "q4", "q5", "q3"]);
+  });
+
+  it("moves an upcoming item up, and the ones it passes down", () => {
+    usePlayerStore.getState().moveInQueue(4, 2);
+
+    expect(ids()).toEqual(["q1", "q2", "q5", "q3", "q4"]);
+  });
+
+  it("leaves the current item current, and doesn't restart it", () => {
+    usePlayerStore.getState().moveInQueue(3, 2);
+
+    expect(usePlayerStore.getState().currentItem()?.queueId).toBe("q2");
+    expect(playedTrackIds()).toEqual([]);
+  });
+
+  it("ignores a move to where the item already is, or out of range", () => {
+    const queue = usePlayerStore.getState().queue;
+    usePlayerStore.getState().moveInQueue(3, 3);
+    usePlayerStore.getState().moveInQueue(3, 9);
+
+    expect(usePlayerStore.getState().queue).toBe(queue);
+  });
+});
+
 describe("saveQueueSnapshotNow", () => {
   const setSaveQueue = (saveQueue: boolean) =>
     usePrefsStore.setState({ prefs: { ...usePrefsStore.getState().prefs, saveQueue } });

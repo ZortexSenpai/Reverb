@@ -1,6 +1,8 @@
-import { AnimatePresence, Reorder, motion } from "motion/react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ListPlus, ListX, Pause, Play as PlayIcon, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { defaultRangeExtractor, useVirtualizer, type Range } from "@tanstack/react-virtual";
 import { Tabs } from "radix-ui";
 import { formatDuration, formatRelativeDate } from "../../lib/format";
 import { useT } from "../../lib/i18n";
@@ -14,6 +16,7 @@ import { useUiStore, type QueuePanelTab } from "../../stores/uiStore";
 import { CoverImage } from "../../components/library/CoverImage";
 import { TrackContextMenu } from "../../components/library/TrackContextMenu";
 import { IconButton } from "../../components/ui/Button";
+import { displacement, ROW_HEIGHT, useQueueDrag } from "./queueDrag";
 
 /** Same selection pill as the sidebar, so it reads as glass in liquid mode. */
 const tabClass = (active: boolean) =>
@@ -22,6 +25,48 @@ const tabClass = (active: boolean) =>
   }`;
 
 const emptyClass = "px-2 py-8 text-center text-xs text-faint";
+const headingClass = "px-2 pb-1 text-[11px] font-medium tracking-wide text-faint uppercase";
+
+const rowSize = () => ROW_HEIGHT;
+
+/**
+ * Lays out only the rows in view of the tab's scroll container, plus a few
+ * either side: a Queue can hold thousands of Songs, and rendering them all
+ * made the panel take seconds to open. `keep` stays rendered wherever it is.
+ */
+function useRows(
+  scrollElement: HTMLElement | null,
+  count: number,
+  getItemKey: (index: number) => string,
+  keep?: number,
+) {
+  const listRef = useRef<HTMLDivElement>(null);
+  // Where the list starts in the scroll container, below the headings and the
+  // Now playing row (the container is `relative`, so offsetTop is just that).
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    setScrollMargin(listRef.current?.offsetTop ?? 0);
+  });
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      return keep === undefined || indexes.includes(keep)
+        ? indexes
+        : [...indexes, keep].sort((a, b) => a - b);
+    },
+    [keep],
+  );
+  const virtualizer = useVirtualizer({
+    count,
+    getScrollElement: () => scrollElement,
+    estimateSize: rowSize,
+    overscan: 8,
+    scrollMargin,
+    getItemKey,
+    rangeExtractor,
+  });
+  return { listRef, virtualizer, scrollMargin };
+}
 
 /** One Song in either tab: the Queue's items and the Play History's Plays. */
 function Row({
@@ -122,15 +167,108 @@ function PlayRow({ play }: { play: Play }) {
   );
 }
 
-function PlayHistoryList() {
+/** The Queue after the current item, in an order you can drag. */
+function NextUp({ scrollElement }: { scrollElement: HTMLElement | null }) {
+  const t = useT();
+  const queue = usePlayerStore((s) => s.queue);
+  const queueIndex = usePlayerStore((s) => s.queueIndex);
+  const upcoming = useMemo(() => queue.slice(queueIndex + 1), [queue, queueIndex]);
+
+  const onDrop = useCallback((queueId: string, to: number) => {
+    const { queue, queueIndex, moveInQueue } = usePlayerStore.getState();
+    const from = queue.findIndex((item) => item.queueId === queueId);
+    // Started playing (or was removed) mid-drag: it's no longer up next.
+    if (from <= queueIndex) return;
+    moveInQueue(from, Math.min(queueIndex + 1 + to, queue.length - 1));
+  }, []);
+  const { drag, onPointerDown } = useQueueDrag(scrollElement, upcoming.length, onDrop);
+
+  const getItemKey = useCallback((index: number) => upcoming[index].queueId, [upcoming]);
+  const { listRef, virtualizer, scrollMargin } = useRows(
+    scrollElement,
+    upcoming.length,
+    getItemKey,
+    drag?.from,
+  );
+
+  if (upcoming.length === 0) return null;
+  return (
+    <>
+      <div className={`${headingClass} pt-3`}>{t("queue.nextUp")}</div>
+      <div
+        ref={listRef}
+        className="relative select-none"
+        style={{ height: virtualizer.getTotalSize() }}
+      >
+        {virtualizer.getVirtualItems().map((row) => {
+          const item = upcoming[row.index];
+          const dragging = drag?.queueId === item.queueId;
+          // The dragged row follows the pointer; the ones it passes step aside.
+          const dy = !drag
+            ? 0
+            : dragging
+              ? drag.dy
+              : displacement(row.index, drag.from, drag.to) * ROW_HEIGHT;
+          return (
+            <div
+              key={row.key}
+              onPointerDown={(e) => onPointerDown(e, row.index, item.queueId)}
+              // The dragged row is lifted onto a solid tile: hover won't light it
+              // up while it holds the pointer, and it passes over other rows.
+              // The rest slide only mid-drag: on the drop they move to their
+              // new slots and shed the shift in one frame, which mustn't animate.
+              className={`absolute inset-x-0 cursor-grab ${
+                dragging
+                  ? "z-10 rounded-md bg-surface-2 shadow-lg"
+                  : drag
+                    ? "transition-transform duration-150"
+                    : ""
+              }`}
+              style={{
+                top: row.start - scrollMargin,
+                height: ROW_HEIGHT,
+                transform: dy ? `translateY(${dy}px)` : undefined,
+              }}
+            >
+              <QueueRow item={item} current={false} />
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function PlayHistoryList({ scrollElement }: { scrollElement: HTMLElement | null }) {
   const t = useT();
   const { data: plays } = usePlayHistory();
+  // A Song played twice is two Plays, so the Song id alone is no key; when it
+  // started tells them apart, and stays put as new Plays arrive on top.
+  const getItemKey = useCallback(
+    (index: number) => `${plays![index].playedAt}-${plays![index].song.id}`,
+    [plays],
+  );
+  const { listRef, virtualizer, scrollMargin } = useRows(
+    scrollElement,
+    plays?.length ?? 0,
+    getItemKey,
+  );
   // Still loading. One that can't be read arrives as empty (see readPlayHistory).
   if (!plays) return null;
   if (plays.length === 0) return <p className={emptyClass}>{t("queue.nothingPlayed")}</p>;
-  // A Song played twice is two Plays, so the Song id alone is no key; when it
-  // started tells them apart, and stays put as new Plays arrive on top.
-  return plays.map((play) => <PlayRow key={`${play.playedAt}-${play.song.id}`} play={play} />);
+  return (
+    <div ref={listRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
+      {virtualizer.getVirtualItems().map((row) => (
+        <div
+          key={row.key}
+          className="absolute inset-x-0"
+          style={{ top: row.start - scrollMargin, height: ROW_HEIGHT }}
+        >
+          <PlayRow play={plays[row.index]} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ClearPlayHistoryButton() {
@@ -169,10 +307,12 @@ export function QueuePanel() {
   const queue = usePlayerStore((s) => s.queue);
   const queueIndex = usePlayerStore((s) => s.queueIndex);
   const liquid = usePrefsStore((s) => s.prefs.layout) === "liquid";
-  const { setUpcoming, clearQueue } = usePlayerStore.getState();
+  const { clearQueue } = usePlayerStore.getState();
+  // Each tab scrolls itself, and only the open one is mounted.
+  const [queueScroll, setQueueScroll] = useState<HTMLDivElement | null>(null);
+  const [playHistoryScroll, setPlayHistoryScroll] = useState<HTMLDivElement | null>(null);
 
   const current = queueIndex >= 0 ? queue[queueIndex] : null;
-  const upcoming = queue.slice(queueIndex + 1);
 
   // Liquid: a floating glass panel inset by the shell padding (top/right-3)
   // and clearing the player bar (12px padding + 84px bar + 12px gap = 108px).
@@ -239,38 +379,31 @@ export function QueuePanel() {
                 </IconButton>
               </div>
             </div>
-            <Tabs.Content value="queue" className="flex-1 overflow-y-auto p-2">
+            <Tabs.Content
+              ref={setQueueScroll}
+              value="queue"
+              className="relative flex-1 overflow-y-auto p-2"
+            >
               {queue.length === 0 ? (
                 <p className={emptyClass}>{t("queue.empty")}</p>
               ) : (
                 <>
                   {current && (
                     <>
-                      <div className="px-2 pt-1 pb-1 text-[11px] font-medium tracking-wide text-faint uppercase">
-                        {t("queue.nowPlaying")}
-                      </div>
+                      <div className={`${headingClass} pt-1`}>{t("queue.nowPlaying")}</div>
                       <QueueRow item={current} current />
                     </>
                   )}
-                  {upcoming.length > 0 && (
-                    <>
-                      <div className="px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-faint uppercase">
-                        {t("queue.nextUp")}
-                      </div>
-                      <Reorder.Group axis="y" values={upcoming} onReorder={setUpcoming}>
-                        {upcoming.map((item) => (
-                          <Reorder.Item key={item.queueId} value={item} className="cursor-grab">
-                            <QueueRow item={item} current={false} />
-                          </Reorder.Item>
-                        ))}
-                      </Reorder.Group>
-                    </>
-                  )}
+                  <NextUp scrollElement={queueScroll} />
                 </>
               )}
             </Tabs.Content>
-            <Tabs.Content value="playHistory" className="flex-1 overflow-y-auto p-2">
-              <PlayHistoryList />
+            <Tabs.Content
+              ref={setPlayHistoryScroll}
+              value="playHistory"
+              className="relative flex-1 overflow-y-auto p-2"
+            >
+              <PlayHistoryList scrollElement={playHistoryScroll} />
             </Tabs.Content>
           </Tabs.Root>
         </motion.aside>

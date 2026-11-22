@@ -4,5 +4,6 @@ pub mod library;
 pub mod mixes;
 pub mod play_history;
 pub mod player;
+pub mod services;
 pub mod settings;
 pub mod stats;

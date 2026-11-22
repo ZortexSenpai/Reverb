@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BarChart3, RefreshCw } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { markStatsImportStarted } from "../../lib/playback/engineBridge";
+import { SERVICE_NAMES, STATS_SETTINGS_PATH, useServices } from "../../lib/scrobbleServices";
 import { useUiStore } from "../../stores/uiStore";
 import {
   AreaChart,
@@ -150,21 +151,21 @@ export function StatsView() {
     setParams({ range: "custom", from: next.from, to: next.to }, { replace: true });
   }
 
-  // Import completion invalidates these globally (engine bridge).
-  const sources = useQuery({
-    queryKey: ["stats-sources"],
-    queryFn: () => cmd("stats_get_sources"),
-  });
+  // Import completion and account changes invalidate these globally.
+  const services = useServices();
+  // The one account settings chose for stats, if it can supply history.
+  const source = services.data?.statsSource ?? null;
   const stats = useQuery({
-    queryKey: ["stats", range, from, to],
+    queryKey: ["stats", source, range, from, to],
     queryFn: () => cmd("stats_get", { range, from, to }),
+    enabled: source !== null,
     staleTime: 60_000,
   });
 
-  const connected = Boolean(sources.data?.lastfm);
+  const connected = source !== null;
   const summary = stats.data;
   const importProgress = useUiStore((s) => s.statsImport);
-  const importing = importProgress !== null || Boolean(sources.data?.importing);
+  const importing = importProgress !== null || Boolean(services.data?.importing);
 
   return (
     <div className="flex h-full flex-col">
@@ -207,7 +208,7 @@ export function StatsView() {
             />
           </div>
         )}
-        {connected && (
+        {source && (
           <div className="ml-auto flex items-center gap-3">
             {importing && (
               <span className="text-xs tabular-nums text-dim">
@@ -218,7 +219,9 @@ export function StatsView() {
                         total: importProgress.total,
                       })
                     : t("stats.scrobblesProgress", { n: importProgress.imported })
-                  : t("stats.contactingLastfm")}
+                  : t("stats.contacting", {
+                      service: SERVICE_NAMES[importProgress?.source ?? source],
+                    })}
               </span>
             )}
             <Button
@@ -226,8 +229,8 @@ export function StatsView() {
               className="rounded-full"
               disabled={importing}
               onClick={() => {
-                markStatsImportStarted();
-                void cmd("stats_import", { source: "lastfm" });
+                markStatsImportStarted(source);
+                void cmd("stats_import");
               }}
             >
               <RefreshCw className={`size-4 ${importing ? "animate-spin" : ""}`} />
@@ -243,12 +246,12 @@ export function StatsView() {
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {!connected && !sources.isPending ? (
+        {!connected && !services.isPending ? (
           <div className="flex flex-col items-center gap-3 py-24 text-dim">
             <BarChart3 className="size-10 text-faint" />
             <p className="max-w-sm text-center text-sm">
               {t("stats.noSourcesLead")}{" "}
-              <Link to="/settings" className="text-accent hover:underline">
+              <Link to={STATS_SETTINGS_PATH} className="text-accent hover:underline">
                 {t("stats.noSourcesLink")}
               </Link>{" "}
               {t("stats.noSourcesTail")}

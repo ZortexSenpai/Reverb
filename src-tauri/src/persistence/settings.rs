@@ -84,23 +84,29 @@ pub struct Preferences {
     pub scrobble_enabled: bool,
     /// Percentage of a song to play before it counts as played (10–100).
     pub scrobble_at_percent: u32,
-    /// Send plays to Last.fm directly and leave the Subsonic server out of it
-    /// — no scrobble, no now-playing entry. Needs Last.fm scrobbling to be
-    /// connected; without a session key it is ignored (see `events.rs`), so
-    /// turning it on can never silently stop plays being recorded anywhere.
-    pub lastfm_scrobble_only: bool,
-    /// Clear `lastfm_scrobble_only` on the next launch, making it a
+    /// Send plays straight to the scrobbling account (Last.fm or
+    /// ListenBrainz) and leave the Subsonic server out of it — no scrobble, no
+    /// now-playing entry. Without a scrobbling account it is ignored (see
+    /// `stats::scrobble::direct_target`), so turning it on can never silently
+    /// stop plays being recorded anywhere. Was Last.fm-only before ListenBrainz
+    /// existed, hence the alias.
+    #[serde(alias = "lastfmScrobbleOnly")]
+    pub direct_scrobble: bool,
+    /// Clear `direct_scrobble` on the next launch, making it a
     /// this-session-only switch rather than a persistent mode.
-    pub lastfm_scrobble_only_reset_on_start: bool,
-    /// Show a `lastfm_scrobble_only` toggle in the sidebar.
-    pub lastfm_scrobble_only_pinned: bool,
-    /// Submit only the first credited artist to Last.fm, rather than the whole
-    /// credit string ("A feat. B"). Last.fm matches a play by artist name, and
-    /// a joined credit usually matches nothing — so this trades the featured
+    #[serde(alias = "lastfmScrobbleOnlyResetOnStart")]
+    pub direct_scrobble_reset_on_start: bool,
+    /// Show a `direct_scrobble` toggle in the sidebar.
+    #[serde(alias = "lastfmScrobbleOnlyPinned")]
+    pub direct_scrobble_pinned: bool,
+    /// Submit only the first credited artist rather than the whole credit
+    /// string ("A feat. B"). The services match a play by artist name, and a
+    /// joined credit usually matches nothing — so this trades the featured
     /// artists for the play landing on the main one. Applies to the plays
-    /// Reverb sends to Last.fm itself; what the Subsonic server forwards is the
-    /// server's own business (Navidrome has the same option).
-    pub lastfm_scrobble_first_artist_only: bool,
+    /// Reverb sends to a service itself; what the Subsonic server forwards is
+    /// the server's own business (Navidrome has the same option).
+    #[serde(alias = "lastfmScrobbleFirstArtistOnly")]
+    pub scrobble_first_artist_only: bool,
     /// Visible columns in the songs table (canonical ids, see frontend).
     pub song_columns: Vec<String>,
     /// Playlist ids pinned by the user, in pin order.
@@ -150,10 +156,10 @@ impl Default for Preferences {
             seek_bar_thickness: "medium".into(),
             scrobble_enabled: true,
             scrobble_at_percent: 80,
-            lastfm_scrobble_only: false,
-            lastfm_scrobble_only_reset_on_start: false,
-            lastfm_scrobble_only_pinned: false,
-            lastfm_scrobble_first_artist_only: false,
+            direct_scrobble: false,
+            direct_scrobble_reset_on_start: false,
+            direct_scrobble_pinned: false,
+            scrobble_first_artist_only: false,
             song_columns: vec!["artist".into(), "album".into(), "duration".into()],
             pinned_playlists: Vec::new(),
             show_pinned_in_sidebar: true,
@@ -260,12 +266,12 @@ mod tests {
     /// that exists only on the TS side fails to persist without any error.
     /// Pin the names of the fields most recently added.
     #[test]
-    fn lastfm_only_prefs_survive_a_camel_case_round_trip() {
+    fn scrobbling_prefs_survive_a_camel_case_round_trip() {
         let raw = r#"{
-            "lastfmScrobbleOnly": true,
-            "lastfmScrobbleOnlyResetOnStart": true,
-            "lastfmScrobbleOnlyPinned": true,
-            "lastfmScrobbleFirstArtistOnly": true,
+            "directScrobble": true,
+            "directScrobbleResetOnStart": true,
+            "directScrobblePinned": true,
+            "scrobbleFirstArtistOnly": true,
             "seekBarStyle": "wave",
             "seekBarAnimated": false,
             "seekBarThickness": "thick",
@@ -273,10 +279,10 @@ mod tests {
             "checkForUpdates": false
         }"#;
         let prefs: Preferences = serde_json::from_str(raw).expect("camelCase names must match");
-        assert!(prefs.lastfm_scrobble_only);
-        assert!(prefs.lastfm_scrobble_only_reset_on_start);
-        assert!(prefs.lastfm_scrobble_only_pinned);
-        assert!(prefs.lastfm_scrobble_first_artist_only);
+        assert!(prefs.direct_scrobble);
+        assert!(prefs.direct_scrobble_reset_on_start);
+        assert!(prefs.direct_scrobble_pinned);
+        assert!(prefs.scrobble_first_artist_only);
         assert_eq!(prefs.seek_bar_style, "wave");
         assert!(!prefs.seek_bar_animated);
         assert_eq!(prefs.seek_bar_thickness, "thick");
@@ -285,15 +291,42 @@ mod tests {
 
         // ...and come back out under the same names.
         let back = serde_json::to_value(&prefs).unwrap();
-        assert_eq!(back["lastfmScrobbleOnly"], serde_json::json!(true));
-        assert_eq!(back["lastfmScrobbleOnlyResetOnStart"], serde_json::json!(true));
-        assert_eq!(back["lastfmScrobbleOnlyPinned"], serde_json::json!(true));
-        assert_eq!(back["lastfmScrobbleFirstArtistOnly"], serde_json::json!(true));
+        assert_eq!(back["directScrobble"], serde_json::json!(true));
+        assert_eq!(back["directScrobbleResetOnStart"], serde_json::json!(true));
+        assert_eq!(back["directScrobblePinned"], serde_json::json!(true));
+        assert_eq!(back["scrobbleFirstArtistOnly"], serde_json::json!(true));
         assert_eq!(back["seekBarStyle"], serde_json::json!("wave"));
         assert_eq!(back["seekBarAnimated"], serde_json::json!(false));
         assert_eq!(back["seekBarThickness"], serde_json::json!("thick"));
         assert_eq!(back["syncQueue"], serde_json::json!(false));
         assert_eq!(back["checkForUpdates"], serde_json::json!(false));
+    }
+
+    /// Before ListenBrainz, direct scrobbling was "Last.fm only". A settings
+    /// file from then has to come through with the same switches set (the
+    /// Last.fm connection itself carries over in `stats::store`) — read
+    /// through the whole `Settings`, since prefs are flattened into it and
+    /// that is the path a real file takes.
+    #[test]
+    fn last_fm_only_settings_become_direct_scrobbling() {
+        let raw = r#"{
+            "serverUrl": "https://music.example.com/",
+            "lastfmScrobbleOnly": true,
+            "lastfmScrobbleOnlyResetOnStart": true,
+            "lastfmScrobbleOnlyPinned": true,
+            "lastfmScrobbleFirstArtistOnly": true
+        }"#;
+        let settings: Settings = serde_json::from_str(raw).expect("old names must still parse");
+        let prefs = settings.prefs;
+        assert!(prefs.direct_scrobble);
+        assert!(prefs.direct_scrobble_reset_on_start);
+        assert!(prefs.direct_scrobble_pinned);
+        assert!(prefs.scrobble_first_artist_only);
+
+        // Written back under the new names only.
+        let back = serde_json::to_value(Settings { prefs, ..Settings::default() }).unwrap();
+        assert_eq!(back["directScrobble"], serde_json::json!(true));
+        assert!(back.get("lastfmScrobbleOnly").is_none());
     }
 
     /// Every `settings.json.bak-*` file in `dir`.
@@ -373,9 +406,9 @@ mod tests {
         assert_eq!(s.prefs.accent, "coral");
         assert_eq!(s.prefs.streaming_format, "raw");
         assert!(s.prefs.scrobble_enabled);
-        assert!(!s.prefs.lastfm_scrobble_only);
-        assert!(!s.prefs.lastfm_scrobble_only_reset_on_start);
-        assert!(!s.prefs.lastfm_scrobble_only_pinned);
+        assert!(!s.prefs.direct_scrobble);
+        assert!(!s.prefs.direct_scrobble_reset_on_start);
+        assert!(!s.prefs.direct_scrobble_pinned);
         assert!(s.prefs.audio_device.is_none());
         assert!(s.prefs.check_for_updates, "update checks default to on");
         // And the new shape round-trips.

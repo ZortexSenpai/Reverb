@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   BarChart3,
@@ -28,6 +28,15 @@ import { formatSampleRate } from "../../lib/format";
 import { LANGUAGE_NAMES, LOCALES, useT, type MessageKey, type T } from "../../lib/i18n";
 import { cmd, errorMessage } from "../../lib/ipc/commands";
 import { markStatsImportStarted } from "../../lib/playback/engineBridge";
+import {
+  SCROBBLING_SECTION_ID,
+  SERVICE_NAMES,
+  SERVICES,
+  SERVICES_QUERY_KEY,
+  STATS_SECTION_ID,
+  statsReadsFrom,
+  useServices,
+} from "../../lib/scrobbleServices";
 import { themeArt } from "../../lib/themes/genshin";
 import {
   downloadedUpdate,
@@ -39,12 +48,16 @@ import {
   type UpdateState,
 } from "../../lib/updater";
 import type {
+  AccountRole,
+  AccountStatus,
   GridSize,
   NowPlayingAlign,
   NowPlayingBackdrop,
   ReplayGainMode,
   SeekBarStyle,
   SeekBarThickness,
+  ServiceId,
+  ServicesStatus,
   StreamingFormat,
 } from "../../lib/subsonic/types";
 import { NOW_PLAYING_FIELDS } from "../../overlays/now-playing/nowPlayingFields";
@@ -222,13 +235,6 @@ function PlaybackSection() {
   const prefs = usePrefsStore((s) => s.prefs);
   const set = usePrefsStore((s) => s.set);
   const rg = prefs.replayGain;
-  // Shares the cache entry with the stats-sources section below.
-  const sources = useQuery({
-    queryKey: ["stats-sources"],
-    queryFn: () => cmd("stats_get_sources"),
-  });
-  const canScrobbleToLastfm = Boolean(sources.data?.lastfm?.scrobbling);
-
   return (
     <SectionCard icon={Gauge} title={t("settings.playback")}>
       <SettingRow
@@ -330,88 +336,6 @@ function PlaybackSection() {
       <SettingRow label={t("settings.radio")} hint={t("settings.radioHint")}>
         <Toggle checked={prefs.radioMode} onChange={(radioMode) => set({ radioMode })} />
       </SettingRow>
-
-      <SettingRow label={t("settings.scrobble")} hint={t("settings.scrobbleHint")}>
-        <Toggle
-          checked={prefs.scrobbleEnabled}
-          onChange={(scrobbleEnabled) => set({ scrobbleEnabled })}
-        />
-      </SettingRow>
-
-      {prefs.scrobbleEnabled && (
-        <>
-          <SettingRow label={t("settings.markPlayed")} hint={t("settings.markPlayedHint")}>
-            <div className="flex items-center gap-2 text-xs text-dim">
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={5}
-                value={prefs.scrobbleAtPercent}
-                onChange={(e) => set({ scrobbleAtPercent: Number(e.target.value) })}
-                className="w-36 accent-(--color-accent)"
-              />
-              <span className="w-10 tabular-nums">{prefs.scrobbleAtPercent}%</span>
-            </div>
-          </SettingRow>
-
-          <SettingRow
-            label={t("settings.lastfmOnly")}
-            hint={
-              canScrobbleToLastfm
-                ? t("settings.lastfmOnlyHint")
-                : t("settings.lastfmOnlyUnavailable")
-            }
-          >
-            <Toggle
-              checked={prefs.lastfmScrobbleOnly && canScrobbleToLastfm}
-              disabled={!canScrobbleToLastfm}
-              onChange={(lastfmScrobbleOnly) => set({ lastfmScrobbleOnly })}
-            />
-          </SettingRow>
-          {/* Shown whether or not the mode is currently on: "turn off on
-              restart" means the switch above is off every time settings is
-              opened fresh, and its two companions would blink out with it. */}
-          <SettingRow
-            label={t("settings.lastfmOnlyReset")}
-            hint={t("settings.lastfmOnlyResetHint")}
-          >
-            <Toggle
-              checked={prefs.lastfmScrobbleOnlyResetOnStart}
-              disabled={!canScrobbleToLastfm}
-              onChange={(lastfmScrobbleOnlyResetOnStart) =>
-                set({ lastfmScrobbleOnlyResetOnStart })
-              }
-            />
-          </SettingRow>
-          <SettingRow label={t("settings.lastfmOnlyPin")} hint={t("settings.lastfmOnlyPinHint")}>
-            <Toggle
-              checked={prefs.lastfmScrobbleOnlyPinned}
-              disabled={!canScrobbleToLastfm}
-              onChange={(lastfmScrobbleOnlyPinned) => set({ lastfmScrobbleOnlyPinned })}
-            />
-          </SettingRow>
-          {/* Only bites on the plays Reverb sends to Last.fm itself, i.e. in
-              the mode above — what the server forwards is the server's own
-              setting. Grouped here for that reason. */}
-          <SettingRow
-            label={t("settings.lastfmFirstArtist")}
-            hint={
-              canScrobbleToLastfm
-                ? t("settings.lastfmFirstArtistHint")
-                : t("settings.lastfmOnlyUnavailable")
-            }
-          >
-            <Toggle
-              checked={prefs.lastfmScrobbleFirstArtistOnly && canScrobbleToLastfm}
-              disabled={!canScrobbleToLastfm}
-              onChange={(lastfmScrobbleFirstArtistOnly) =>
-                set({ lastfmScrobbleFirstArtistOnly })
-              }
-            />
-          </SettingRow>
-        </>
-      )}
 
       <SettingRow label={t("settings.saveQueue")} hint={t("settings.saveQueueHint")}>
         <Toggle checked={prefs.saveQueue} onChange={(saveQueue) => set({ saveQueue })} />
@@ -919,192 +843,104 @@ function FullScreenPlayerSection() {
   );
 }
 
-function StatsSourcesSection() {
+/** Refetch everything an account change touches. */
+function invalidateServices(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: SERVICES_QUERY_KEY });
+  void queryClient.invalidateQueries({ queryKey: ["stats"] });
+}
+
+/** Last.fm | ListenBrainz, as a segmented control. */
+function ServicePicker({
+  value,
+  onChange,
+}: {
+  value: ServiceId;
+  onChange: (service: ServiceId) => void;
+}) {
+  const t = useT();
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t("settings.service")}
+      className="flex rounded-full border border-edge p-0.5"
+    >
+      {SERVICES.map((id) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={value === id}
+          onClick={() => onChange(id)}
+          className={`cursor-pointer rounded-full px-3 py-1 text-sm transition-colors ${
+            value === id ? "bg-surface-2 font-medium text-text" : "text-dim hover:text-text"
+          }`}
+        >
+          {SERVICE_NAMES[id]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Connect a Last.fm account: with the shared secret and password to scrobble. */
+function LastfmForm({ role }: { role: AccountRole }) {
   const t = useT();
   const queryClient = useQueryClient();
   const showToast = useUiStore((s) => s.showToast);
-  const statsImport = useUiStore((s) => s.statsImport);
   const [username, setUsername] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [sharedSecret, setSharedSecret] = useState("");
   const [password, setPassword] = useState("");
   const [connecting, setConnecting] = useState(false);
-  const [disconnectOpen, setDisconnectOpen] = useState(false);
-  /** The add-scrobbling form, shown for an already-connected source. */
-  const [scrobbleFormOpen, setScrobbleFormOpen] = useState(false);
-
-  const sources = useQuery({
-    queryKey: ["stats-sources"],
-    queryFn: () => cmd("stats_get_sources"),
-  });
-
-  // Progress + completion toasts come from the global stats:import listener.
-  const importing = statsImport !== null || Boolean(sources.data?.importing);
-  const progress = !statsImport
-    ? null
-    : statsImport.total
-      ? t("settings.importingOfTotal", { n: statsImport.imported, total: statsImport.total })
-      : t("settings.importingCount", { n: statsImport.imported });
+  const scrobbling = role === "scrobble";
+  const ready =
+    username.trim() && apiKey.trim() && (!scrobbling || (sharedSecret.trim() && password));
 
   async function connect(e: React.FormEvent) {
     e.preventDefault();
     setConnecting(true);
     try {
-      await cmd("stats_configure_lastfm", {
+      await cmd("services_connect_lastfm", {
+        role,
         username: username.trim(),
         apiKey: apiKey.trim(),
-        sharedSecret: sharedSecret.trim() || null,
-        password: password || null,
+        sharedSecret: scrobbling ? sharedSecret.trim() : null,
+        password: scrobbling ? password : null,
       });
       setUsername("");
       setApiKey("");
       setSharedSecret("");
       setPassword("");
-      void queryClient.invalidateQueries({ queryKey: ["stats-sources"] });
-      markStatsImportStarted();
-      void cmd("stats_import", { source: "lastfm" });
-      showToast(t("toast.lastfmConnected"));
+      invalidateServices(queryClient);
+      showToast(t("toast.connected", { service: SERVICE_NAMES.lastfm }));
     } catch (err) {
       showToast(errorMessage(err), "error");
     } finally {
       setConnecting(false);
     }
   }
-
-  /** Add scrobbling to a source that is already connected for imports. */
-  async function enableScrobbling(e: React.FormEvent) {
-    e.preventDefault();
-    setConnecting(true);
-    try {
-      await cmd("stats_enable_lastfm_scrobbling", {
-        sharedSecret: sharedSecret.trim(),
-        password,
-        apiKey: apiKey.trim() || null,
-      });
-      setSharedSecret("");
-      setPassword("");
-      setApiKey("");
-      setScrobbleFormOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["stats-sources"] });
-      showToast(t("toast.lastfmScrobblingOn"));
-    } catch (err) {
-      showToast(errorMessage(err), "error");
-    } finally {
-      setConnecting(false);
-    }
-  }
-
-  const lastfm = sources.data?.lastfm;
 
   return (
-    <SectionCard icon={BarChart3} title={t("settings.statsSources")}>
-      {lastfm ? (
+    <form onSubmit={connect} className="flex max-w-md flex-col gap-2">
+      <p className="text-xs text-faint">
+        {scrobbling
+          ? `${t("settings.lastfmScrobbleLead")} ${t("settings.lastfmPairHint")} ${t("settings.lastfmScrobbleIntro")}`
+          : t("settings.lastfmIntro")}
+      </p>
+      <Input
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder={t("settings.lastfmUsername")}
+        spellCheck={false}
+      />
+      <Input
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        placeholder={t("settings.apiKey")}
+        spellCheck={false}
+      />
+      {scrobbling && (
         <>
-          <div className="text-sm">
-            <span className="font-medium">Last.fm</span>
-            <span className="text-dim"> {t("settings.lastfmConnectedAs")} </span>
-            <span className="font-medium">{lastfm.username}</span>
-            {lastfm.scrobbling && (
-              <span className="text-accent">{t("settings.lastfmScrobblingOn")}</span>
-            )}
-          </div>
-          {!lastfm.scrobbling && (
-            <div className="mt-1 text-xs text-faint">{t("settings.lastfmImportOnly")}</div>
-          )}
-          <div className="mt-1 text-xs text-faint">
-            {t("settings.scrobblesImported", { n: lastfm.trackCount })}
-            {lastfm.lastSyncAt
-              ? t("settings.lastSync", {
-                  date: t.d(lastfm.lastSyncAt, { dateStyle: "medium", timeStyle: "short" }),
-                })
-              : ""}
-          </div>
-          {progress && <div className="mt-2 text-xs text-accent">{progress}</div>}
-          <div className="mt-3 flex gap-2">
-            <Button
-              variant="outline"
-              disabled={importing}
-              onClick={() => {
-                markStatsImportStarted();
-                void cmd("stats_import", { source: "lastfm" });
-              }}
-            >
-              <RefreshCw className={`size-4 ${importing ? "animate-spin" : ""}`} />
-              {importing ? t("settings.importing") : t("settings.importNew")}
-            </Button>
-            {!lastfm.scrobbling && (
-              <Button variant="outline" onClick={() => setScrobbleFormOpen((open) => !open)}>
-                <Radio className="size-4" /> {t("settings.setUpScrobbling")}
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setDisconnectOpen(true)}>
-              <Unplug className="size-4" /> {t("settings.disconnect")}
-            </Button>
-          </div>
-          {scrobbleFormOpen && !lastfm.scrobbling && (
-            <form onSubmit={enableScrobbling} className="mt-3 flex max-w-md flex-col gap-2">
-              <p className="text-xs text-faint">{t("settings.lastfmPairHint")}</p>
-              <Input
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={t("settings.lastfmApiKeyReplace")}
-                spellCheck={false}
-              />
-              <Input
-                value={sharedSecret}
-                onChange={(e) => setSharedSecret(e.target.value)}
-                placeholder={t("settings.lastfmSharedSecret")}
-                spellCheck={false}
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("settings.lastfmPassword")}
-              />
-              <Button
-                type="submit"
-                disabled={!sharedSecret.trim() || !password || connecting}
-                className="self-start"
-              >
-                {connecting ? t("settings.checking") : t("settings.setUpScrobbling")}
-              </Button>
-            </form>
-          )}
-          <ConfirmDialog
-            open={disconnectOpen}
-            title={t("settings.disconnectTitle")}
-            body={t("settings.disconnectBody")}
-            confirmLabel={t("settings.disconnect")}
-            danger
-            onConfirm={() => {
-              void cmd("stats_disconnect", { source: "lastfm" }).then(() => {
-                void queryClient.invalidateQueries({ queryKey: ["stats-sources"] });
-                void queryClient.invalidateQueries({ queryKey: ["stats"] });
-              });
-            }}
-            onClose={() => setDisconnectOpen(false)}
-          />
-        </>
-      ) : (
-        <form onSubmit={connect} className="flex max-w-md flex-col gap-2">
-          <p className="text-xs text-faint">{t("settings.lastfmIntro")}</p>
-          <Input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder={t("settings.lastfmUsername")}
-            spellCheck={false}
-          />
-          <Input
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={t("settings.apiKey")}
-            spellCheck={false}
-          />
-          <p className="mt-1 text-xs text-faint">
-            {t("settings.optionalForScrobbling")} {t("settings.lastfmPairHint")}{" "}
-            {t("settings.lastfmScrobbleIntro")}
-          </p>
           <Input
             value={sharedSecret}
             onChange={(e) => setSharedSecret(e.target.value)}
@@ -1117,15 +953,424 @@ function StatsSourcesSection() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t("settings.lastfmPassword")}
           />
-          <Button
-            type="submit"
-            disabled={!username.trim() || !apiKey.trim() || connecting}
-            className="self-start"
-          >
-            {connecting ? t("settings.checking") : t("settings.connectLastfm")}
-          </Button>
-        </form>
+        </>
       )}
+      <Button type="submit" disabled={!ready || connecting} className="self-start">
+        {connecting
+          ? t("settings.checking")
+          : t("settings.connectService", { service: SERVICE_NAMES.lastfm })}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * Connect ListenBrainz, or a server that speaks its API. Given the role's
+ * current ListenBrainz connection, it edits that one instead, and a blank
+ * token keeps the stored one.
+ */
+function ListenbrainzForm({
+  role,
+  current,
+  onDone,
+}: {
+  role: AccountRole;
+  current?: AccountStatus | null;
+  onDone?: () => void;
+}) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const showToast = useUiStore((s) => s.showToast);
+  const editing = current?.service === "listenbrainz";
+  const [token, setToken] = useState("");
+  const [apiUrl, setApiUrl] = useState(editing ? (current?.apiUrl ?? "") : "");
+  const [connecting, setConnecting] = useState(false);
+
+  async function connect(e: React.FormEvent) {
+    e.preventDefault();
+    setConnecting(true);
+    try {
+      await cmd("services_connect_listenbrainz", {
+        role,
+        token: token.trim() || null,
+        apiUrl: apiUrl.trim() || null,
+      });
+      setToken("");
+      invalidateServices(queryClient);
+      showToast(t("toast.connected", { service: SERVICE_NAMES.listenbrainz }));
+      onDone?.();
+    } catch (err) {
+      showToast(errorMessage(err), "error");
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={connect} className="flex max-w-md flex-col gap-2">
+      {!editing && (
+        <p className="text-xs text-faint">
+          {role === "scrobble"
+            ? t("settings.listenbrainzScrobbleIntro")
+            : t("settings.listenbrainzStatsIntro")}
+        </p>
+      )}
+      <Input
+        type="password"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder={
+          editing ? t("settings.listenbrainzTokenKeep") : t("settings.listenbrainzToken")
+        }
+        spellCheck={false}
+        autoComplete="off"
+      />
+      <Input
+        value={apiUrl}
+        onChange={(e) => setApiUrl(e.target.value)}
+        placeholder={t("settings.listenbrainzServer")}
+        spellCheck={false}
+      />
+      <p className="text-xs text-faint">
+        {role === "scrobble"
+          ? t("settings.listenbrainzServerHint")
+          : t("settings.listenbrainzStatsServerHint")}
+      </p>
+      <Button
+        type="submit"
+        disabled={(!editing && !token.trim()) || connecting}
+        className="self-start"
+      >
+        {connecting
+          ? t("settings.checking")
+          : editing
+            ? t("common.save")
+            : t("settings.connectService", { service: SERVICE_NAMES.listenbrainz })}
+      </Button>
+    </form>
+  );
+}
+
+/** Disconnect button plus its confirmation. */
+function DisconnectButton({
+  role,
+  service,
+  body,
+}: {
+  role: AccountRole;
+  service: ServiceId;
+  body: string;
+}) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <Unplug className="size-4" /> {t("settings.disconnect")}
+      </Button>
+      <ConfirmDialog
+        open={open}
+        title={t("settings.disconnectTitle", { service: SERVICE_NAMES[service] })}
+        body={body}
+        confirmLabel={t("settings.disconnect")}
+        danger
+        onConfirm={() => {
+          void cmd("services_disconnect", { role }).then(() => invalidateServices(queryClient));
+        }}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * One role's account. Shows the connection when the picked service is the
+ * connected one; otherwise the form to connect the picked service, which
+ * replaces the current account (`replaceNote` says what that does).
+ */
+function AccountPanel({
+  role,
+  account,
+  service,
+  replaceNote,
+  disconnectBody,
+}: {
+  role: AccountRole;
+  account: AccountStatus | null;
+  service: ServiceId;
+  replaceNote: string;
+  disconnectBody: string;
+}) {
+  const t = useT();
+  const [editing, setEditing] = useState(false);
+
+  if (!account || account.service !== service) {
+    return (
+      <>
+        {account && <p className="mb-2 max-w-md text-xs text-accent">{replaceNote}</p>}
+        {service === "lastfm" ? <LastfmForm role={role} /> : <ListenbrainzForm role={role} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="text-sm">
+        {account.username ? (
+          <>
+            <span className="text-dim">{t("settings.connectedAs")} </span>
+            <span className="font-medium">{account.username}</span>
+          </>
+        ) : (
+          <span className="text-dim">{t("settings.connected")}</span>
+        )}
+      </div>
+      {account.apiUrl && (
+        <div className="mt-1 truncate text-xs text-faint">
+          {t("settings.listenbrainzVia", { url: account.apiUrl })}
+        </div>
+      )}
+      {!account.history && (
+        <div className="mt-1 text-xs text-faint">{t("settings.listenbrainzNoHistory")}</div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {account.service === "listenbrainz" && (
+          <Button variant="outline" onClick={() => setEditing((open) => !open)}>
+            <Server className="size-4" /> {t("settings.listenbrainzChange")}
+          </Button>
+        )}
+        <DisconnectButton role={role} service={account.service} body={disconnectBody} />
+      </div>
+      {editing && (
+        <div className="mt-3">
+          <ListenbrainzForm role={role} current={account} onDone={() => setEditing(false)} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function ScrobblingSection() {
+  const t = useT();
+  const prefs = usePrefsStore((s) => s.prefs);
+  const set = usePrefsStore((s) => s.set);
+  const { data } = useServices();
+  const account = data?.scrobble ?? null;
+  /** The picker's choice, until the user makes one: the connected service. */
+  const [picked, setPicked] = useState<ServiceId | null>(null);
+  const service = picked ?? account?.service ?? "lastfm";
+  // Named after the account plays actually go to, not the picker's choice.
+  const name = SERVICE_NAMES[account?.service ?? service];
+  // The Stats page reads this account, so changing it changes theirs too.
+  const statsFollow = Boolean(data?.statsSameAsScrobble && account?.history);
+
+  return (
+    <SectionCard icon={Radio} title={t("settings.scrobbling")}>
+      <SettingRow label={t("settings.scrobble")} hint={t("settings.scrobbleHint")}>
+        <Toggle
+          checked={prefs.scrobbleEnabled}
+          onChange={(scrobbleEnabled) => set({ scrobbleEnabled })}
+        />
+      </SettingRow>
+      {prefs.scrobbleEnabled && (
+        <SettingRow label={t("settings.markPlayed")} hint={t("settings.markPlayedHint")}>
+          <div className="flex items-center gap-2 text-xs text-dim">
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={5}
+              value={prefs.scrobbleAtPercent}
+              onChange={(e) => set({ scrobbleAtPercent: Number(e.target.value) })}
+              className="w-36 accent-(--color-accent)"
+            />
+            <span className="w-10 tabular-nums">{prefs.scrobbleAtPercent}%</span>
+          </div>
+        </SettingRow>
+      )}
+
+      <SettingRow label={t("settings.service")} hint={t("settings.scrobbleServiceHint")}>
+        <ServicePicker value={service} onChange={setPicked} />
+      </SettingRow>
+      <div className="py-2">
+        <AccountPanel
+          role="scrobble"
+          account={account}
+          service={service}
+          replaceNote={
+            statsFollow
+              ? t("settings.scrobbleReplacesStats", { current: name })
+              : t("settings.scrobbleReplaces", { current: name })
+          }
+          disconnectBody={
+            statsFollow
+              ? t("settings.disconnectScrobbleKeepsStats", { service: name })
+              : t("settings.disconnectScrobbleBody", { service: name })
+          }
+        />
+      </div>
+
+      {prefs.scrobbleEnabled && (
+        <>
+          <SettingRow
+            label={t("settings.directScrobble", { service: name })}
+            hint={
+              account
+                ? t("settings.directScrobbleHint", { service: name })
+                : t("settings.directScrobbleUnavailable")
+            }
+          >
+            <Toggle
+              checked={prefs.directScrobble && Boolean(account)}
+              disabled={!account}
+              onChange={(directScrobble) => set({ directScrobble })}
+            />
+          </SettingRow>
+          {/* Shown whether or not the mode is currently on: "turn off on
+              restart" means the switch above is off every time settings is
+              opened fresh, and its two companions would blink out with it. */}
+          <SettingRow
+            label={t("settings.directScrobbleReset")}
+            hint={t("settings.directScrobbleResetHint")}
+          >
+            <Toggle
+              checked={prefs.directScrobbleResetOnStart}
+              disabled={!account}
+              onChange={(directScrobbleResetOnStart) => set({ directScrobbleResetOnStart })}
+            />
+          </SettingRow>
+          <SettingRow
+            label={t("settings.directScrobblePin")}
+            hint={t("settings.directScrobblePinHint")}
+          >
+            <Toggle
+              checked={prefs.directScrobblePinned}
+              disabled={!account}
+              onChange={(directScrobblePinned) => set({ directScrobblePinned })}
+            />
+          </SettingRow>
+          {/* Only bites on the plays Reverb sends to the service itself, i.e.
+              in the mode above — what the server forwards is the server's own
+              setting. Grouped here for that reason. */}
+          <SettingRow
+            label={t("settings.scrobbleFirstArtist")}
+            hint={
+              account
+                ? t("settings.scrobbleFirstArtistHint", { service: name })
+                : t("settings.directScrobbleUnavailable")
+            }
+          >
+            <Toggle
+              checked={prefs.scrobbleFirstArtistOnly && Boolean(account)}
+              disabled={!account}
+              onChange={(scrobbleFirstArtistOnly) => set({ scrobbleFirstArtistOnly })}
+            />
+          </SettingRow>
+        </>
+      )}
+    </SectionCard>
+  );
+}
+
+/** How much history there is, and the button to pull more. */
+function HistoryStatus({ status, source }: { status: ServicesStatus; source: ServiceId }) {
+  const t = useT();
+  const statsImport = useUiStore((s) => s.statsImport);
+  // Progress + completion toasts come from the global stats:import listener.
+  const importing = statsImport !== null || status.importing;
+  const progress = !statsImport
+    ? null
+    : statsImport.total
+      ? t("settings.importingOfTotal", { n: statsImport.imported, total: statsImport.total })
+      : t("settings.importingCount", { n: statsImport.imported });
+
+  return (
+    <div className="mt-2 border-t border-edge pt-4">
+      <div className="text-xs text-faint">
+        {t("settings.scrobblesImported", { n: status.trackCount })}
+        {status.lastSyncAt
+          ? t("settings.lastSync", {
+              date: t.d(status.lastSyncAt, { dateStyle: "medium", timeStyle: "short" }),
+            })
+          : ""}
+      </div>
+      {progress && <div className="mt-2 text-xs text-accent">{progress}</div>}
+      <Button
+        variant="outline"
+        className="mt-3"
+        disabled={importing}
+        onClick={() => {
+          markStatsImportStarted(source);
+          void cmd("stats_import");
+        }}
+      >
+        <RefreshCw className={`size-4 ${importing ? "animate-spin" : ""}`} />
+        {importing ? t("settings.importing") : t("settings.importNew")}
+      </Button>
+    </div>
+  );
+}
+
+function StatsSection() {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const showToast = useUiStore((s) => s.showToast);
+  const { data } = useServices();
+  const same = data?.statsSameAsScrobble ?? true;
+  const scrobble = data?.scrobble ?? null;
+  const own = data?.statsAccount ?? null;
+  const [picked, setPicked] = useState<ServiceId | null>(null);
+  const service = picked ?? own?.service ?? "lastfm";
+  const reads = statsReadsFrom(data);
+
+  function setSame(value: boolean) {
+    cmd("services_set_stats_same_as_scrobble", { same: value }).then(
+      () => invalidateServices(queryClient),
+      (err: unknown) => showToast(errorMessage(err), "error"),
+    );
+  }
+
+  return (
+    <SectionCard icon={BarChart3} title={t("settings.statsSection")}>
+      <SettingRow
+        label={t("settings.statsSameAsScrobble")}
+        hint={t("settings.statsSameAsScrobbleHint")}
+      >
+        <Toggle checked={same} onChange={setSame} />
+      </SettingRow>
+      {same ? (
+        <p className="py-2 text-xs text-faint">
+          {!scrobble
+            ? t("settings.statsNoScrobbleAccount")
+            : scrobble.history
+              ? t("settings.statsFollows", {
+                  service: SERVICE_NAMES[scrobble.service],
+                  username: scrobble.username,
+                })
+              : t("settings.statsScrobbleNoHistory")}
+        </p>
+      ) : (
+        <>
+          <SettingRow label={t("settings.service")} hint={t("settings.statsServiceHint")}>
+            <ServicePicker value={service} onChange={setPicked} />
+          </SettingRow>
+          <div className="py-2">
+            <AccountPanel
+              role="stats"
+              account={own}
+              service={service}
+              replaceNote={t("settings.statsReplaces", {
+                current: own ? SERVICE_NAMES[own.service] : "",
+              })}
+              disconnectBody={t("settings.disconnectBody", {
+                service: SERVICE_NAMES[own?.service ?? service],
+              })}
+            />
+          </div>
+        </>
+      )}
+      {reads && data && <HistoryStatus status={data} source={reads.service} />}
     </SectionCard>
   );
 }
@@ -1232,7 +1477,12 @@ export function SettingsView() {
         <div id={EQ_SECTION_ID} className="mt-4">
           <EqSection />
         </div>
-        <StatsSourcesSection />
+        <div id={SCROBBLING_SECTION_ID} className="mt-4">
+          <ScrobblingSection />
+        </div>
+        <div id={STATS_SECTION_ID} className="mt-4">
+          <StatsSection />
+        </div>
         <ServerSection />
         <AboutSection />
       </div>

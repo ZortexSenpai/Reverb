@@ -44,7 +44,7 @@ export const es: Messages = {
   "nav.settings": "Ajustes",
   "nav.tracks": "Pistas",
   "sidebar.pinned": "Fijados",
-  "sidebar.lastfmOnly": "Solo Last.fm",
+  "sidebar.directOnly": "Solo {service}",
 
   "player.nothingPlaying": "Nada en reproducción",
   "player.openFullScreen": "Abrir el reproductor a pantalla completa",
@@ -296,12 +296,11 @@ export const es: Messages = {
   "toast.scanFinishedCount":
     "{n, plural, one {Análisis terminado — # entrada} other {Análisis terminado — # entradas}}",
   "toast.scanFailed": "Error en el análisis",
-  "toast.lastfmConnected": "Last.fm conectado: importando scrobbles…",
-  "toast.lastfmScrobblingOn": "Scrobbling de Last.fm activado",
   "toast.outputDeviceLost": "Dispositivo de salida desconectado: se ha vuelto al predeterminado del sistema",
+  "toast.connected": "{service} conectado",
   "toast.imported":
-    "{n, plural, one {# scrobble nuevo importado} other {# scrobbles nuevos importados}}",
-  "toast.statsUpToDate": "Las estadísticas están al día",
+    "{n, plural, one {# scrobble nuevo importado de {service}} other {# scrobbles nuevos importados de {service}}}",
+  "toast.statsUpToDate": "Las estadísticas de {service} están al día",
 
   "setup.subtitle": "Conéctate a tu servidor Navidrome",
   "setup.serverUrl": "URL del servidor",
@@ -425,21 +424,25 @@ export const es: Messages = {
   "settings.radio": "Radio",
   "settings.radioHint":
     "Cuando la cola termina, sigue con canciones como la última: similares si el servidor tiene un agente de Last.fm, si no, del mismo género.",
-  "settings.scrobble": "Enviar scrobbles a Navidrome",
-  "settings.scrobbleHint": "Informa de las reproducciones para los contadores y Last.fm.",
+  "settings.scrobble": "Hacer scrobble de las reproducciones",
+  "settings.scrobbleHint":
+    "Informa de cada reproducción a Navidrome para los contadores; el servidor puede reenviarla a Last.fm o ListenBrainz.",
   "settings.markPlayed": "Marcar como reproducida tras",
   "settings.markPlayedHint":
     "Qué parte de una canción debe sonar para que cuente como reproducción.",
-  "settings.lastfmOnly": "Hacer scrobble solo a Last.fm",
-  "settings.lastfmOnlyHint": "Envía las reproducciones directamente a Last.fm y deja fuera al servidor: sin contadores de reproducción ni entrada de «sonando ahora».",
-  "settings.lastfmOnlyUnavailable": "Configura primero el scrobbling de Last.fm en Fuentes de estadísticas.",
-  "settings.lastfmOnlyReset": "Desactivar al reiniciar",
-  "settings.lastfmOnlyResetHint": "Vuelve a desactivar el modo solo-Last.fm la próxima vez que se inicie Reverb, de modo que dure una sesión.",
-  "settings.lastfmOnlyPin": "Fijar en la barra lateral",
-  "settings.lastfmOnlyPinHint": "Muestra un interruptor en la barra lateral para cambiarlo sin abrir los ajustes.",
-  "settings.lastfmFirstArtist": "Enviar solo el primer artista",
-  "settings.lastfmFirstArtistHint":
-    "Envía a Last.fm solo el primer artista acreditado en lugar del crédito completo. Last.fm identifica una escucha por el nombre del artista, y un crédito combinado como «A feat. B» no suele coincidir con nada, así que se pierden los artistas invitados y la escucha se atribuye al principal. Requiere un servidor que liste por separado los artistas de una pista.",
+  "settings.directScrobble": "Hacer scrobble solo a {service}",
+  "settings.directScrobbleHint":
+    "Envía las reproducciones directamente a {service} y deja fuera al servidor: sin contadores de reproducción ni entrada de «sonando ahora».",
+  "settings.directScrobbleUnavailable": "Conecta primero un servicio arriba.",
+  "settings.directScrobbleReset": "Desactivar al reiniciar",
+  "settings.directScrobbleResetHint":
+    "Vuelve a desactivar el scrobbling directo la próxima vez que se inicie Reverb, de modo que dure una sesión.",
+  "settings.directScrobblePin": "Fijar en la barra lateral",
+  "settings.directScrobblePinHint":
+    "Muestra un interruptor en la barra lateral para cambiarlo sin abrir los ajustes.",
+  "settings.scrobbleFirstArtist": "Enviar solo el primer artista",
+  "settings.scrobbleFirstArtistHint":
+    "Envía a {service} solo el primer artista acreditado en lugar del crédito completo. {service} identifica una escucha por el nombre del artista, y un crédito combinado como «A feat. B» no suele coincidir con nada, así que se pierden los artistas invitados y la escucha se atribuye al principal. Requiere un servidor que liste por separado los artistas de una pista.",
   "settings.saveQueue": "Guardar la cola de reproducción",
   "settings.saveQueueHint":
     "Recuerda la cola y la última canción reproducida al volver a abrir la aplicación.",
@@ -472,8 +475,42 @@ export const es: Messages = {
   "settings.audioNote":
     "Las pistas se decodifican bit-perfect y se remuestrean a la frecuencia del dispositivo cuando hace falta. El ecualizador paramétrico funciona a la frecuencia del dispositivo dentro del motor de audio nativo.",
 
-  "settings.statsSources": "Fuentes de estadísticas",
-  "settings.lastfmConnectedAs": "— conectado como",
+  "settings.scrobbling": "Scrobbling",
+  "settings.statsSection": "Estadísticas",
+  "settings.service": "Servicio",
+  "settings.scrobbleServiceHint":
+    "La cuenta a la que Reverb hace scrobble cuando las reproducciones van directamente a un servicio.",
+  "settings.scrobbleReplaces": "Al conectar, {current} deja de ser la cuenta de scrobbling.",
+  "settings.scrobbleReplacesStats":
+    "Al conectar, {current} deja de ser la cuenta de scrobbling. Las estadísticas la siguen, así que también se reemplaza el historial importado de {current}.",
+  "settings.disconnectScrobbleBody":
+    "Reverb deja de enviar reproducciones a {service}. Tu cuenta de {service} no se ve afectada.",
+  "settings.disconnectScrobbleKeepsStats":
+    "Reverb deja de enviar reproducciones a {service}. Las estadísticas siguen importando de esta cuenta, que pasa a Estadísticas.",
+  "settings.statsSameAsScrobble": "Usar la cuenta de scrobbling",
+  "settings.statsSameAsScrobbleHint":
+    "Importa el historial de la cuenta a la que haces scrobble. Desactívalo para usar otro servicio, cuenta o servidor.",
+  "settings.statsFollows": "Las estadísticas se importan de {service}, como {username}.",
+  "settings.statsNoScrobbleAccount":
+    "Todavía no hay ninguna cuenta de scrobbling conectada. Conecta una en Scrobbling o desactiva esto para conectar una cuenta solo para estadísticas.",
+  "settings.statsScrobbleNoHistory":
+    "Tu servidor de scrobbling no comparte el historial de escucha. Desactiva esto para importar de otra cuenta.",
+  "settings.statsServiceHint":
+    "De dónde importa la página de estadísticas tu historial de escucha.",
+  "settings.statsReplaces":
+    "Al conectar, {current} deja de usarse para las estadísticas, junto con su historial importado.",
+  "settings.lastfmScrobbleLead":
+    "Haz scrobble directamente a Last.fm; necesitas una cuenta de API de last.fm/api.",
+  "settings.listenbrainzScrobbleIntro":
+    "Haz scrobble directamente a ListenBrainz. Pega el token de usuario de tu página de ajustes de ListenBrainz.",
+  "settings.listenbrainzStatsIntro":
+    "Importa tus escuchas para alimentar la página de estadísticas. Pega el token de usuario de tu página de ajustes de ListenBrainz; las reproducciones nuevas se sincronizan al iniciar.",
+  "settings.listenbrainzStatsServerHint":
+    "Para un ListenBrainz autoalojado. El servidor tiene que devolver el historial de escucha, cosa que no hacen los servidores que solo aceptan scrobbles.",
+  "settings.listenbrainzNoHistory":
+    "Este servidor no comparte el historial de escucha, así que las estadísticas no pueden importar de él.",
+  "settings.connectedAs": "Conectado como",
+  "settings.connected": "Conectado",
   "settings.scrobblesImported":
     "{n, plural, one {# scrobble importado} other {# scrobbles importados}}",
   "settings.lastSync": " · última sincronización {date}",
@@ -482,24 +519,26 @@ export const es: Messages = {
   "settings.importing": "Importando…",
   "settings.importNew": "Importar scrobbles nuevos",
   "settings.disconnect": "Desconectar",
-  "settings.disconnectTitle": "¿Desconectar Last.fm?",
+  "settings.disconnectTitle": "¿Desconectar {service}?",
   "settings.disconnectBody":
-    "Los scrobbles importados se eliminarán de Reverb. Tu cuenta de Last.fm no se ve afectada.",
+    "Los scrobbles importados se eliminarán de Reverb. Tu cuenta de {service} no se ve afectada.",
   "settings.lastfmIntro":
     "Importa tus scrobbles de Last.fm para alimentar la página de estadísticas. Requiere una clave de API gratuita de last.fm/api; las reproducciones nuevas se sincronizan al iniciar.",
   "settings.lastfmUsername": "Usuario de Last.fm",
   "settings.apiKey": "Clave de API",
   "settings.checking": "Comprobando…",
-  "settings.connectLastfm": "Conectar Last.fm",
-  "settings.lastfmScrobblingOn": " · con scrobbling",
-  "settings.lastfmImportOnly": "Solo importación. Añade tu secreto compartido y tu contraseña para hacer scrobble directamente a Last.fm.",
+  "settings.connectService": "Conectar {service}",
   "settings.lastfmScrobbleIntro": "La contraseña se intercambia una vez por una clave de sesión y nunca se almacena.",
   "settings.lastfmPairHint": "La clave de API y el secreto compartido deben proceder de la misma entrada en last.fm/api/accounts.",
-  "settings.lastfmApiKeyReplace": "Clave de API (déjala vacía para conservar la actual)",
   "settings.lastfmSharedSecret": "Secreto compartido",
   "settings.lastfmPassword": "Contraseña de Last.fm",
-  "settings.setUpScrobbling": "Configurar scrobbling",
-  "settings.optionalForScrobbling": "Opcional: solo se necesita para hacer scrobble a Last.fm desde Reverb.",
+  "settings.listenbrainzToken": "Token de usuario",
+  "settings.listenbrainzTokenKeep": "Token de usuario (déjalo vacío para conservar el actual)",
+  "settings.listenbrainzServer": "URL del servidor (déjala vacía para listenbrainz.org)",
+  "settings.listenbrainzServerHint":
+    "Para un ListenBrainz autoalojado o un servidor de scrobbling que acepte envíos de ListenBrainz, como Maloja o Koito. Usa la dirección que su documentación indica para clientes de ListenBrainz.",
+  "settings.listenbrainzVia": "a través de {url}",
+  "settings.listenbrainzChange": "Cambiar token o servidor",
 
   "settings.server": "Servidor",
   "settings.connectedTo": "Conectado a ",
@@ -571,13 +610,13 @@ export const es: Messages = {
   "range.custom": "Personalizado",
   "stats.startDate": "Fecha de inicio",
   "stats.endDate": "Fecha de fin",
-  "stats.contactingLastfm": "Contactando con Last.fm…",
+  "stats.contacting": "Contactando con {service}…",
   "stats.scrobblesProgress": "{n} scrobbles",
   "stats.scrobblesProgressOfTotal": "{n} / {total} scrobbles",
   "stats.refresh": "Actualizar",
   "stats.noSourcesLead":
-    "Todavía no hay fuentes de estadísticas conectadas. Conecta Last.fm en",
-  "stats.noSourcesLink": "Ajustes → Fuentes de estadísticas",
+    "Todavía no hay fuentes de estadísticas conectadas. Conecta Last.fm o ListenBrainz en",
+  "stats.noSourcesLink": "Ajustes → Estadísticas",
   "stats.noSourcesTail": "para importar tu historial de escucha.",
   "stats.noPlays": "No hay reproducciones en este periodo.",
   "stats.noPlaysRefresh":

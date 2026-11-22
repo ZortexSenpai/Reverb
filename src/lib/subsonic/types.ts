@@ -422,22 +422,22 @@ export interface Preferences {
   /** Percentage of a song to play before it counts as played (10–100). */
   scrobbleAtPercent: number;
   /**
-   * Send plays straight to Last.fm and leave the Subsonic server out of it —
-   * no scrobble, no now-playing entry. Requires Last.fm scrobbling to be
-   * connected; the backend ignores it otherwise, so it can never silently
-   * stop plays being recorded anywhere.
+   * Send plays straight to the scrobbling account (Last.fm or ListenBrainz)
+   * and leave the Subsonic server out of it — no scrobble, no now-playing
+   * entry. Ignored by the backend while there is no scrobbling account, so it
+   * can never silently stop plays being recorded anywhere.
    */
-  lastfmScrobbleOnly: boolean;
-  /** Clear `lastfmScrobbleOnly` on the next launch. */
-  lastfmScrobbleOnlyResetOnStart: boolean;
-  /** Show a `lastfmScrobbleOnly` toggle in the sidebar. */
-  lastfmScrobbleOnlyPinned: boolean;
+  directScrobble: boolean;
+  /** Clear `directScrobble` on the next launch. */
+  directScrobbleResetOnStart: boolean;
+  /** Show a `directScrobble` toggle in the sidebar. */
+  directScrobblePinned: boolean;
   /**
-   * Submit only the first credited artist to Last.fm instead of the whole
+   * Submit only the first credited artist to the service instead of the whole
    * credit string. Needs the server to enumerate a song's artists; where it
    * doesn't, the credit is one opaque string and goes as-is.
    */
-  lastfmScrobbleFirstArtistOnly: boolean;
+  scrobbleFirstArtistOnly: boolean;
   /** Visible columns in the songs table. */
   songColumns: string[];
   /** Playlist ids pinned by the user, in pin order. */
@@ -550,19 +550,40 @@ export interface StatsSummary {
   onThisDay: OnThisDay[];
 }
 
-export interface LastfmStatus {
+/** A listening service Reverb scrobbles to and imports stats from. */
+export type ServiceId = "lastfm" | "listenbrainz";
+
+/**
+ * What an account is connected for: taking plays (direct scrobbling), or
+ * supplying the Stats page's history.
+ */
+export type AccountRole = "scrobble" | "stats";
+
+export interface AccountStatus {
+  service: ServiceId;
+  /** Empty when a ListenBrainz-compatible server did not name the account. */
   username: string;
-  trackCount: number;
-  lastSyncAt?: string | null;
+  /** The server's API root when it is not listenbrainz.org. */
+  apiUrl?: string | null;
   /**
-   * An authenticated session for *submitting* plays exists. Importing needs
-   * only an API key, so a source can be connected without this.
+   * The Stats page can import from it. Always so for Last.fm; ListenBrainz-
+   * compatible servers that only accept submissions have no history to give.
    */
-  scrobbling: boolean;
+  history: boolean;
 }
 
-export interface SourcesStatus {
-  lastfm?: LastfmStatus | null;
+export interface ServicesStatus {
+  /** Where direct scrobbling sends plays. */
+  scrobble?: AccountStatus | null;
+  /** The Stats page reads the scrobbling account rather than `statsAccount`. */
+  statsSameAsScrobble: boolean;
+  /** The Stats page's own account, used while `statsSameAsScrobble` is off. */
+  statsAccount?: AccountStatus | null;
+  /** The service the Stats page reads; null while no account can supply history. */
+  statsSource?: ServiceId | null;
+  /** Scrobbles imported from it so far. */
+  trackCount: number;
+  lastSyncAt?: string | null;
   importing: boolean;
 }
 

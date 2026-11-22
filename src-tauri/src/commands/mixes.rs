@@ -49,7 +49,7 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
     let now = Local::now();
     let date = now.format("%Y-%m-%d").to_string();
     let week = now.format("%G-W%V").to_string();
-    let has_history = state.stats.config().lastfm.is_some_and(|c| c.track_count > 0);
+    let has_history = state.stats.config().active_history().is_some_and(|h| h.track_count > 0);
 
     let cached = state
         .mixes
@@ -60,7 +60,7 @@ async fn ensure_mixes(app: &AppHandle, refresh: bool) -> Result<(Vec<Mix>, bool)
     }
 
     let songs = fetch_library(&state.subsonic).await?;
-    let scrobbles = state.stats.all_scrobbles()?;
+    let scrobbles = state.stats.scrobbles()?;
     let profile = build_profile(songs, &scrobbles, now.timestamp());
     let (library, unplayed) = profile.coverage();
     log::info!(

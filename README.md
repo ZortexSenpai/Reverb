@@ -20,7 +20,11 @@ engine and a Roon-style **parametric EQ**.
   presets, auto/manual preamp headroom, click-free live adjustment while
   music plays
 - **OS integration** — media keys via MPRIS (Linux), SMTC (Windows),
-  Now Playing (macOS); scrobbling to Navidrome; queue restore across restarts
+  Now Playing (macOS); scrobbling to Navidrome, or straight to Last.fm or
+  ListenBrainz (including self-hosted and ListenBrainz-compatible servers);
+  queue restore across restarts
+- **Stats** — listening history imported from Last.fm or ListenBrainz: the
+  account you scrobble to, or a separate one
 - **Settings** — output device selection, streaming quality (original /
   MP3 320/192/128 transcoding), ReplayGain (track/album, pre-amp, clip
   protection), scrobbling toggle, library rescan, accent color, startup view,

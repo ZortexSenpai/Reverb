@@ -157,13 +157,13 @@ pub async fn library_get_artist_info(
     let mut biography = nav.biography.as_deref().and_then(clean_biography);
     let mut last_fm_url = nav.last_fm_url.clone();
 
-    // Fall back to the user's Last.fm key (from stats sources) when the
-    // server has no biography.
+    // Fall back to the user's Last.fm key (from a connected Last.fm account)
+    // when the server has no biography.
     if biography.is_none() {
-        if let Some(config) = state.stats.config().lastfm {
+        if let Some(api_key) = state.stats.config().lastfm_api_key() {
             let client = reqwest::Client::new();
             if let Ok(Some((raw, url))) =
-                crate::stats::lastfm::fetch_artist_bio(&client, &name, &config.api_key).await
+                crate::stats::lastfm::fetch_artist_bio(&client, &name, &api_key).await
             {
                 biography = clean_biography(&raw);
                 if last_fm_url.is_none() {

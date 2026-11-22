@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ServiceId } from "../lib/subsonic/types";
 
 export type Session = "loading" | "setup" | "ready";
 
@@ -17,7 +18,7 @@ interface UiStore {
   /** The dialog's suggested name. */
   newPlaylistName: string;
   /** Non-null while a stats import runs (fed by stats:import events). */
-  statsImport: { imported: number; total: number | null } | null;
+  statsImport: { source: ServiceId; imported: number; total: number | null } | null;
   /** The downloaded update's release notes and "Restart to update". */
   updatePanelOpen: boolean;
 

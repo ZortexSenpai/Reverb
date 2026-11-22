@@ -17,7 +17,7 @@ export interface EventMap {
   "player:media-key": "next" | "previous";
   "player:signal-path": import("../subsonic/types").SignalPath;
   "stats:import": {
-    source: string;
+    source: import("../subsonic/types").ServiceId;
     state: "running" | "done" | "error";
     imported: number;
     total?: number | null;

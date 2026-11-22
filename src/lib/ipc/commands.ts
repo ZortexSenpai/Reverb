@@ -16,6 +16,7 @@ import type {
   EqState,
   FrontendSettings,
   Genre,
+  AccountRole,
   Indexes,
   LyricsList,
   Mix,
@@ -33,8 +34,8 @@ import type {
   SearchResult,
   ServerInfo,
   Song,
+  ServicesStatus,
   SongPage,
-  SourcesStatus,
   StarKind,
   Starred,
   StatsRange,
@@ -168,12 +169,13 @@ export interface CommandMap {
   eq_delete_preset: { args: { id: string }; result: void };
   eq_rename_preset: { args: { id: string; name: string }; result: void };
 
-  // stats
-  stats_get_sources: { args: NoArgs; result: SourcesStatus };
-  /** `sharedSecret` + `password` are only needed to enable scrobbling; the
-   *  password is traded for a session key and never stored. */
-  stats_configure_lastfm: {
+  // scrobbling & stats accounts
+  services_get: { args: NoArgs; result: ServicesStatus };
+  /** Scrobbling needs `sharedSecret` + `password` (traded once for a session
+   *  key, never stored); stats need only the username and API key. */
+  services_connect_lastfm: {
     args: {
+      role: AccountRole;
       username: string;
       apiKey: string;
       sharedSecret?: string | null;
@@ -181,15 +183,19 @@ export interface CommandMap {
     };
     result: void;
   };
-  /** `apiKey` replaces the stored one — it must come from the same Last.fm
-   *  application as `sharedSecret` or the signature is rejected. */
-  stats_enable_lastfm_scrobbling: {
-    args: { sharedSecret: string; password: string; apiKey?: string | null };
+  /** `apiUrl` is blank for listenbrainz.org, or the API root of a server that
+   *  speaks its protocol. A blank `token` keeps the role's current one. */
+  services_connect_listenbrainz: {
+    args: { role: AccountRole; token?: string | null; apiUrl?: string | null };
     result: void;
   };
-  stats_disable_lastfm_scrobbling: { args: NoArgs; result: void };
-  stats_disconnect: { args: { source: string }; result: void };
-  stats_import: { args: { source: string }; result: void };
+  /** Dropping the scrobbling account hands it to stats when they follow it;
+   *  dropping the stats account deletes its imported history. */
+  services_disconnect: { args: { role: AccountRole }; result: void };
+  services_set_stats_same_as_scrobble: { args: { same: boolean }; result: void };
+
+  // stats
+  stats_import: { args: NoArgs; result: void };
   /** `from`/`to` are unix seconds, custom range only; `to` is exclusive. */
   stats_get: {
     args: { range: StatsRange; from?: number | null; to?: number | null };

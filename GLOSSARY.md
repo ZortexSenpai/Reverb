@@ -25,5 +25,19 @@ The newest Plays of the signed-in account on this computer, newest first. Shown 
 _Avoid_: Recently listened, listening history, history
 
 **Scrobble**:
-A listening as recorded by Last.fm or Navidrome, which may come from any device or client. A Play becomes a Scrobble only if it is sent there.
-_Avoid_: Play (for plays recorded elsewhere)
+A listening as recorded by Last.fm, ListenBrainz or Navidrome, which may come from any device or client. A Play becomes a Scrobble only if it is sent there.
+_Avoid_: Play (for plays recorded elsewhere), listen (ListenBrainz's own word for the same thing)
+
+**Scrobbling account**:
+The Last.fm or ListenBrainz account Reverb sends Plays to itself. A ListenBrainz account can live on listenbrainz.org or on another server that speaks its API.
+_Avoid_: Scrobble service, integration
+
+**Direct scrobbling**:
+Sending Plays straight to the Scrobbling account instead of to Navidrome, which then hears nothing of them: no play count, no now-playing entry.
+_Avoid_: Last.fm only
+
+### Stats
+
+**Stats source**:
+The account whose Scrobbles Reverb imports for the Stats page and the mixes: the Scrobbling account by default, or a separate Last.fm or ListenBrainz account. There is one at a time, and its imported history goes when the Stats source becomes a different account.
+_Avoid_: Integration, account (on its own)

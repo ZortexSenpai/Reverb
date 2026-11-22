@@ -56,7 +56,7 @@ export const en = {
   "nav.settings": "Settings",
   "nav.tracks": "Tracks",
   "sidebar.pinned": "Pinned",
-  "sidebar.lastfmOnly": "Last.fm only",
+  "sidebar.directOnly": "{service} only",
 
   // ---- player ----
   "player.nothingPlaying": "Nothing playing",
@@ -323,12 +323,11 @@ export const en = {
   "toast.scanFinishedCount":
     "{n, plural, one {Library scan finished — # entry} other {Library scan finished — # entries}}",
   "toast.scanFailed": "Scan failed",
-  "toast.lastfmConnected": "Last.fm connected — importing scrobbles…",
-  "toast.lastfmScrobblingOn": "Last.fm scrobbling enabled",
   "toast.outputDeviceLost": "Output device disconnected — switched to the system default",
+  "toast.connected": "{service} connected",
   "toast.imported":
-    "{n, plural, one {Imported # new scrobble} other {Imported # new scrobbles}}",
-  "toast.statsUpToDate": "Stats are up to date",
+    "{n, plural, one {Imported # new scrobble from {service}} other {Imported # new scrobbles from {service}}}",
+  "toast.statsUpToDate": "Stats from {service} are up to date",
 
   // ---- setup ----
   "setup.subtitle": "Connect to your Navidrome server",
@@ -452,20 +451,24 @@ export const en = {
   "settings.radio": "Radio",
   "settings.radioHint":
     "When the queue ends, keep playing songs like the last one: similar ones when the server has a Last.fm agent, otherwise from the same genre.",
-  "settings.scrobble": "Scrobble to Navidrome",
-  "settings.scrobbleHint": "Reports plays for play counts and Last.fm.",
+  "settings.scrobble": "Scrobble plays",
+  "settings.scrobbleHint":
+    "Reports each play to Navidrome for play counts — the server can forward it to Last.fm or ListenBrainz.",
   "settings.markPlayed": "Mark as played after",
   "settings.markPlayedHint": "How much of a song must play before it counts as a play.",
-  "settings.lastfmOnly": "Scrobble to Last.fm only",
-  "settings.lastfmOnlyHint": "Send plays straight to Last.fm and leave the server out of it — no play counts, no now-playing entry.",
-  "settings.lastfmOnlyUnavailable": "Set up Last.fm scrobbling under Stats sources first.",
-  "settings.lastfmOnlyReset": "Turn off on restart",
-  "settings.lastfmOnlyResetHint": "Switch Last.fm-only back off the next time Reverb starts, so it lasts one session.",
-  "settings.lastfmOnlyPin": "Pin to the sidebar",
-  "settings.lastfmOnlyPinHint": "Show a switch in the sidebar so it can be flipped without opening settings.",
-  "settings.lastfmFirstArtist": "Scrobble first artist only",
-  "settings.lastfmFirstArtistHint":
-    "Send only the first credited artist to Last.fm instead of the whole credit. Last.fm matches a play by artist name, and a joined credit like “A feat. B” usually matches nothing — so the featured names are dropped and the play lands on the main artist. Needs a server that lists a track’s artists separately.",
+  "settings.directScrobble": "Scrobble to {service} only",
+  "settings.directScrobbleHint":
+    "Send plays straight to {service} and leave the server out of it — no play counts, no now-playing entry.",
+  "settings.directScrobbleUnavailable": "Connect a service above first.",
+  "settings.directScrobbleReset": "Turn off on restart",
+  "settings.directScrobbleResetHint":
+    "Switch direct scrobbling back off the next time Reverb starts, so it lasts one session.",
+  "settings.directScrobblePin": "Pin to the sidebar",
+  "settings.directScrobblePinHint":
+    "Show a switch in the sidebar so it can be flipped without opening settings.",
+  "settings.scrobbleFirstArtist": "Scrobble first artist only",
+  "settings.scrobbleFirstArtistHint":
+    "Send only the first credited artist to {service} instead of the whole credit. {service} matches a play by artist name, and a joined credit like “A feat. B” usually matches nothing — so the featured names are dropped and the play lands on the main artist. Needs a server that lists a track’s artists separately.",
   "settings.saveQueue": "Save play queue",
   "settings.saveQueueHint": "Remember the queue and last played song when reopening the app.",
   "settings.syncQueue": "Sync queue with server",
@@ -498,9 +501,42 @@ export const en = {
   "settings.audioNote":
     "Tracks are decoded bit-perfectly and resampled to the device rate when needed. The parametric EQ runs at the device rate inside the native audio engine.",
 
-  // ---- settings: stats sources ----
-  "settings.statsSources": "Stats sources",
-  "settings.lastfmConnectedAs": "— connected as",
+  // ---- settings: scrobbling & stats ----
+  "settings.scrobbling": "Scrobbling",
+  "settings.statsSection": "Stats",
+  "settings.service": "Service",
+  "settings.scrobbleServiceHint":
+    "The account Reverb scrobbles to when plays go straight to a service.",
+  "settings.scrobbleReplaces": "Connecting replaces {current} as the scrobbling account.",
+  "settings.scrobbleReplacesStats":
+    "Connecting replaces {current} as the scrobbling account. The Stats page follows it, so its imported {current} history is replaced too.",
+  "settings.disconnectScrobbleBody":
+    "Reverb stops sending plays to {service}. Your {service} account is unaffected.",
+  "settings.disconnectScrobbleKeepsStats":
+    "Reverb stops sending plays to {service}. The Stats page keeps importing from this account, which moves over to Stats.",
+  "settings.statsSameAsScrobble": "Use the scrobbling account",
+  "settings.statsSameAsScrobbleHint":
+    "Import history from the account you scrobble to. Turn off to use a different service, account or server.",
+  "settings.statsFollows": "The Stats page imports from {service}, as {username}.",
+  "settings.statsNoScrobbleAccount":
+    "No scrobbling account is connected yet. Connect one under Scrobbling, or turn this off to connect an account just for stats.",
+  "settings.statsScrobbleNoHistory":
+    "Your scrobbling server does not share listening history. Turn this off to import from another account.",
+  "settings.statsServiceHint": "Where the Stats page imports your listening history from.",
+  "settings.statsReplaces":
+    "Connecting replaces {current} for stats, and its imported history with it.",
+  "settings.lastfmScrobbleLead":
+    "Scrobble straight to Last.fm — this needs an API account from last.fm/api.",
+  "settings.listenbrainzScrobbleIntro":
+    "Scrobble straight to ListenBrainz. Paste the user token from your ListenBrainz settings page.",
+  "settings.listenbrainzStatsIntro":
+    "Import your listens to power the Stats page. Paste the user token from your ListenBrainz settings page — new plays sync automatically at startup.",
+  "settings.listenbrainzStatsServerHint":
+    "For a self-hosted ListenBrainz. The server has to hand listening history back, which servers that only accept scrobbles don’t.",
+  "settings.listenbrainzNoHistory":
+    "This server does not share listening history, so the Stats page cannot import from it.",
+  "settings.connectedAs": "Connected as",
+  "settings.connected": "Connected",
   "settings.scrobblesImported": "{n, plural, one {# scrobble imported} other {# scrobbles imported}}",
   "settings.lastSync": " · last sync {date}",
   "settings.importingCount": "Importing… {n}",
@@ -508,24 +544,26 @@ export const en = {
   "settings.importing": "Importing…",
   "settings.importNew": "Import new scrobbles",
   "settings.disconnect": "Disconnect",
-  "settings.disconnectTitle": "Disconnect Last.fm?",
+  "settings.disconnectTitle": "Disconnect {service}?",
   "settings.disconnectBody":
-    "Imported scrobbles will be deleted from Reverb. Your Last.fm account is unaffected.",
+    "Imported scrobbles will be deleted from Reverb. Your {service} account is unaffected.",
   "settings.lastfmIntro":
     "Import your Last.fm scrobbles to power the Stats page. Requires a free API key from last.fm/api — new plays sync automatically at startup.",
   "settings.lastfmUsername": "Last.fm username",
   "settings.apiKey": "API key",
   "settings.checking": "Checking…",
-  "settings.connectLastfm": "Connect Last.fm",
-  "settings.lastfmScrobblingOn": " · scrobbling",
-  "settings.lastfmImportOnly": "Import only. Add your shared secret and password to scrobble to Last.fm directly.",
+  "settings.connectService": "Connect {service}",
   "settings.lastfmScrobbleIntro": "The password is exchanged once for a session key and never stored.",
   "settings.lastfmPairHint": "The API key and shared secret must come from the same entry on last.fm/api/accounts.",
-  "settings.lastfmApiKeyReplace": "API key (leave blank to keep the current one)",
   "settings.lastfmSharedSecret": "Shared secret",
   "settings.lastfmPassword": "Last.fm password",
-  "settings.setUpScrobbling": "Set up scrobbling",
-  "settings.optionalForScrobbling": "Optional — only needed to scrobble to Last.fm from Reverb.",
+  "settings.listenbrainzToken": "User token",
+  "settings.listenbrainzTokenKeep": "User token (leave blank to keep the current one)",
+  "settings.listenbrainzServer": "Server URL (leave blank for listenbrainz.org)",
+  "settings.listenbrainzServerHint":
+    "For a self-hosted ListenBrainz, or a scrobble server that accepts ListenBrainz submissions such as Maloja or Koito. Use the address its documentation gives for ListenBrainz clients.",
+  "settings.listenbrainzVia": "via {url}",
+  "settings.listenbrainzChange": "Change token or server",
 
   // ---- settings: server ----
   "settings.server": "Server",
@@ -602,12 +640,12 @@ export const en = {
   "range.custom": "Custom",
   "stats.startDate": "Start date",
   "stats.endDate": "End date",
-  "stats.contactingLastfm": "Contacting Last.fm…",
+  "stats.contacting": "Contacting {service}…",
   "stats.scrobblesProgress": "{n} scrobbles",
   "stats.scrobblesProgressOfTotal": "{n} / {total} scrobbles",
   "stats.refresh": "Refresh",
-  "stats.noSourcesLead": "No stats sources connected yet. Connect Last.fm under",
-  "stats.noSourcesLink": "Settings → Stats sources",
+  "stats.noSourcesLead": "No stats sources connected yet. Connect Last.fm or ListenBrainz under",
+  "stats.noSourcesLink": "Settings → Stats",
   "stats.noSourcesTail": "to import your listening history.",
   "stats.noPlays": "No plays in this period.",
   "stats.noPlaysRefresh": "No plays in this period — try refreshing the source.",

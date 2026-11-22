@@ -20,8 +20,8 @@ pub struct MixSet {
     pub date: String,
     /// ISO week Discover was made for, `%G-W%V`.
     pub week: String,
-    /// Whether scrobbles fed them. Connecting Last.fm changes the picture
-    /// enough to rebuild before tomorrow.
+    /// Whether scrobbles fed them. Connecting Last.fm or ListenBrainz
+    /// changes the picture enough to rebuild before tomorrow.
     pub has_history: bool,
     pub mixes: Vec<Mix>,
 }

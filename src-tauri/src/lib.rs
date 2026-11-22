@@ -39,14 +39,14 @@ pub fn run() {
             let config_dir = app.path().app_config_dir()?;
             let settings = SettingsStore::load(config_dir.clone())?;
 
-            // "Last.fm scrobble only" can be asked to last for one session
-            // only. Clear it here, before anything else reads preferences, so
-            // the engine and the webview both start from the reset value.
+            // Direct scrobbling can be asked to last for one session only.
+            // Clear it here, before anything else reads preferences, so the
+            // engine and the webview both start from the reset value.
             {
                 let prefs = settings.get().prefs;
-                if prefs.lastfm_scrobble_only && prefs.lastfm_scrobble_only_reset_on_start {
-                    if let Err(e) = settings.update(|s| s.prefs.lastfm_scrobble_only = false) {
-                        log::warn!("could not reset Last.fm-only scrobbling: {e}");
+                if prefs.direct_scrobble && prefs.direct_scrobble_reset_on_start {
+                    if let Err(e) = settings.update(|s| s.prefs.direct_scrobble = false) {
+                        log::warn!("could not reset direct scrobbling: {e}");
                     }
                 }
             }
@@ -116,13 +116,7 @@ pub fn run() {
                     })
                     .await
                     .ok();
-                    let configured = {
-                        use tauri::Manager;
-                        app_handle.state::<AppState>().stats.config().lastfm.is_some()
-                    };
-                    if configured {
-                        commands::stats::run_lastfm_import(app_handle.clone()).await;
-                    }
+                    commands::stats::run_import(app_handle.clone()).await;
                     commands::mixes::warm_up(app_handle).await;
                 });
             }
@@ -192,11 +186,11 @@ pub fn run() {
             commands::eq::eq_load_preset,
             commands::eq::eq_delete_preset,
             commands::eq::eq_rename_preset,
-            commands::stats::stats_get_sources,
-            commands::stats::stats_configure_lastfm,
-            commands::stats::stats_enable_lastfm_scrobbling,
-            commands::stats::stats_disable_lastfm_scrobbling,
-            commands::stats::stats_disconnect,
+            commands::services::services_get,
+            commands::services::services_connect_lastfm,
+            commands::services::services_connect_listenbrainz,
+            commands::services::services_disconnect,
+            commands::services::services_set_stats_same_as_scrobble,
             commands::stats::stats_import,
             commands::stats::stats_get,
             commands::settings::settings_get,

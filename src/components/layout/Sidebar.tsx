@@ -1,43 +1,43 @@
-import { useQuery } from "@tanstack/react-query";
 import { ListMusic, Pin, Radio, Settings } from "lucide-react";
 import { NavLink } from "react-router";
 import { Logo } from "../ui/Logo";
 import { UpdateMarker } from "../update/UpdateMarker";
 import { visibleNavItems } from "./navItems";
 import { useT } from "../../lib/i18n";
-import { cmd } from "../../lib/ipc/commands";
+import { SERVICE_NAMES, useServices } from "../../lib/scrobbleServices";
 import { usePlaylists } from "../../lib/subsonic/queries";
 import { usePrefsStore } from "../../stores/prefsStore";
 
 /**
- * The pinned "Last.fm only" switch. Hidden unless the user pinned it *and*
- * Last.fm scrobbling is still set up — the preference outlives the credentials
- * it depends on, and a switch that silently does nothing is worse than none.
+ * The pinned direct-scrobbling switch, named after the scrobbling account's
+ * service ("Last.fm only", "ListenBrainz only"). Hidden unless the user pinned
+ * it *and* a scrobbling account is connected — the preference outlives the
+ * account it depends on, and a switch that silently does nothing is worse than
+ * none.
  */
-function LastfmOnlySwitch() {
+function DirectScrobbleSwitch() {
   const t = useT();
-  const pinned = usePrefsStore((s) => s.prefs.lastfmScrobbleOnlyPinned);
-  const active = usePrefsStore((s) => s.prefs.lastfmScrobbleOnly);
+  const pinned = usePrefsStore((s) => s.prefs.directScrobblePinned);
+  const active = usePrefsStore((s) => s.prefs.directScrobble);
   const set = usePrefsStore((s) => s.set);
-  const { data: sources } = useQuery({
-    queryKey: ["stats-sources"],
-    queryFn: () => cmd("stats_get_sources"),
-    enabled: pinned,
-  });
+  const { data: services } = useServices({ enabled: pinned });
+  const account = services?.scrobble;
 
-  if (!pinned || !sources?.lastfm?.scrobbling) return null;
+  if (!pinned || !account) return null;
 
   return (
     <button
       role="switch"
       aria-checked={active}
-      onClick={() => set({ lastfmScrobbleOnly: !active })}
+      onClick={() => set({ directScrobble: !active })}
       className={`glass-hover flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
         active ? "text-text" : "text-dim hover:bg-surface-2/60 hover:text-text"
       }`}
     >
       <Radio className={`size-4 shrink-0 ${active ? "text-accent" : ""}`} />
-      <span className="truncate">{t("sidebar.lastfmOnly")}</span>
+      <span className="truncate">
+        {t("sidebar.directOnly", { service: SERVICE_NAMES[account.service] })}
+      </span>
       <span
         className={`relative ml-auto h-4 w-7 shrink-0 rounded-full transition-colors ${
           active ? "bg-accent" : "bg-surface-2"
@@ -126,7 +126,7 @@ export function Sidebar() {
       <div className="flex flex-col gap-0.5 px-2 pb-3">
         {/* The sidebar is in both layouts, so the marker is too. */}
         <UpdateMarker />
-        <LastfmOnlySwitch />
+        <DirectScrobbleSwitch />
         <NavLink
           to="/settings"
           className={({ isActive }) =>

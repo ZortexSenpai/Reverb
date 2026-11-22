@@ -10,9 +10,8 @@ use reverb_core::subsonic::SubsonicClient;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::commands::stats::{LASTFM_SECRET_KEY, LASTFM_SESSION_KEY};
 use crate::state::PlayerSnapshot;
-use crate::stats::lastfm::{self, ScrobbleTrack};
+use crate::stats::scrobble::{self, ScrobbleTrack};
 
 /// One connection pool for the scrobble traffic, rather than a fresh client
 /// (and TLS handshake) per play.
@@ -21,32 +20,10 @@ fn http_client() -> &'static reqwest::Client {
     CLIENT.get_or_init(reqwest::Client::new)
 }
 
-/// Credentials for submitting plays straight to Last.fm.
-struct LastfmTarget {
-    api_key: String,
-    secret: String,
-    session_key: String,
-}
-
-/// Resolve the Last.fm-only target, or `None` to fall back to the Subsonic
-/// server. Deliberately strict: the mode applies only when the preference is
-/// on *and* a full set of submission credentials exists. A half-configured
-/// Last.fm would otherwise route plays away from Navidrome and then drop
-/// them, which is worse than ignoring the preference.
-fn lastfm_target(app: &AppHandle) -> Option<LastfmTarget> {
-    let state = app.state::<crate::state::AppState>();
-    if !state.settings.get().prefs.lastfm_scrobble_only {
-        return None;
-    }
-    let config = state.stats.config().lastfm?;
-    if !config.scrobbling {
-        return None;
-    }
-    Some(LastfmTarget {
-        api_key: config.api_key,
-        secret: state.keychain.retrieve_secret(LASTFM_SECRET_KEY)?,
-        session_key: state.keychain.retrieve_secret(LASTFM_SESSION_KEY)?,
-    })
+/// Whether plays go straight to a service rather than to the Subsonic server
+/// (see [`scrobble::direct_target`] for when that holds).
+fn scrobbling_direct(app: &AppHandle) -> bool {
+    scrobble::direct_target(&app.state::<crate::state::AppState>()).is_some()
 }
 
 /// Feeds the server's live now-playing display (OpenSubsonic playbackReport):
@@ -81,9 +58,9 @@ impl PlaybackReporter {
         if !enabled {
             return;
         }
-        // Last.fm-only mode means the server hears nothing at all — the
+        // Direct scrobbling means the server hears nothing at all — the
         // now-playing entry is part of what the user asked us not to send.
-        if lastfm_target(app).is_some() {
+        if scrobbling_direct(app) {
             return;
         }
         self.last_sent = Some(Instant::now());
@@ -298,60 +275,40 @@ fn forward(
             let scrobble_enabled =
                 app.state::<crate::state::AppState>().settings.get().prefs.scrobble_enabled;
             if scrobble_enabled {
-                match lastfm_target(app) {
+                let state = app.state::<crate::state::AppState>();
+                match scrobble::direct_target(&state) {
                     Some(target) => {
-                        // Last.fm-only: the server is skipped entirely.
+                        // Straight to the service: the server is skipped
+                        // entirely.
                         //
-                        // Last.fm identifies a play by artist *name*, and a
+                        // The services identify a play by artist *name*, and a
                         // joined credit ("A feat. B") matches no artist there,
                         // so the preference trades the featured names for the
                         // play landing on the main one. Only possible when the
                         // server enumerated the credit; otherwise the full
                         // string is all there is and it goes as-is.
-                        let first_artist_only = app
-                            .state::<crate::state::AppState>()
-                            .settings
-                            .get()
-                            .prefs
-                            .lastfm_scrobble_first_artist_only;
+                        let first_artist_only =
+                            state.settings.get().prefs.scrobble_first_artist_only;
                         let artist =
-                            lastfm::scrobble_artist(artist, first_artist, first_artist_only);
+                            scrobble::scrobble_artist(artist, first_artist, first_artist_only);
                         let Some(track) =
                             ScrobbleTrack::from_parts(artist, title, album, duration_ms)
                         else {
                             log::debug!("no artist/title for {track_id}; nothing to scrobble");
                             return;
                         };
-                        // `time_ms` is only computed for submissions; for a
-                        // now-playing update Last.fm wants no timestamp.
+                        // `time_ms` is only computed for submissions; a
+                        // now-playing update carries no timestamp.
                         let started_secs = time_ms.map(|ms| (ms / 1000) as i64);
                         tauri::async_runtime::spawn(async move {
                             let client = http_client();
                             let result = match started_secs {
-                                Some(ts) => {
-                                    lastfm::scrobble(
-                                        client,
-                                        &target.api_key,
-                                        &target.secret,
-                                        &target.session_key,
-                                        &track,
-                                        ts,
-                                    )
-                                    .await
-                                }
-                                None => {
-                                    lastfm::update_now_playing(
-                                        client,
-                                        &target.api_key,
-                                        &target.secret,
-                                        &target.session_key,
-                                        &track,
-                                    )
-                                    .await
-                                }
+                                Some(ts) => target.scrobble(client, &track, ts).await,
+                                None => target.now_playing(client, &track).await,
                             };
                             if let Err(e) = result {
-                                log::debug!("last.fm scrobble failed for {track_id}: {e}");
+                                let service = target.source().label();
+                                log::debug!("{service} scrobble failed for {track_id}: {e}");
                             }
                         });
                     }

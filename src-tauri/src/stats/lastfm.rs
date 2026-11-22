@@ -4,6 +4,7 @@
 
 use serde_json::Value;
 
+use super::scrobble::ScrobbleTrack;
 use super::store::StatScrobble;
 
 const API_ROOT: &str = "https://ws.audioscrobbler.com/2.0/";
@@ -153,58 +154,6 @@ use std::fmt::Write as _;
 
 use md5::{Digest, Md5};
 
-/// One play, as Last.fm identifies it. `track` and `artist` are the only
-/// fields it requires; a submission missing either is rejected outright.
-#[derive(Debug, Clone)]
-pub struct ScrobbleTrack {
-    pub artist: String,
-    pub track: String,
-    pub album: Option<String>,
-    /// Track length in seconds; omitted when the engine never learned it.
-    pub duration_secs: Option<u64>,
-}
-
-/// The artist name to submit for a play.
-///
-/// Last.fm identifies a play by artist *name*, so a joined credit like
-/// "A feat. B" usually matches no artist there and the play is filed under
-/// nothing useful. `first_artist_only` trades the featured names for a play
-/// that lands on the main artist — which is only possible where the server
-/// enumerated the credit, so without a first artist the full string still goes.
-pub fn scrobble_artist(
-    artist: Option<String>,
-    first_artist: Option<String>,
-    first_artist_only: bool,
-) -> Option<String> {
-    if !first_artist_only {
-        return artist;
-    }
-    // A blank first artist would otherwise beat a perfectly good credit and
-    // lose the scrobble entirely (`from_parts` drops empty artists).
-    first_artist.filter(|name| !name.trim().is_empty()).or(artist)
-}
-
-impl ScrobbleTrack {
-    /// Build a submission from the engine's (all-optional) track metadata.
-    /// Returns `None` when artist or title is missing — Last.fm would only
-    /// reject it, and a play it cannot attribute is not worth a round trip.
-    pub fn from_parts(
-        artist: Option<String>,
-        title: Option<String>,
-        album: Option<String>,
-        duration_ms: u64,
-    ) -> Option<Self> {
-        let artist = artist.filter(|s| !s.trim().is_empty())?;
-        let track = title.filter(|s| !s.trim().is_empty())?;
-        Some(Self {
-            artist,
-            track,
-            album: album.filter(|s| !s.trim().is_empty()),
-            duration_secs: (duration_ms > 0).then_some(duration_ms / 1000),
-        })
-    }
-}
-
 fn md5_hex(input: &str) -> String {
     let digest = Md5::digest(input.as_bytes());
     let mut out = String::with_capacity(32);
@@ -286,6 +235,13 @@ pub async fn verify_key_pair(
     post_signed(client, params, secret).await.map(|_| ())
 }
 
+/// A scrobbling session: the key, and the account name as Last.fm spells it
+/// (the sign-in accepts other spellings, the import does not).
+pub struct Session {
+    pub key: String,
+    pub username: Option<String>,
+}
+
 /// Trade a username and password for a long-lived session key
 /// (`auth.getMobileSession`). The password is used for this one call and never
 /// stored — the session key it returns is what gets kept.
@@ -295,7 +251,7 @@ pub async fn get_mobile_session(
     secret: &str,
     username: &str,
     password: &str,
-) -> Result<String, String> {
+) -> Result<Session, String> {
     let params = vec![
         ("method", "auth.getMobileSession".to_string()),
         ("username", username.to_string()),
@@ -322,10 +278,12 @@ pub async fn get_mobile_session(
         }
         Err(message) => return Err(message),
     };
-    body["session"]["key"]
+    let key = body["session"]["key"]
         .as_str()
         .map(str::to_owned)
-        .ok_or_else(|| "Last.fm did not return a session key".to_string())
+        .ok_or_else(|| "Last.fm did not return a session key".to_string())?;
+    let username = body["session"]["name"].as_str().map(str::to_owned);
+    Ok(Session { key, username })
 }
 
 /// Announce the track as now playing. Last.fm expires the entry on its own
@@ -383,42 +341,6 @@ pub async fn scrobble(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn scrobble_artist_sends_the_whole_credit_by_default() {
-        let artist = || Some("A feat. B".to_owned());
-        let first = || Some("A".to_owned());
-        assert_eq!(scrobble_artist(artist(), first(), false).as_deref(), Some("A feat. B"));
-    }
-
-    #[test]
-    fn scrobble_artist_sends_only_the_first_when_asked() {
-        let artist = || Some("A feat. B".to_owned());
-        assert_eq!(
-            scrobble_artist(artist(), Some("A".to_owned()), true).as_deref(),
-            Some("A")
-        );
-    }
-
-    #[test]
-    fn scrobble_artist_falls_back_when_the_first_artist_is_unknown() {
-        // Servers without the OpenSubsonic artists extension send the credit as
-        // one opaque string: there is nothing to take the first artist from, and
-        // guessing at separators would split "Simon & Garfunkel".
-        let artist = || Some("Simon & Garfunkel".to_owned());
-        assert_eq!(
-            scrobble_artist(artist(), None, true).as_deref(),
-            Some("Simon & Garfunkel")
-        );
-        // A blank one must not win, or the play is dropped rather than filed.
-        assert_eq!(
-            scrobble_artist(artist(), Some("  ".to_owned()), true).as_deref(),
-            Some("Simon & Garfunkel")
-        );
-        // Nothing at all stays nothing, whichever way the preference is set.
-        assert_eq!(scrobble_artist(None, None, true), None);
-        assert_eq!(scrobble_artist(None, None, false), None);
-    }
 
     #[test]
     fn parses_recent_tracks_with_quirks() {
@@ -502,27 +424,5 @@ mod tests {
     #[test]
     fn md5_hex_matches_a_known_digest() {
         assert_eq!(md5_hex("sesamec19b2d"), "26719a1196d2a940705a59634eb18eab");
-    }
-
-    #[test]
-    fn submissions_need_an_artist_and_a_title() {
-        assert!(ScrobbleTrack::from_parts(None, Some("T".into()), None, 0).is_none());
-        assert!(ScrobbleTrack::from_parts(Some("A".into()), None, None, 0).is_none());
-        // Whitespace-only metadata is as unusable as none at all.
-        assert!(ScrobbleTrack::from_parts(Some("  ".into()), Some("T".into()), None, 0).is_none());
-    }
-
-    #[test]
-    fn submissions_carry_album_and_duration_when_known() {
-        let track =
-            ScrobbleTrack::from_parts(Some("A".into()), Some("T".into()), Some("Al".into()), 245_000)
-                .expect("artist and title are present");
-        assert_eq!(track.album.as_deref(), Some("Al"));
-        assert_eq!(track.duration_secs, Some(245));
-        // An unknown duration is omitted rather than sent as zero.
-        let unknown = ScrobbleTrack::from_parts(Some("A".into()), Some("T".into()), None, 0)
-            .expect("artist and title are present");
-        assert_eq!(unknown.duration_secs, None);
-        assert_eq!(unknown.album, None);
     }
 }

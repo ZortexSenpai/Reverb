@@ -6,7 +6,9 @@ import { cmd } from "../ipc/commands";
 import { getT } from "../i18n";
 import { on } from "../ipc/events";
 import { queryClient } from "../queryClient";
+import { SERVICE_NAMES, SERVICES_QUERY_KEY } from "../scrobbleServices";
 import { qk } from "../subsonic/keys";
+import type { ServiceId } from "../subsonic/types";
 import { useEqStore } from "../../stores/eqStore";
 import { advanceToPendingNext, usePlayerStore } from "../../stores/playerStore";
 import { usePrefsStore } from "../../stores/prefsStore";
@@ -88,8 +90,8 @@ export function initEngineBridge() {
     else if (action === "previous") player.previous();
   });
 
-  // Mixes are rebuilt at startup for a new day, or once a first Last.fm
-  // import gives them a listening history to work from.
+  // Mixes are rebuilt at startup for a new day, or once a first import gives
+  // them a listening history to work from.
   void on("mixes:updated", () => {
     void queryClient.invalidateQueries({ queryKey: qk.mixes() });
   });
@@ -100,19 +102,24 @@ export function initEngineBridge() {
   void on("stats:import", (progress) => {
     if (progress.state === "running") {
       useUiStore.setState({
-        statsImport: { imported: progress.imported, total: progress.total ?? null },
+        statsImport: {
+          source: progress.source,
+          imported: progress.imported,
+          total: progress.total ?? null,
+        },
       });
     } else {
       useUiStore.setState({ statsImport: null });
-      void queryClient.invalidateQueries({ queryKey: ["stats-sources"] });
+      void queryClient.invalidateQueries({ queryKey: SERVICES_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ["stats"] });
       const toast = useUiStore.getState().showToast;
       const t = getT();
       if (progress.state === "done") {
+        const service = SERVICE_NAMES[progress.source];
         toast(
           progress.imported > 0
-            ? t("toast.imported", { n: progress.imported })
-            : t("toast.statsUpToDate"),
+            ? t("toast.imported", { n: progress.imported, service })
+            : t("toast.statsUpToDate", { service }),
         );
       } else if (progress.message) {
         toast(progress.message, "error");
@@ -122,8 +129,8 @@ export function initEngineBridge() {
 }
 
 /** Optimistic marker so the UI reacts before the first progress event. */
-export function markStatsImportStarted() {
-  useUiStore.setState({ statsImport: { imported: 0, total: null } });
+export function markStatsImportStarted(source: ServiceId) {
+  useUiStore.setState({ statsImport: { source, imported: 0, total: null } });
 }
 
 /** Pull the engine's snapshot after a (re)load so the UI matches reality. */

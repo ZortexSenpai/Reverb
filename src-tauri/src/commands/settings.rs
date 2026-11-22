@@ -55,11 +55,11 @@ pub fn settings_set_prefs(
 
     // Toggling scrobbling adjusts the server's now-playing display right away:
     // off clears the entry, on re-announces the current track. Switching
-    // Last.fm-only mode does the same thing for the same reason — turning it
+    // direct scrobbling does the same thing for the same reason — turning it
     // on stops reporting to the server, so the entry it left behind has to be
     // cleared rather than left to go stale.
     if old.scrobble_enabled != prefs.scrobble_enabled
-        || old.lastfm_scrobble_only != prefs.lastfm_scrobble_only
+        || old.direct_scrobble != prefs.direct_scrobble
     {
         let (track_id, position_ms, playback_state) = {
             let snapshot = state.player.lock().unwrap();
@@ -67,7 +67,7 @@ pub fn settings_set_prefs(
         };
         if let Some(track_id) = track_id {
             let subsonic = state.subsonic.clone();
-            let enabling = prefs.scrobble_enabled && !prefs.lastfm_scrobble_only;
+            let enabling = prefs.scrobble_enabled && !prefs.direct_scrobble;
             tauri::async_runtime::spawn(async move {
                 if enabling {
                     let _ = subsonic.scrobble(&track_id, false, None).await;

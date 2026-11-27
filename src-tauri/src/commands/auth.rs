@@ -62,7 +62,7 @@ pub async fn auth_save(
 
 #[tauri::command]
 pub fn auth_sign_out(state: State<'_, AppState>) -> Result<(), ReverbError> {
-    state.engine.send(EngineCommand::Stop);
+    state.playback.send(EngineCommand::Stop);
     let settings = state.settings.get();
     if let (Some(url), Some(user)) = (&settings.server_url, &settings.username) {
         state.keychain.clear(url, user);

@@ -31,21 +31,21 @@ pub fn settings_set_prefs(
     // Switching device configs, or editing the active one, changes the
     // output; anything else about the configs (a rename, an inactive one
     // edited) does not.
-    let output = prefs.output();
-    if old.output() != output {
-        state.engine.send(EngineCommand::SetOutput(output));
+    let target = prefs.target();
+    if old.target() != target {
+        state.playback.set_target(target);
     }
     let rg_changed = serde_json::to_value(old.replay_gain).ok()
         != serde_json::to_value(prefs.replay_gain).ok();
     if rg_changed {
-        state.engine.send(EngineCommand::SetReplayGain(prefs.replay_gain));
+        state.playback.send(EngineCommand::SetReplayGain(prefs.replay_gain));
     }
     if old.scrobble_at_percent != prefs.scrobble_at_percent {
-        state.engine.send(EngineCommand::SetScrobblePercent(prefs.scrobble_at_percent));
+        state.playback.send(EngineCommand::SetScrobblePercent(prefs.scrobble_at_percent));
     }
     if old.crossfade_secs != prefs.crossfade_secs {
         state
-            .engine
+            .playback
             .send(EngineCommand::SetCrossfade { ms: u64::from(prefs.crossfade_secs) * 1000 });
     }
 

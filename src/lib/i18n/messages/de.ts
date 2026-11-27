@@ -96,6 +96,7 @@ export const de: Messages = {
   "signal.osMixer": "Mixer des Betriebssystems",
   "signal.osMixerDetail": "{from} → {to} — außerhalb von Reverb",
   "signal.output": "Ausgabe: {device}",
+  "signal.hqplayerWaiting": "Warte auf HQPlayer",
   "signal.systemDefault": "Systemstandard",
 
   "home.goodMorning": "Guten Morgen",
@@ -493,6 +494,24 @@ export const de: Messages = {
     "Keine andere App kann über das Gerät abspielen, solange Reverb es hält — Hog Mode unter macOS, WASAPI-Exklusivmodus unter Windows. Unter Linux oben ein (direkt)-Ausgabegerät wählen; es wird dann strikt angesprochen, ohne ALSA-Umwandlung.",
   "settings.exclusiveUnavailable":
     "Benötigt ein direktes Ausgabegerät — über einen Soundserver gibt es keine Karte zu belegen. Oben eines auswählen.",
+  "settings.playsOn": "Spielt auf",
+  "settings.playsOnThisComputer": "Diesem Computer",
+  "settings.configHqplayer": "HQPlayer auf {address}",
+  "settings.hqplayerConfigName": "HQPlayer auf {host}",
+  "settings.hqplayerAddress": "HQPlayer-Adresse",
+  "settings.hqplayerHost": "Hostname oder IP-Adresse",
+  "settings.hqplayerPort": "Port",
+  "settings.hqplayerPortInvalid": "Ein Port ist eine ganze Zahl von 1 bis 65535.",
+  "settings.hqplayerAddressHint":
+    "Der Computer, auf dem HQPlayer Desktop läuft — localhost für diesen. Von einem anderen Computer aus antwortet HQPlayer nur, wenn „Allow control from network“ (der Globus-Knopf in seiner Werkzeugleiste) eingeschaltet ist, und nicht, solange sein Einstellungsdialog offen ist.",
+  "settings.hqplayerTest": "Verbindung testen",
+  "settings.hqplayerFind": "Im Netzwerk suchen",
+  "settings.hqplayerSearching": "Suche läuft…",
+  "settings.hqplayerNoneFound":
+    "Kein HQPlayer hat in diesem Netzwerk geantwortet. Gib seine Adresse oben ein.",
+  "settings.hqplayerConnected": "Verbunden mit {name}.",
+  "settings.hqplayerProcessingHint":
+    "HQPlayer holt jeden Titel bei Reverb ab und übernimmt die ganze Verarbeitung selbst, daher gelten Reverbs EQ, ReplayGain und Überblendung nicht. M4A (ALAC, AAC) kann er nicht dekodieren; solche Titel erreichen ihn als MP3 mit 320 kbit/s. Läuft er auf einem anderen Computer, muss die Firewall dieses Computers ihn zu Reverb durchlassen.",
   "settings.audioNote":
     "Titel werden bit-perfect dekodiert und bei Bedarf auf die Geräterate resampelt. Der parametrische EQ läuft mit der Geräterate innerhalb der nativen Audio-Engine.",
 

@@ -37,8 +37,8 @@ Sending Plays straight to the Scrobbling account instead of to Navidrome, which 
 _Avoid_: Last.fm only
 
 **Device config**:
-A named output setup: one output device (or the system default), and whether Reverb matches each Song's sample rate and takes the device exclusively. One is active at a time; with none active, Reverb plays on the system default, shared, at the device's own rate — which is also where playback goes when the active one's device is unplugged. The config keeps its device, so picking it again once the device is back is all it takes.
-_Avoid_: Output profile, audio preset
+A named output setup: one output device (or the system default), and whether Reverb matches each Song's sample rate and takes the device exclusively. Or instead an HQPlayer, on this computer or another, that Reverb hands playback to: HQPlayer then fetches and plays the Songs itself, while the Queue, transport and Plays stay in Reverb. One is active at a time; with none active, Reverb plays on the system default, shared, at the device's own rate — which is also where playback goes when the active one's device is unplugged. The config keeps its device, so picking it again once the device is back is all it takes. Switching configs carries the playing Song across, from where it was.
+_Avoid_: Output profile, audio preset, zone
 
 ### Stats
 

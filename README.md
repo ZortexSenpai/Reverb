@@ -27,6 +27,9 @@ engine and a **parametric EQ**.
   queue restore across restarts
 - **Stats** — listening history imported from Last.fm or ListenBrainz: the
   account you scrobble to, or a separate one
+- **HQPlayer** — hand playback to HQPlayer Desktop on this computer or
+  another one on the network: it is one more device config, and the queue,
+  transport, volume, scrobbling and media keys keep working from Reverb
 - **Settings** — device configs (named output setups: device, exclusive
   access, sample-rate matching — switch between them in one click),
   streaming quality (original /
@@ -176,6 +179,35 @@ Without the handshake, direct output still works, but the server keeps
 competing for the card — expect the volume OSD to reappear every few seconds
 and other applications to lose audio on that device. Pick **System default**
 instead if that trade is not worth it.
+
+## Playing through HQPlayer
+
+[HQPlayer Desktop](https://www.signalyst.com/consumer.html) can do the
+playing while Reverb stays the remote: add a device config, set **Plays on** to
+**HQPlayer**, and enter the address of the computer it runs on (`localhost`
+for this one), or use **Find on network**. Switching to the config moves the
+playing song over to HQPlayer from where it was, and switching back brings it
+home the same way.
+
+- When HQPlayer runs on another computer, turn on **Allow control from
+  network** (the globe button in its toolbar) — it ignores Reverb otherwise —
+  and keep its settings dialog closed, which turns connections away.
+  **Test connection** in the config dialog checks both. **Find on network**
+  only finds HQPlayers on the same network segment.
+- HQPlayer fetches each song from Reverb over HTTP, on a port the OS picks.
+  When it runs on another computer, the firewall on Reverb's computer has to
+  let it in (macOS asks once). Navidrome's address and credentials never reach
+  HQPlayer. See [ADR 0004](docs/adr/0004-hqplayer-fetches-songs-from-reverb.md).
+- HQPlayer decodes the original file and does all the processing — upsampling,
+  filters, modulators, its own convolution — so Reverb's EQ, ReplayGain and
+  crossfade do not apply on this path. Formats Reverb's own engine cannot
+  decode, DSD among them, play fine. HQPlayer cannot decode M4A (ALAC, AAC),
+  APE or WMA, so for those Reverb asks Navidrome for a 320 kbps MP3 instead.
+- Reverb's volume control drives HQPlayer's volume, and follows it when it is
+  turned in HQPlayer. The signal path shows HQPlayer's mode, filter, shaper and
+  output rate.
+- While HQPlayer plays, Reverb releases its own audio device, so HQPlayer can
+  take the same DAC exclusively.
 
 ## Development
 

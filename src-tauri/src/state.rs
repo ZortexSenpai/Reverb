@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use reverb_core::audio::{EngineHandle, PlaybackState};
+use reverb_core::audio::PlaybackState;
+use reverb_core::playback::Playback;
 use reverb_core::subsonic::SubsonicClient;
 use serde::Serialize;
 
@@ -38,7 +39,9 @@ impl Default for PlayerSnapshot {
 
 pub struct AppState {
     pub subsonic: Arc<SubsonicClient>,
-    pub engine: EngineHandle,
+    /// Plays through the local engine or an HQPlayer, whichever the active
+    /// device config names.
+    pub playback: Playback,
     pub settings: SettingsStore,
     pub keychain: Keychain,
     pub player: Arc<Mutex<PlayerSnapshot>>,

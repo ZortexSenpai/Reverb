@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod eq;
+pub mod hqplayer;
 pub mod library;
 pub mod mixes;
 pub mod play_history;

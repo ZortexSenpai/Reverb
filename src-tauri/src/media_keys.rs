@@ -96,11 +96,11 @@ impl MediaSession {
 fn handle_event(app: &AppHandle, event: MediaControlEvent) {
     let state = app.state::<AppState>();
     match event {
-        MediaControlEvent::Play => state.engine.send(EngineCommand::Resume),
-        MediaControlEvent::Pause => state.engine.send(EngineCommand::Pause),
-        MediaControlEvent::Toggle => state.engine.send(EngineCommand::Toggle),
+        MediaControlEvent::Play => state.playback.send(EngineCommand::Resume),
+        MediaControlEvent::Pause => state.playback.send(EngineCommand::Pause),
+        MediaControlEvent::Toggle => state.playback.send(EngineCommand::Toggle),
         MediaControlEvent::Stop | MediaControlEvent::Quit => {
-            state.engine.send(EngineCommand::Stop)
+            state.playback.send(EngineCommand::Stop)
         }
         // The queue lives in the frontend — route track changes there.
         MediaControlEvent::Next => {
@@ -111,7 +111,7 @@ fn handle_event(app: &AppHandle, event: MediaControlEvent) {
         }
         MediaControlEvent::SetPosition(MediaPosition(position)) => {
             state
-                .engine
+                .playback
                 .send(EngineCommand::Seek { position_ms: position.as_millis() as u64 });
         }
         _ => {}

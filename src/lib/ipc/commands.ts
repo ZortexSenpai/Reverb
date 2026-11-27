@@ -14,8 +14,10 @@ import type {
   EqBand,
   EqPresetMeta,
   EqState,
+  DiscoveredHqPlayer,
   FrontendSettings,
   Genre,
+  HqPlayerInfo,
   AccountRole,
   Indexes,
   LyricsList,
@@ -206,6 +208,12 @@ export interface CommandMap {
   settings_get: { args: NoArgs; result: FrontendSettings };
   settings_set_prefs: { args: { prefs: Preferences }; result: void };
   audio_list_devices: { args: NoArgs; result: OutputDevice[] };
+
+  // HQPlayer
+  /** Connect and ask what is there; fails with a readable reason. */
+  hqplayer_probe: { args: { host: string; port: number }; result: HqPlayerInfo };
+  /** The HQPlayers that answer a search of the local network. */
+  hqplayer_discover: { args: NoArgs; result: DiscoveredHqPlayer[] };
   queue_save_snapshot: { args: { snapshot: unknown }; result: void };
   queue_load_snapshot: { args: NoArgs; result: unknown };
 }

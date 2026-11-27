@@ -110,6 +110,7 @@ export const en = {
   "signal.osMixer": "Operating system mixer",
   "signal.osMixerDetail": "{from} → {to} — outside Reverb",
   "signal.output": "Output: {device}",
+  "signal.hqplayerWaiting": "Waiting for HQPlayer",
   "signal.systemDefault": "System default",
 
   // ---- home ----
@@ -518,6 +519,23 @@ export const en = {
     "No other app can play through the device while Reverb holds it — hog mode on macOS, WASAPI exclusive mode on Windows. On Linux, pick a (direct) output device above; this then addresses it strictly, with no ALSA conversion.",
   "settings.exclusiveUnavailable":
     "Needs a direct output device — a sound-server route has no card to claim. Pick one above.",
+  "settings.playsOn": "Plays on",
+  "settings.playsOnThisComputer": "This computer",
+  "settings.configHqplayer": "HQPlayer at {address}",
+  "settings.hqplayerConfigName": "HQPlayer on {host}",
+  "settings.hqplayerAddress": "HQPlayer address",
+  "settings.hqplayerHost": "Host name or IP address",
+  "settings.hqplayerPort": "Port",
+  "settings.hqplayerPortInvalid": "A port is a whole number from 1 to 65535.",
+  "settings.hqplayerAddressHint":
+    "The computer HQPlayer Desktop runs on — localhost for this one. From another computer, HQPlayer only answers with “Allow control from network” (the globe button in its toolbar) turned on, and not while its settings dialog is open.",
+  "settings.hqplayerTest": "Test connection",
+  "settings.hqplayerFind": "Find on network",
+  "settings.hqplayerSearching": "Searching…",
+  "settings.hqplayerNoneFound": "No HQPlayer answered on this network. Enter its address above.",
+  "settings.hqplayerConnected": "Connected to {name}.",
+  "settings.hqplayerProcessingHint":
+    "HQPlayer fetches each song from Reverb and does all the processing itself, so Reverb's EQ, ReplayGain and crossfade do not apply. It cannot decode M4A (ALAC, AAC), so those reach it as 320 kbps MP3. When it runs on another computer, this computer's firewall has to let it reach Reverb.",
   "settings.audioNote":
     "Tracks are decoded bit-perfectly and resampled to the device rate when needed. The parametric EQ runs at the device rate inside the native audio engine.",
 

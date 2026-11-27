@@ -56,6 +56,7 @@ fn main() {
             auto_rate: std::env::var("REVERB_AUTO_RATE").is_ok(),
             exclusive: std::env::var("REVERB_EXCLUSIVE").is_ok(),
         },
+        false,
     );
     engine.send(EngineCommand::SetVolume { volume });
     engine.send(EngineCommand::PlayTrack(TrackSource {

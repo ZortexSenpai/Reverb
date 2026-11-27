@@ -5,7 +5,9 @@ import {
   canGoExclusive,
   deleteDeviceConfig,
   deviceLabel,
+  hqplayerAddress,
   isConnected,
+  parsePort,
   saveDeviceConfig,
 } from "./deviceConfigs";
 import type { DeviceConfig, OutputDevice } from "./subsonic/types";
@@ -16,6 +18,7 @@ const desk: DeviceConfig = {
   device: "coreaudio:dac",
   matchSourceRate: true,
   exclusiveOutput: true,
+  hqplayer: null,
 };
 const speakers: DeviceConfig = {
   id: "speakers",
@@ -23,6 +26,7 @@ const speakers: DeviceConfig = {
   device: null,
   matchSourceRate: false,
   exclusiveOutput: false,
+  hqplayer: null,
 };
 const prefs = { deviceConfigs: [desk, speakers], activeDeviceConfig: "desk" };
 
@@ -122,5 +126,35 @@ describe("canGoExclusive", () => {
 
   it("does not disable the toggle while the list is loading", () => {
     expect(canGoExclusive(undefined, null)).toBe(true);
+  });
+});
+
+describe("hqplayerAddress", () => {
+  it("leaves out the usual port", () => {
+    expect(hqplayerAddress({ host: "studio.local", port: 4321 })).toBe("studio.local");
+  });
+
+  it("shows any other port", () => {
+    expect(hqplayerAddress({ host: "192.168.1.20", port: 4322 })).toBe("192.168.1.20:4322");
+  });
+});
+
+describe("parsePort", () => {
+  it("takes a blank field as the usual port", () => {
+    expect(parsePort("")).toBe(4321);
+    expect(parsePort("  ")).toBe(4321);
+  });
+
+  it("reads a port in range", () => {
+    expect(parsePort(" 4322 ")).toBe(4322);
+    expect(parsePort("65535")).toBe(65535);
+  });
+
+  it("refuses anything that is not a port", () => {
+    expect(parsePort("0")).toBeNull();
+    expect(parsePort("65536")).toBeNull();
+    expect(parsePort("43.21")).toBeNull();
+    expect(parsePort("-1")).toBeNull();
+    expect(parsePort("http")).toBeNull();
   });
 });

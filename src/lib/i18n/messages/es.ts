@@ -96,6 +96,7 @@ export const es: Messages = {
   "signal.osMixer": "Mezclador del sistema",
   "signal.osMixerDetail": "{from} → {to} — fuera de Reverb",
   "signal.output": "Salida: {device}",
+  "signal.hqplayerWaiting": "Esperando a HQPlayer",
   "signal.systemDefault": "Predeterminado del sistema",
 
   "home.goodMorning": "Buenos días",
@@ -493,6 +494,24 @@ export const es: Messages = {
     "Ninguna otra aplicación puede reproducir a través del dispositivo mientras Reverb lo retiene: hog mode en macOS, modo exclusivo de WASAPI en Windows. En Linux, elige arriba un dispositivo (directo); entonces se direcciona de forma estricta, sin conversión de ALSA.",
   "settings.exclusiveUnavailable":
     "Requiere un dispositivo de salida directo: una ruta a través del servidor de sonido no tiene tarjeta que reclamar. Elige uno arriba.",
+  "settings.playsOn": "Suena en",
+  "settings.playsOnThisComputer": "Este ordenador",
+  "settings.configHqplayer": "HQPlayer en {address}",
+  "settings.hqplayerConfigName": "HQPlayer en {host}",
+  "settings.hqplayerAddress": "Dirección de HQPlayer",
+  "settings.hqplayerHost": "Nombre de host o dirección IP",
+  "settings.hqplayerPort": "Puerto",
+  "settings.hqplayerPortInvalid": "Un puerto es un número entero del 1 al 65535.",
+  "settings.hqplayerAddressHint":
+    "El ordenador en el que se ejecuta HQPlayer Desktop: localhost para este. Desde otro ordenador, HQPlayer solo responde con «Allow control from network» (el botón del globo de su barra de herramientas) activado, y no mientras su ventana de ajustes esté abierta.",
+  "settings.hqplayerTest": "Probar conexión",
+  "settings.hqplayerFind": "Buscar en la red",
+  "settings.hqplayerSearching": "Buscando…",
+  "settings.hqplayerNoneFound":
+    "Ningún HQPlayer ha respondido en esta red. Escribe su dirección arriba.",
+  "settings.hqplayerConnected": "Conectado a {name}.",
+  "settings.hqplayerProcessingHint":
+    "HQPlayer obtiene cada canción de Reverb y hace él mismo todo el procesamiento, así que el ecualizador, el ReplayGain y el fundido de Reverb no se aplican. No sabe decodificar M4A (ALAC, AAC), así que esas canciones le llegan como MP3 a 320 kbps. Si se ejecuta en otro ordenador, el cortafuegos de este tiene que dejarle llegar a Reverb.",
   "settings.audioNote":
     "Las pistas se decodifican bit-perfect y se remuestrean a la frecuencia del dispositivo cuando hace falta. El ecualizador paramétrico funciona a la frecuencia del dispositivo dentro del motor de audio nativo.",
 

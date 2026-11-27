@@ -2,7 +2,10 @@
 // These helpers return preference patches; the prefs store persists them, and
 // the backend reopens the output when the setup they describe changes.
 
-import type { DeviceConfig, OutputDevice, Preferences } from "./subsonic/types";
+import type { DeviceConfig, HqPlayerEndpoint, OutputDevice, Preferences } from "./subsonic/types";
+
+/** The port HQPlayer listens for control on unless told otherwise. */
+export const HQPLAYER_DEFAULT_PORT = 4321;
 
 type ConfigPrefs = Pick<Preferences, "deviceConfigs" | "activeDeviceConfig">;
 
@@ -65,6 +68,23 @@ export function deviceLabel(
 ): string | null | undefined {
   if (device == null) return null;
   return devices && findDevice(devices, device)?.label;
+}
+
+/** How an HQPlayer address reads: the host, with the port only when it is not the usual one. */
+export function hqplayerAddress({ host, port }: HqPlayerEndpoint): string {
+  return port === HQPLAYER_DEFAULT_PORT ? host : `${host}:${port}`;
+}
+
+/**
+ * Read a typed port. Blank is the default port; anything else must be a whole
+ * number in range, or `null` to say it is not a port.
+ */
+export function parsePort(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === "") return HQPLAYER_DEFAULT_PORT;
+  if (!/^\d+$/.test(trimmed)) return null;
+  const port = Number(trimmed);
+  return port >= 1 && port <= 65535 ? port : null;
 }
 
 /** Whether a config's device is plugged in. Unknown counts as yes. */

@@ -76,6 +76,12 @@ export function initEngineBridge() {
     useUiStore.getState().showToast(getT()("toast.outputDeviceLost"));
   });
 
+  // HQPlayer's volume, turned in HQPlayer or read on connecting. Only mirrored:
+  // setting it through the store would send it straight back.
+  void on("player:volume", ({ volume }) => {
+    usePlayerStore.setState({ volume });
+  });
+
   void on("player:signal-path", (signalPath) => {
     usePlayerStore.setState({ signalPath });
   });

@@ -38,6 +38,8 @@ export interface EventMap {
   "player:format": { sampleRate: number };
   /** The configured output device vanished; the backend is on the system default. */
   "player:device-lost": { device: string };
+  /** HQPlayer's own volume moved (or was read on connecting); 0–1, like the slider. */
+  "player:volume": { volume: number };
   "eq:state": import("../subsonic/types").EqState;
   /** A new set of mixes replaced the cached one in the background. */
   "mixes:updated": null;

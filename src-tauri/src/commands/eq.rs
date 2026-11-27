@@ -16,7 +16,7 @@ pub struct EqPresetMeta {
 /// Apply + persist + broadcast. Every EQ mutation funnels through here so the
 /// engine, settings.json, and all windows stay in sync.
 fn commit(app: &AppHandle, state: &AppState, eq: EqState) -> Result<EqState, ReverbError> {
-    state.engine.send(EngineCommand::SetEq(eq.clone()));
+    state.playback.send(EngineCommand::SetEq(eq.clone()));
     state.settings.update(|s| s.eq = eq.clone())?;
     let _ = app.emit("eq:state", eq.clone());
     Ok(eq)

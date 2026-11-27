@@ -71,7 +71,7 @@ pub fn player_play_track(
     state: State<'_, AppState>,
 ) -> Result<(), ReverbError> {
     let src = to_track_source(&state, &track)?;
-    state.engine.send(EngineCommand::PlayTrack(src));
+    state.playback.send(EngineCommand::PlayTrack(src));
     Ok(())
 }
 
@@ -84,39 +84,39 @@ pub fn player_set_next(
         Some(t) => Some(to_track_source(&state, t)?),
         None => None,
     };
-    state.engine.send(EngineCommand::SetNext(next));
+    state.playback.send(EngineCommand::SetNext(next));
     Ok(())
 }
 
 #[tauri::command]
 pub fn player_pause(state: State<'_, AppState>) {
-    state.engine.send(EngineCommand::Pause);
+    state.playback.send(EngineCommand::Pause);
 }
 
 #[tauri::command]
 pub fn player_resume(state: State<'_, AppState>) {
-    state.engine.send(EngineCommand::Resume);
+    state.playback.send(EngineCommand::Resume);
 }
 
 #[tauri::command]
 pub fn player_toggle(state: State<'_, AppState>) {
-    state.engine.send(EngineCommand::Toggle);
+    state.playback.send(EngineCommand::Toggle);
 }
 
 #[tauri::command]
 pub fn player_stop(state: State<'_, AppState>) {
-    state.engine.send(EngineCommand::Stop);
+    state.playback.send(EngineCommand::Stop);
 }
 
 #[tauri::command]
 pub fn player_seek(position_ms: u64, state: State<'_, AppState>) {
-    state.engine.send(EngineCommand::Seek { position_ms });
+    state.playback.send(EngineCommand::Seek { position_ms });
 }
 
 #[tauri::command]
 pub fn player_set_volume(volume: f32, state: State<'_, AppState>) -> Result<(), ReverbError> {
     let volume = volume.clamp(0.0, 1.0);
-    state.engine.send(EngineCommand::SetVolume { volume });
+    state.playback.send(EngineCommand::SetVolume { volume });
     state.player.lock().unwrap().volume = volume;
     state.settings.update(|s| s.volume = volume)?;
     Ok(())

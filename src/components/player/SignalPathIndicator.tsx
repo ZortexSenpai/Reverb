@@ -1,10 +1,11 @@
 // Signal path: a quality dot that opens the actual audio chain
-// (source → DSP → output) as reported live by the Rust engine.
+// (source → DSP → output) as reported live by the Rust engine — or, when
+// HQPlayer is the output, by HQPlayer.
 
 import { Popover } from "radix-ui";
-import { ArrowDownUp, AudioWaveform, Gauge, SlidersVertical, Speaker } from "lucide-react";
+import { ArrowDownUp, AudioWaveform, Cpu, Gauge, SlidersVertical, Speaker } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatSampleRate } from "../../lib/format";
+import { formatDsdRate, formatSampleRate } from "../../lib/format";
 import { useT, type MessageKey, type T } from "../../lib/i18n";
 import { usePlayerStore } from "../../stores/playerStore";
 
@@ -36,6 +37,12 @@ export function SignalPathIndicator() {
   if (!path || !hasTrack) return null;
   const quality = QUALITY[path.quality] ?? QUALITY.high;
   const qualityLabel = t(quality.labelKey);
+  const hq = path.hqplayer;
+  // HQPlayer's rate is a DSD one whenever it modulates to 1-bit.
+  const hqRate =
+    hq?.outputRate != null
+      ? ((hq.mode === "SDM" ? formatDsdRate(hq.outputRate) : null) ?? khz(hq.outputRate))
+      : t("signal.hqplayerWaiting");
 
   return (
     <Popover.Root>
@@ -63,26 +70,39 @@ export function SignalPathIndicator() {
             icon={<AudioWaveform className="size-4" />}
             title={t("signal.source", { codec: path.codec ?? t("signal.unknownCodec") })}
             detail={[
-              khz(path.sourceSampleRate),
+              // Unknown (0) until HQPlayer has opened the Song.
+              path.sourceSampleRate > 0 ? khz(path.sourceSampleRate) : null,
               path.bitRate != null ? t("format.kbps", { n: path.bitRate }) : null,
               path.losslessSource ? t("signal.losslessTag") : t("signal.lossyTag"),
             ]
               .filter(Boolean)
               .join(" · ")}
           />
-          <Step
-            icon={<AudioWaveform className="size-4" />}
-            title={t("signal.decode")}
-            detail={t("signal.decodeDetail")}
-          />
-          {path.replayGainDb != null && (
+          {hq ? (
+            // Everything between source and output happens in HQPlayer.
+            <Step
+              icon={<Cpu className="size-4" />}
+              title="HQPlayer"
+              detail={
+                [hq.mode, hq.filter, hq.shaper].filter(Boolean).join(" · ") ||
+                t("signal.hqplayerWaiting")
+              }
+            />
+          ) : (
+            <Step
+              icon={<AudioWaveform className="size-4" />}
+              title={t("signal.decode")}
+              detail={t("signal.decodeDetail")}
+            />
+          )}
+          {!hq && path.replayGainDb != null && (
             <Step
               icon={<Gauge className="size-4" />}
               title={t("signal.replayGain")}
               detail={`${path.replayGainDb > 0 ? "+" : ""}${path.replayGainDb.toFixed(1)} dB`}
             />
           )}
-          {path.resampleTo != null && (
+          {!hq && path.resampleTo != null && (
             <Step
               icon={<ArrowDownUp className="size-4" />}
               title={t("signal.resample")}
@@ -92,14 +112,14 @@ export function SignalPathIndicator() {
               })}
             />
           )}
-          {path.eqBands > 0 && (
+          {!hq && path.eqBands > 0 && (
             <Step
               icon={<SlidersVertical className="size-4" />}
               title={t("signal.eq")}
               detail={t("signal.eqDetail", { n: path.eqBands })}
             />
           )}
-          {path.osResampling && path.deviceRate != null && (
+          {!hq && path.osResampling && path.deviceRate != null && (
             <Step
               icon={<ArrowDownUp className="size-4" />}
               title={t("signal.osMixer")}
@@ -112,9 +132,11 @@ export function SignalPathIndicator() {
           <Step
             icon={<Speaker className="size-4" />}
             title={t("signal.output", {
-              device: path.outputDevice ?? t("signal.systemDefault"),
+              device: hq
+                ? `HQPlayer (${hq.address})`
+                : (path.outputDevice ?? t("signal.systemDefault")),
             })}
-            detail={khz(path.deviceRate ?? path.outputSampleRate)}
+            detail={hq ? hqRate : khz(path.deviceRate ?? path.outputSampleRate)}
           />
         </Popover.Content>
       </Popover.Portal>

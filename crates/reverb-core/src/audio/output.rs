@@ -56,6 +56,19 @@ pub struct AudioOutput {
 }
 
 impl AudioOutput {
+    /// No stream at all, for an engine that starts in standby: nothing is
+    /// opened until the engine wakes and rebuilds its output.
+    pub fn closed(sample_rate: u32) -> Self {
+        Self {
+            _backend: Backend::Closed,
+            sample_rate,
+            channels: 2,
+            device: None,
+            exclusive: false,
+            device_missing: false,
+        }
+    }
+
     /// Stop and release the device now, rather than when this value is
     /// dropped. A device held exclusively cannot be opened twice, so a
     /// rebuild has to let go before it can take it again.

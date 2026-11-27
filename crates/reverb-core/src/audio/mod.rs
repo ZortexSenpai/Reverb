@@ -19,5 +19,5 @@ pub use engine::{
     TrackSource,
 };
 pub use eq::{EqBand, EqState, FilterType, PreampMode};
-pub use events::{EngineEvent, PlaybackState, TrackChangeReason};
+pub use events::{EngineEvent, HqPlayerPath, PlaybackState, SignalPathInfo, TrackChangeReason};
 pub use output::{list_output_devices, OutputDevice};

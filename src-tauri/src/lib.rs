@@ -11,9 +11,10 @@ mod stats;
 
 use std::sync::{Arc, Mutex};
 
-use reverb_core::audio::{spawn_engine, EngineCommand};
+use reverb_core::audio::EngineCommand;
+use reverb_core::playback::Playback;
 use reverb_core::subsonic::{Credentials, SubsonicClient};
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
 
 use persistence::keychain::Keychain;
 use persistence::settings::SettingsStore;
@@ -68,12 +69,12 @@ pub fn run() {
             }
 
             let (event_tx, event_rx) = crossbeam_channel::unbounded();
-            let engine = spawn_engine(event_tx, persisted.prefs.output());
-            engine.send(EngineCommand::SetVolume { volume: persisted.volume });
-            engine.send(EngineCommand::SetEq(persisted.eq.clone()));
-            engine.send(EngineCommand::SetReplayGain(persisted.prefs.replay_gain));
-            engine.send(EngineCommand::SetScrobblePercent(persisted.prefs.scrobble_at_percent));
-            engine.send(EngineCommand::SetCrossfade {
+            let playback = Playback::start(event_tx, persisted.prefs.target());
+            playback.send(EngineCommand::SetVolume { volume: persisted.volume });
+            playback.send(EngineCommand::SetEq(persisted.eq.clone()));
+            playback.send(EngineCommand::SetReplayGain(persisted.prefs.replay_gain));
+            playback.send(EngineCommand::SetScrobblePercent(persisted.prefs.scrobble_at_percent));
+            playback.send(EngineCommand::SetCrossfade {
                 ms: u64::from(persisted.prefs.crossfade_secs) * 1000,
             });
 
@@ -91,7 +92,7 @@ pub fn run() {
             // callback resolves AppState through the app handle.
             app.manage(AppState {
                 subsonic: subsonic.clone(),
-                engine,
+                playback,
                 settings,
                 keychain,
                 player: player.clone(),
@@ -194,9 +195,20 @@ pub fn run() {
             commands::settings::audio_list_devices,
             commands::settings::queue_save_snapshot,
             commands::settings::queue_load_snapshot,
+            commands::hqplayer::hqplayer_probe,
+            commands::hqplayer::hqplayer_discover,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Reverb");
+        .build(tauri::generate_context!())
+        .expect("error while building Reverb")
+        .run(|app, event| {
+            // HQPlayer plays on after Reverb quits unless told otherwise — and
+            // the relay it streams from goes with Reverb.
+            if let RunEvent::Exit = event {
+                if let Some(state) = app.try_state::<AppState>() {
+                    state.playback.shutdown();
+                }
+            }
+        });
 }
 
 /// Delete oldest cover files (by mtime) until the cache is under the limit.

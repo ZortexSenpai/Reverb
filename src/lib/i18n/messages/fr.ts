@@ -96,6 +96,7 @@ export const fr: Messages = {
   "signal.osMixer": "Mixeur du système",
   "signal.osMixerDetail": "{from} → {to} — hors de Reverb",
   "signal.output": "Sortie : {device}",
+  "signal.hqplayerWaiting": "En attente de HQPlayer",
   "signal.systemDefault": "Périphérique par défaut",
 
   "home.goodMorning": "Bonjour",
@@ -494,6 +495,24 @@ export const fr: Messages = {
     "Aucune autre application ne peut jouer sur le périphérique tant que Reverb le détient — hog mode sur macOS, mode exclusif WASAPI sur Windows. Sous Linux, choisissez un périphérique (direct) ci-dessus ; il est alors adressé strictement, sans conversion ALSA.",
   "settings.exclusiveUnavailable":
     "Nécessite un périphérique de sortie direct — une route via le serveur audio n’a aucune carte à réserver. Choisissez-en un ci-dessus.",
+  "settings.playsOn": "Joue sur",
+  "settings.playsOnThisComputer": "Cet ordinateur",
+  "settings.configHqplayer": "HQPlayer sur {address}",
+  "settings.hqplayerConfigName": "HQPlayer sur {host}",
+  "settings.hqplayerAddress": "Adresse de HQPlayer",
+  "settings.hqplayerHost": "Nom d'hôte ou adresse IP",
+  "settings.hqplayerPort": "Port",
+  "settings.hqplayerPortInvalid": "Un port est un nombre entier de 1 à 65535.",
+  "settings.hqplayerAddressHint":
+    "L'ordinateur sur lequel tourne HQPlayer Desktop — localhost pour celui-ci. Depuis un autre ordinateur, HQPlayer ne répond que si « Allow control from network » (le bouton globe de sa barre d'outils) est activé, et pas tant que sa fenêtre de réglages est ouverte.",
+  "settings.hqplayerTest": "Tester la connexion",
+  "settings.hqplayerFind": "Rechercher sur le réseau",
+  "settings.hqplayerSearching": "Recherche…",
+  "settings.hqplayerNoneFound":
+    "Aucun HQPlayer n'a répondu sur ce réseau. Saisissez son adresse ci-dessus.",
+  "settings.hqplayerConnected": "Connecté à {name}.",
+  "settings.hqplayerProcessingHint":
+    "HQPlayer récupère chaque morceau auprès de Reverb et fait lui-même tout le traitement : l'égaliseur, le ReplayGain et le fondu enchaîné de Reverb ne s'appliquent donc pas. Il ne sait pas décoder le M4A (ALAC, AAC) : ces morceaux lui parviennent en MP3 à 320 kbit/s. S'il tourne sur un autre ordinateur, le pare-feu de celui-ci doit le laisser joindre Reverb.",
   "settings.audioNote":
     "Les morceaux sont décodés en bit-perfect et rééchantillonnés à la fréquence du périphérique si nécessaire. L'égaliseur paramétrique tourne à la fréquence du périphérique dans le moteur audio natif.",
 

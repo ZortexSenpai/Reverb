@@ -12,6 +12,8 @@ pub enum ReverbError {
     Io(String),
     #[error("{0}")]
     State(String),
+    #[error("{0}")]
+    HqPlayer(String),
 }
 
 impl ReverbError {
@@ -27,6 +29,7 @@ impl ReverbError {
             ReverbError::Keyring(_) => "keychain",
             ReverbError::Io(_) => "io",
             ReverbError::State(_) => "state",
+            ReverbError::HqPlayer(_) => "hqplayer",
         }
     }
 }

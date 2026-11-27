@@ -40,7 +40,10 @@ import {
   canGoExclusive,
   deleteDeviceConfig,
   deviceLabel,
+  HQPLAYER_DEFAULT_PORT,
+  hqplayerAddress,
   isConnected,
+  parsePort,
   saveDeviceConfig,
 } from "../../lib/deviceConfigs";
 import { formatSampleRate } from "../../lib/format";
@@ -70,7 +73,9 @@ import type {
   AccountRole,
   AccountStatus,
   DeviceConfig,
+  DiscoveredHqPlayer,
   GridSize,
+  HqPlayerEndpoint,
   NowPlayingAlign,
   NowPlayingBackdrop,
   OutputDevice,
@@ -373,7 +378,14 @@ function PlaybackSection() {
 
 /** A config that does not exist yet, for the "New config" dialog. */
 function blankDeviceConfig(): DeviceConfig {
-  return { id: nanoid(), name: "", device: null, matchSourceRate: false, exclusiveOutput: false };
+  return {
+    id: nanoid(),
+    name: "",
+    device: null,
+    matchSourceRate: false,
+    exclusiveOutput: false,
+    hqplayer: null,
+  };
 }
 
 function AudioSection() {
@@ -394,6 +406,12 @@ function AudioSection() {
   const [deleting, setDeleting] = useState<DeviceConfig | null>(null);
 
   function summary(config: DeviceConfig): { text: string; missing: boolean } {
+    if (config.hqplayer) {
+      return {
+        text: t("settings.configHqplayer", { address: hqplayerAddress(config.hqplayer) }),
+        missing: false,
+      };
+    }
     const missing = !isConnected(deviceList, config.device);
     const device = missing
       ? t("settings.deviceNotConnected")
@@ -458,23 +476,27 @@ function AudioSection() {
         })}
       </div>
 
-      <SettingRow
-        label={t("settings.deviceRate")}
-        hint={
-          deviceRate == null
-            ? t("settings.deviceRateStreamHint")
-            : deviceRate !== sampleRate
-              ? t("settings.deviceRateConvertedHint", { rate: khz(sampleRate, t) })
-              : t("settings.deviceRateConfirmedHint")
-        }
-      >
-        <span className="text-sm font-medium">
-          {khz(deviceRate ?? sampleRate, t)}
-          {deviceRate == null && (
-            <span className="text-faint"> {t("settings.streamTag")}</span>
-          )}
-        </span>
-      </SettingRow>
+      {/* Reverb's own stream; with HQPlayer playing there is none, and the
+          signal path shows HQPlayer's rate instead. */}
+      {!active?.hqplayer && (
+        <SettingRow
+          label={t("settings.deviceRate")}
+          hint={
+            deviceRate == null
+              ? t("settings.deviceRateStreamHint")
+              : deviceRate !== sampleRate
+                ? t("settings.deviceRateConvertedHint", { rate: khz(sampleRate, t) })
+                : t("settings.deviceRateConfirmedHint")
+          }
+        >
+          <span className="text-sm font-medium">
+            {khz(deviceRate ?? sampleRate, t)}
+            {deviceRate == null && (
+              <span className="text-faint"> {t("settings.streamTag")}</span>
+            )}
+          </span>
+        </SettingRow>
+      )}
       <p className="mt-1 text-xs text-faint">{t("settings.audioNote")}</p>
 
       <DeviceConfigDialog
@@ -584,8 +606,18 @@ function DeviceConfigDialog({
 }) {
   const t = useT();
   const [draft, setDraft] = useState<DeviceConfig | null>(null);
+  // Where the config plays, and the HQPlayer address as typed. Kept apart from
+  // the draft so flipping between the two keeps what was typed on each side.
+  const [playsOn, setPlaysOn] = useState<PlaysOn>("device");
+  const [host, setHost] = useState("");
+  const [portText, setPortText] = useState("");
   useEffect(() => {
-    if (editing) setDraft(editing.config);
+    if (!editing) return;
+    const { hqplayer } = editing.config;
+    setDraft(editing.config);
+    setPlaysOn(hqplayer ? "hqplayer" : "device");
+    setHost(hqplayer?.host ?? "");
+    setPortText(hqplayer && hqplayer.port !== HQPLAYER_DEFAULT_PORT ? String(hqplayer.port) : "");
   }, [editing]);
 
   const deviceList = devices.data;
@@ -594,9 +626,16 @@ function DeviceConfigDialog({
   // A saved device that is unplugged is still the config's device: keep it
   // selectable rather than letting the picker silently read "System default".
   const deviceMissing = !isConnected(deviceList, device);
+  const port = parsePort(portText);
+  const endpoint: HqPlayerEndpoint | null =
+    host.trim() && port != null ? { host: host.trim(), port } : null;
   const fallbackName =
-    deviceLabel(deviceList, device) ??
-    (device == null ? t("settings.systemDefault") : t("settings.outputDevice"));
+    playsOn === "hqplayer"
+      ? endpoint
+        ? t("settings.hqplayerConfigName", { host: hqplayerAddress(endpoint) })
+        : HQPLAYER
+      : (deviceLabel(deviceList, device) ??
+        (device == null ? t("settings.systemDefault") : t("settings.outputDevice")));
 
   function update(patch: Partial<DeviceConfig>) {
     setDraft((d) => (d ? { ...d, ...patch } : d));
@@ -605,12 +644,27 @@ function DeviceConfigDialog({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!draft) return;
-    onSave({
-      ...draft,
-      name: draft.name.trim() || fallbackName,
-      // Keep the summary truthful: the switch cannot be on where it means nothing.
-      exclusiveOutput: draft.exclusiveOutput && exclusiveOk,
-    });
+    const name = draft.name.trim() || fallbackName;
+    if (playsOn === "hqplayer") {
+      if (!endpoint) return;
+      // HQPlayer has an output setup of its own; none of this one's applies.
+      onSave({
+        ...draft,
+        name,
+        device: null,
+        matchSourceRate: false,
+        exclusiveOutput: false,
+        hqplayer: endpoint,
+      });
+    } else {
+      onSave({
+        ...draft,
+        name,
+        // Keep the summary truthful: the switch cannot be on where it means nothing.
+        exclusiveOutput: draft.exclusiveOutput && exclusiveOk,
+        hqplayer: null,
+      });
+    }
     onClose();
   }
 
@@ -654,72 +708,283 @@ function DeviceConfigDialog({
                 </span>
               </label>
 
-              <div className="mt-4">
-                <span className="text-sm">{t("settings.outputDevice")}</span>
-                <div className="mt-1.5 flex items-center gap-1">
-                  <select
-                    aria-label={t("settings.outputDevice")}
-                    className={`${selectClass} min-w-0 flex-1`}
-                    value={device ?? ""}
-                    onChange={(e) => update({ device: e.target.value === "" ? null : e.target.value })}
-                  >
-                    <option value="">{t("settings.systemDefault")}</option>
-                    {(deviceList ?? []).map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.label}
-                        {d.direct ? ` ${t("settings.deviceDirect")}` : ""}
-                      </option>
-                    ))}
-                    {deviceMissing && device != null && (
-                      <option value={device}>{t("settings.savedDeviceMissing")}</option>
-                    )}
-                  </select>
-                  <IconButton
-                    type="button"
-                    label={t("settings.refreshDevices")}
-                    disabled={devices.isFetching}
-                    onClick={() => void devices.refetch()}
-                  >
-                    <RefreshCw className={`size-4 ${devices.isFetching ? "animate-spin" : ""}`} />
-                  </IconButton>
-                </div>
-                <span className="mt-1 block text-xs text-faint">
-                  {t("settings.outputDeviceHint")}
-                </span>
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <span className="text-sm">{t("settings.playsOn")}</span>
+                <PlaysOnPicker value={playsOn} onChange={setPlaysOn} />
               </div>
 
-              <div className="mt-2">
-                <SettingRow label={t("settings.matchRate")} hint={t("settings.matchRateHint")}>
-                  <Toggle
-                    checked={draft.matchSourceRate}
-                    onChange={(matchSourceRate) => update({ matchSourceRate })}
-                  />
-                </SettingRow>
-                <SettingRow
-                  label={t("settings.exclusive")}
-                  hint={
-                    exclusiveOk ? t("settings.exclusiveHint") : t("settings.exclusiveUnavailable")
-                  }
-                >
-                  <Toggle
-                    checked={draft.exclusiveOutput && exclusiveOk}
-                    disabled={!exclusiveOk}
-                    onChange={(exclusiveOutput) => update({ exclusiveOutput })}
-                  />
-                </SettingRow>
-              </div>
+              {playsOn === "hqplayer" ? (
+                <HqPlayerFields
+                  host={host}
+                  portText={portText}
+                  endpoint={endpoint}
+                  portValid={port != null}
+                  onHost={setHost}
+                  onPortText={setPortText}
+                />
+              ) : (
+                <>
+                  <div className="mt-4">
+                    <span className="text-sm">{t("settings.outputDevice")}</span>
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <select
+                        aria-label={t("settings.outputDevice")}
+                        className={`${selectClass} min-w-0 flex-1`}
+                        value={device ?? ""}
+                        onChange={(e) =>
+                          update({ device: e.target.value === "" ? null : e.target.value })
+                        }
+                      >
+                        <option value="">{t("settings.systemDefault")}</option>
+                        {(deviceList ?? []).map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.label}
+                            {d.direct ? ` ${t("settings.deviceDirect")}` : ""}
+                          </option>
+                        ))}
+                        {deviceMissing && device != null && (
+                          <option value={device}>{t("settings.savedDeviceMissing")}</option>
+                        )}
+                      </select>
+                      <IconButton
+                        type="button"
+                        label={t("settings.refreshDevices")}
+                        disabled={devices.isFetching}
+                        onClick={() => void devices.refetch()}
+                      >
+                        <RefreshCw
+                          className={`size-4 ${devices.isFetching ? "animate-spin" : ""}`}
+                        />
+                      </IconButton>
+                    </div>
+                    <span className="mt-1 block text-xs text-faint">
+                      {t("settings.outputDeviceHint")}
+                    </span>
+                  </div>
+
+                  <div className="mt-2">
+                    <SettingRow label={t("settings.matchRate")} hint={t("settings.matchRateHint")}>
+                      <Toggle
+                        checked={draft.matchSourceRate}
+                        onChange={(matchSourceRate) => update({ matchSourceRate })}
+                      />
+                    </SettingRow>
+                    <SettingRow
+                      label={t("settings.exclusive")}
+                      hint={
+                        exclusiveOk
+                          ? t("settings.exclusiveHint")
+                          : t("settings.exclusiveUnavailable")
+                      }
+                    >
+                      <Toggle
+                        checked={draft.exclusiveOutput && exclusiveOk}
+                        disabled={!exclusiveOk}
+                        onChange={(exclusiveOutput) => update({ exclusiveOutput })}
+                      />
+                    </SettingRow>
+                  </div>
+                </>
+              )}
 
               <div className="mt-4 flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onClose}>
                   {t("common.cancel")}
                 </Button>
-                <Button type="submit">{t("common.save")}</Button>
+                <Button type="submit" disabled={playsOn === "hqplayer" && endpoint == null}>
+                  {t("common.save")}
+                </Button>
               </div>
             </form>
           )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/** HQPlayer's own name, the same in every language. */
+const HQPLAYER = "HQPlayer";
+
+/** Where a device config plays: a device on this computer, or an HQPlayer. */
+type PlaysOn = "device" | "hqplayer";
+
+function PlaysOnPicker({ value, onChange }: { value: PlaysOn; onChange: (v: PlaysOn) => void }) {
+  const t = useT();
+  const options: { id: PlaysOn; label: string }[] = [
+    { id: "device", label: t("settings.playsOnThisComputer") },
+    { id: "hqplayer", label: HQPLAYER },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label={t("settings.playsOn")}
+      className="flex rounded-full border border-edge p-0.5"
+    >
+      {options.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={value === id}
+          onClick={() => onChange(id)}
+          className={`cursor-pointer rounded-full px-3 py-1 text-sm transition-colors ${
+            value === id ? "bg-surface-2 font-medium text-text" : "text-dim hover:text-text"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** What a connection test said, for the line under the address. */
+type ProbeResult = { ok: true; text: string } | { ok: false; text: string };
+
+/**
+ * The HQPlayer half of the config dialog: its address, a connection test, and
+ * a search of the local network for HQPlayers that answer.
+ */
+function HqPlayerFields({
+  host,
+  portText,
+  endpoint,
+  portValid,
+  onHost,
+  onPortText,
+}: {
+  host: string;
+  portText: string;
+  endpoint: HqPlayerEndpoint | null;
+  portValid: boolean;
+  onHost: (host: string) => void;
+  onPortText: (port: string) => void;
+}) {
+  const t = useT();
+  const [probing, setProbing] = useState(false);
+  const [probe, setProbe] = useState<ProbeResult | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [found, setFound] = useState<DiscoveredHqPlayer[] | null>(null);
+  // A result is about the address it was made for; editing it makes it stale.
+  useEffect(() => setProbe(null), [host, portText]);
+
+  async function test() {
+    if (!endpoint) return;
+    setProbing(true);
+    try {
+      const info = await cmd("hqplayer_probe", { host: endpoint.host, port: endpoint.port });
+      const product = [info.name, info.version].filter(Boolean).join(" ");
+      setProbe({
+        ok: true,
+        text: t("settings.hqplayerConnected", {
+          name: info.computer ? `${product} (${info.computer})` : product,
+        }),
+      });
+    } catch (err) {
+      setProbe({ ok: false, text: errorMessage(err) });
+    } finally {
+      setProbing(false);
+    }
+  }
+
+  async function search() {
+    setSearching(true);
+    try {
+      setFound(await cmd("hqplayer_discover"));
+    } catch (err) {
+      setFound([]);
+      setProbe({ ok: false, text: errorMessage(err) });
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pick(player: DiscoveredHqPlayer) {
+    onHost(player.host);
+    onPortText(player.port === HQPLAYER_DEFAULT_PORT ? "" : String(player.port));
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="text-sm">{t("settings.hqplayerAddress")}</span>
+      <div className="mt-1.5 flex items-center gap-2">
+        <Input
+          className="min-w-0 flex-1"
+          aria-label={t("settings.hqplayerHost")}
+          value={host}
+          onChange={(e) => onHost(e.target.value)}
+          placeholder={t("settings.hqplayerHost")}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+        />
+        <div className="w-24 shrink-0">
+          <Input
+            aria-label={t("settings.hqplayerPort")}
+            aria-invalid={!portValid}
+            value={portText}
+            onChange={(e) => onPortText(e.target.value)}
+            placeholder={String(HQPLAYER_DEFAULT_PORT)}
+            inputMode="numeric"
+            spellCheck={false}
+          />
+        </div>
+      </div>
+      {!portValid && (
+        <span className="mt-1 block text-xs text-danger">{t("settings.hqplayerPortInvalid")}</span>
+      )}
+      <span className="mt-1 block text-xs text-faint">{t("settings.hqplayerAddressHint")}</span>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={endpoint == null || probing}
+          onClick={() => void test()}
+        >
+          {probing ? t("settings.checking") : t("settings.hqplayerTest")}
+        </Button>
+        <Button type="button" variant="outline" disabled={searching} onClick={() => void search()}>
+          <RefreshCw className={`size-4 ${searching ? "animate-spin" : ""}`} />
+          {searching ? t("settings.hqplayerSearching") : t("settings.hqplayerFind")}
+        </Button>
+      </div>
+      {probe && (
+        <p
+          role="status"
+          className={`mt-2 flex items-start gap-1.5 text-xs ${probe.ok ? "text-dim" : "text-danger"}`}
+        >
+          {probe.ok && <Check className="mt-px size-3.5 shrink-0" />}
+          <span>{probe.text}</span>
+        </p>
+      )}
+      {found != null &&
+        (found.length === 0 ? (
+          <p className="mt-2 text-xs text-faint">{t("settings.hqplayerNoneFound")}</p>
+        ) : (
+          <div className="mt-2 divide-y divide-edge overflow-hidden rounded-lg border border-edge">
+            {found.map((player) => {
+              const address = hqplayerAddress(player);
+              return (
+                <button
+                  key={`${player.host}:${player.port}`}
+                  type="button"
+                  onClick={() => pick(player)}
+                  className="block w-full cursor-pointer px-3 py-2 text-left hover:bg-surface-2/50"
+                >
+                  <span className="block truncate text-sm">{player.name || HQPLAYER}</span>
+                  <span className="block truncate text-xs text-faint">
+                    {[player.version, address].filter(Boolean).join(" · ")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+
+      <p className="mt-3 text-xs text-faint">{t("settings.hqplayerProcessingHint")}</p>
+    </div>
   );
 }
 

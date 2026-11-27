@@ -160,6 +160,12 @@ struct FormatPayload {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct VolumePayload {
+    volume: f32,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct DeviceLostPayload {
     /// The device id that was given up. Its label is unknowable — the device is
     /// gone from the enumeration the label would have come from.
@@ -349,6 +355,17 @@ fn forward(
         }
         EngineEvent::SignalPath(info) => {
             let _ = app.emit("player:signal-path", info);
+        }
+        EngineEvent::Volume { volume } => {
+            // HQPlayer's volume, turned there or read on connecting. There is
+            // one volume control, so it becomes Reverb's volume too, and the
+            // local engine picks it up when playback comes back to it.
+            player.lock().unwrap().volume = volume;
+            let state = app.state::<crate::state::AppState>();
+            if let Err(e) = state.settings.update(|s| s.volume = volume) {
+                log::warn!("could not save the volume: {e}");
+            }
+            let _ = app.emit("player:volume", VolumePayload { volume });
         }
     }
 }

@@ -125,6 +125,12 @@ pub enum EngineCommand {
     /// Where and how to play. Reopens the stream when anything changed —
     /// once, however many of the three did.
     SetOutput(OutputSettings),
+    /// Standby: stop, and let go of the output device entirely — the stream,
+    /// hog mode, the claimed card — until woken again. For when something
+    /// else plays instead of this engine (HQPlayer), which may need the very
+    /// device this engine would otherwise sit on. Output changes made in
+    /// standby are kept and applied on waking.
+    SetStandby(bool),
     Shutdown,
 }
 
@@ -155,7 +161,13 @@ impl EngineHandle {
     }
 }
 
-pub fn spawn_engine(event_tx: Sender<EngineEvent>, output: OutputSettings) -> EngineHandle {
+/// Start the engine thread. `standby` starts it without opening any device
+/// (see [`EngineCommand::SetStandby`]).
+pub fn spawn_engine(
+    event_tx: Sender<EngineEvent>,
+    output: OutputSettings,
+    standby: bool,
+) -> EngineHandle {
     let (cmd_tx, cmd_rx) = unbounded();
     let shared = Arc::new(SharedAudioState::new());
     let shared_for_thread = shared.clone();
@@ -164,7 +176,13 @@ pub fn spawn_engine(event_tx: Sender<EngineEvent>, output: OutputSettings) -> En
 
     std::thread::Builder::new()
         .name("reverb-audio-engine".into())
-        .spawn(move || match Engine::init(cmd_rx, event_tx, shared_for_thread, initial_device) {
+        .spawn(move || match Engine::init(
+            cmd_rx,
+            event_tx,
+            shared_for_thread,
+            initial_device,
+            standby,
+        ) {
             Ok(mut engine) => {
                 // The stream opened shared and at the device's own rate; the
                 // two switches go on through the same path a later change
@@ -309,6 +327,9 @@ struct Engine {
     /// closes the stream before the card is handed back.
     #[cfg(target_os = "linux")]
     card_claim: Option<super::reserve::CardClaim>,
+    /// The device is let go and nothing may reopen it (see
+    /// `EngineCommand::SetStandby`).
+    standby: bool,
     buffering_reported: bool,
     last_tick: Instant,
     /// Navidrome expires now-playing entries; re-announce periodically.
@@ -321,6 +342,7 @@ impl Engine {
         event_tx: Sender<EngineEvent>,
         shared: Arc<SharedAudioState>,
         initial_device: Option<String>,
+        standby: bool,
     ) -> Result<Self, String> {
         let (output_error_tx, output_error_rx) = unbounded();
         // Probe the device rate first so the ring can be sized for it.
@@ -340,46 +362,54 @@ impl Engine {
         #[cfg(target_os = "linux")]
         let mut card_claim = initial_device
             .as_deref()
-            .filter(|device| is_direct_device(device))
+            .filter(|device| is_direct_device(device) && !standby)
             .and_then(super::reserve::CardClaim::acquire);
         let exclusive_access = ExclusiveAccess::inactive();
 
-        let output = match open_output(
-            shared.clone(),
-            consumer,
-            eq_output,
-            output_error_tx.clone(),
-            initial_device.as_deref(),
-            None,
-            false,
-        ) {
-            Ok(output) => output,
-            // Starting on the wrong device beats starting mute: the frontend
-            // pushes the real preferences moments later anyway.
-            Err(e) if initial_device.is_some() => {
-                log::warn!("{e}; starting on the default device instead");
-                // The shared default device is not the card we took.
-                #[cfg(target_os = "linux")]
-                {
-                    card_claim = None;
+        // In standby the device stays untouched until the engine is woken —
+        // which also means a device that would not open (another player
+        // holding it exclusively) cannot fail the start.
+        let output = if standby {
+            AudioOutput::closed(probe_rate)
+        } else {
+            match open_output(
+                shared.clone(),
+                consumer,
+                eq_output,
+                output_error_tx.clone(),
+                initial_device.as_deref(),
+                None,
+                false,
+            ) {
+                Ok(output) => output,
+                // Starting on the wrong device beats starting mute: the frontend
+                // pushes the real preferences moments later anyway.
+                Err(e) if initial_device.is_some() => {
+                    log::warn!("{e}; starting on the default device instead");
+                    // The shared default device is not the card we took.
+                    #[cfg(target_os = "linux")]
+                    {
+                        card_claim = None;
+                    }
+                    let (fallback_producer, fallback_consumer) =
+                        rtrb::RingBuffer::new(ring_capacity);
+                    let (fallback_eq_input, fallback_eq_output) =
+                        triple_buffer::triple_buffer(&EqCoeffSet::IDENTITY);
+                    producer = fallback_producer;
+                    eq_input = fallback_eq_input;
+                    open_output(
+                        shared.clone(),
+                        fallback_consumer,
+                        fallback_eq_output,
+                        output_error_tx.clone(),
+                        None,
+                        None,
+                        false,
+                    )
+                    .map_err(|e| e.to_string())?
                 }
-                let (fallback_producer, fallback_consumer) = rtrb::RingBuffer::new(ring_capacity);
-                let (fallback_eq_input, fallback_eq_output) =
-                    triple_buffer::triple_buffer(&EqCoeffSet::IDENTITY);
-                producer = fallback_producer;
-                eq_input = fallback_eq_input;
-                open_output(
-                    shared.clone(),
-                    fallback_consumer,
-                    fallback_eq_output,
-                    output_error_tx.clone(),
-                    None,
-                    None,
-                    false,
-                )
-                .map_err(|e| e.to_string())?
+                Err(e) => return Err(e.to_string()),
             }
-            Err(e) => return Err(e.to_string()),
         };
 
         // A saved device that is not plugged in at all: `open_output` opened the
@@ -434,6 +464,7 @@ impl Engine {
             preferred_device: initial_device,
             #[cfg(target_os = "linux")]
             card_claim,
+            standby,
             buffering_reported: false,
             last_tick: Instant::now(),
             last_now_playing: Instant::now(),
@@ -449,6 +480,11 @@ impl Engine {
                 self.handle(cmd);
             }
             while let Ok(err) = self.output_error_rx.try_recv() {
+                // A stream that dies on its way out of standby has nothing to
+                // be reopened for.
+                if self.standby {
+                    continue;
+                }
                 log::warn!("audio stream error: {err}; reopening output device");
                 if let Err(rebuild_err) = self.rebuild_output(self.auto_rate_target()) {
                     self.emit(EngineEvent::Error {
@@ -464,6 +500,7 @@ impl Engine {
             // no output — and, worse, would leave the user silent for good.
             // Keep trying, slowly, until something opens.
             if self.output.is_closed()
+                && !self.standby
                 && self.last_output_recovery.elapsed() >= Duration::from_secs(1)
             {
                 self.last_output_recovery = Instant::now();
@@ -501,6 +538,19 @@ impl Engine {
     // ---- command handling -------------------------------------------------
 
     fn handle(&mut self, cmd: EngineCommand) {
+        // With no device there is nothing to play into: a track started now
+        // would sit in a ring nobody drains. Whoever put the engine in standby
+        // plays elsewhere, so these only arrive by mistake.
+        if self.standby
+            && matches!(
+                cmd,
+                EngineCommand::PlayTrack(_) | EngineCommand::Seek { .. } | EngineCommand::Stop
+            )
+        {
+            // Not `{cmd:?}`: a track's stream URL carries the server token.
+            log::debug!("audio engine in standby; ignoring a playback command");
+            return;
+        }
         match cmd {
             EngineCommand::PlayTrack(src) => self.play_track(src),
             EngineCommand::SetNext(next) => self.next = next,
@@ -556,6 +606,7 @@ impl Engine {
                 self.crossfade_ms = ms.min(15_000);
             }
             EngineCommand::SetOutput(settings) => self.set_output(settings),
+            EngineCommand::SetStandby(standby) => self.set_standby(standby),
             EngineCommand::SetReplayGain(settings) => {
                 self.replay_gain = settings;
                 // Applies from the next track (gain is baked in at push time).
@@ -794,12 +845,45 @@ impl Engine {
         self.preferred_device = device;
         self.auto_rate = auto_rate;
         self.exclusive_output = exclusive;
+        // Kept for waking; the device stays untouched until then.
+        if self.standby {
+            return;
+        }
         // Re-open at the current track's rate (or the device default when
         // auto-rate is off).
         if let Err(e) = self.rebuild_output(self.auto_rate_target()) {
             self.emit(EngineEvent::Error {
                 code: "audio-device".into(),
                 message: format!("could not switch output: {e}"),
+                track_id: None,
+                recoverable: true,
+            });
+        }
+    }
+
+    /// Go into standby (stop and let the device go), or wake from it (reopen
+    /// on the output asked for meanwhile).
+    fn set_standby(&mut self, standby: bool) {
+        if self.standby == standby {
+            return;
+        }
+        if standby {
+            // Stop while the stream is still there to acknowledge the flush.
+            self.stop();
+            self.standby = true;
+            self.output.close();
+            self.exclusive_access = ExclusiveAccess::inactive();
+            #[cfg(target_os = "linux")]
+            self.claim_card(None);
+            log::info!("audio engine in standby; output device released");
+            return;
+        }
+        self.standby = false;
+        if let Err(e) = self.rebuild_output(self.auto_rate_target()) {
+            // The recovery loop in `run` keeps trying from here.
+            self.emit(EngineEvent::Error {
+                code: "audio-device".into(),
+                message: format!("could not reopen output: {e}"),
                 track_id: None,
                 recoverable: true,
             });
@@ -1517,6 +1601,7 @@ impl Engine {
             device_rate,
             os_resampling,
             quality: quality.into(),
+            hqplayer: None,
         }));
     }
 

@@ -80,6 +80,13 @@ pub enum EngineEvent {
     },
     /// The current audio chain, source to output (the signal path).
     SignalPath(SignalPathInfo),
+    /// The output's own volume moved — HQPlayer's, turned there or read on
+    /// connecting — and the volume control should show it. The same 0–1
+    /// scale `EngineCommand::SetVolume` takes. The local engine never sends
+    /// this: nothing but Reverb changes its volume.
+    Volume {
+        volume: f32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,4 +118,24 @@ pub struct SignalPathInfo {
     /// "lossless" (bit-perfect), "high" (lossy source, untouched),
     /// or "enhanced" (DSP active).
     pub quality: String,
+    /// What HQPlayer does to the Song, when HQPlayer is the output. Everything
+    /// between the source and the output is then HQPlayer's, not Reverb's.
+    pub hqplayer: Option<HqPlayerPath>,
+}
+
+/// HQPlayer's processing, as it reports it. Each part is `None` until
+/// HQPlayer has said.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HqPlayerPath {
+    /// The address Reverb reaches it at.
+    pub address: String,
+    /// "PCM", or "SDM" for DSD output.
+    pub mode: Option<String>,
+    /// The upsampling filter.
+    pub filter: Option<String>,
+    /// The noise shaper (PCM) or modulator (SDM).
+    pub shaper: Option<String>,
+    /// The rate HQPlayer sends to the DAC, Hz (DSD rates included).
+    pub output_rate: Option<u32>,
 }

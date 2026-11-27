@@ -261,6 +261,21 @@ export interface SignalPath {
   /** The OS is resampling below us — bit-perfect is impossible while true. */
   osResampling: boolean;
   quality: "lossless" | "high" | "enhanced";
+  /** HQPlayer's processing, when HQPlayer is the output. */
+  hqplayer?: HqPlayerPath | null;
+}
+
+/** What HQPlayer does to the Song; each part is null until HQPlayer has said. */
+export interface HqPlayerPath {
+  /** The address Reverb reaches it at. */
+  address: string;
+  /** "PCM", or "SDM" for DSD output. */
+  mode?: string | null;
+  filter?: string | null;
+  /** Noise shaper (PCM) or modulator (SDM). */
+  shaper?: string | null;
+  /** The rate HQPlayer sends to the DAC, Hz (DSD rates included). */
+  outputRate?: number | null;
 }
 
 /** A selectable audio output. `id` is the stable device id we persist. */
@@ -470,6 +485,35 @@ export interface DeviceConfig {
   matchSourceRate: boolean;
   /** Take the output device exclusively (macOS hog mode / WASAPI exclusive). */
   exclusiveOutput: boolean;
+  /**
+   * Play through this HQPlayer instead of a device here; `null` for a device
+   * config. When set, the three fields above mean nothing.
+   */
+  hqplayer: HqPlayerEndpoint | null;
+}
+
+/** Where an HQPlayer listens for control: its computer, and the port (4321). */
+export interface HqPlayerEndpoint {
+  host: string;
+  port: number;
+}
+
+/** What an HQPlayer says it is when asked. */
+export interface HqPlayerInfo {
+  /** The product: "Signalyst HQPlayer Desktop". */
+  name: string;
+  /** The major version only: "5". */
+  version?: string | null;
+  /** The name of the computer it runs on. */
+  computer?: string | null;
+}
+
+/** An HQPlayer that answered a search of the local network. */
+export interface DiscoveredHqPlayer extends HqPlayerEndpoint {
+  /** The name of the computer it runs on. */
+  name?: string | null;
+  /** Product and major version: "Signalyst HQPlayer Desktop 5". */
+  version?: string | null;
 }
 
 export type FrontendSettings = Preferences & { volume: number };

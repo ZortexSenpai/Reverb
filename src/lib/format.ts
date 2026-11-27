@@ -32,6 +32,20 @@ export function formatSampleRate(hz: number, t: T): string {
   return `${t.n(hz / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kHz`;
 }
 
+/**
+ * "DSD256" for a 1-bit rate: how many times 44.1 kHz (or 48 kHz, for the rarer
+ * 48k family) it runs at. `null` when the rate is no DSD rate.
+ */
+export function formatDsdRate(hz: number): string | null {
+  for (const base of [44_100, 48_000]) {
+    const multiple = hz / base;
+    if (Number.isInteger(multiple) && multiple >= 64 && (multiple & (multiple - 1)) === 0) {
+      return base === 44_100 ? `DSD${multiple}` : `DSD${multiple} (48k)`;
+    }
+  }
+  return null;
+}
+
 export function formatBytes(bytes: number | undefined, t: T): string {
   if (bytes == null || !Number.isFinite(bytes)) return "—";
   const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };

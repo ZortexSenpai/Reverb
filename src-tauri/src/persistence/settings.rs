@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 use reverb_core::audio::{list_output_devices, EqState, OutputSettings, ReplayGainSettings};
+use reverb_core::hqplayer::Endpoint as HqPlayerEndpoint;
+use reverb_core::playback::PlaybackTarget;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ReverbError;
@@ -28,8 +30,9 @@ pub struct EqPreset {
     pub state: EqState,
 }
 
-/// A named output setup the listener switches to in one go: a device, and how
-/// Reverb plays through it. See `GLOSSARY.md`.
+/// A named output setup the listener switches to in one go: a device and how
+/// Reverb plays through it, or an HQPlayer to hand playback to. See
+/// `GLOSSARY.md`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DeviceConfig {
@@ -43,6 +46,9 @@ pub struct DeviceConfig {
     pub match_source_rate: bool,
     /// Take the output device exclusively (macOS hog mode / WASAPI exclusive).
     pub exclusive_output: bool,
+    /// Play through this HQPlayer instead of a device here. When set, the
+    /// three fields above mean nothing: HQPlayer has its own output setup.
+    pub hqplayer: Option<HqPlayerEndpoint>,
 }
 
 /// User preferences shared verbatim with the frontend (no secrets).
@@ -194,15 +200,26 @@ impl Preferences {
         self.device_configs.iter().find(|config| config.id == id)
     }
 
-    /// What the engine should be playing through.
+    /// What the local engine should be playing through. An HQPlayer config
+    /// has no device here, so with one active this is the system default —
+    /// which the engine, in standby, does not open.
     pub fn output(&self) -> OutputSettings {
-        self.active_device_config().map_or_else(OutputSettings::default, |config| {
-            OutputSettings {
+        self.active_device_config().filter(|config| config.hqplayer.is_none()).map_or_else(
+            OutputSettings::default,
+            |config| OutputSettings {
                 device: config.device.clone(),
                 auto_rate: config.match_source_rate,
                 exclusive: config.exclusive_output,
-            }
-        })
+            },
+        )
+    }
+
+    /// Where playback goes: the local engine, or the active config's HQPlayer.
+    pub fn target(&self) -> PlaybackTarget {
+        match self.active_device_config().and_then(|config| config.hqplayer.clone()) {
+            Some(endpoint) => PlaybackTarget::HqPlayer(endpoint),
+            None => PlaybackTarget::Local(self.output()),
+        }
     }
 }
 
@@ -275,6 +292,7 @@ impl Settings {
             device: audio_device,
             match_source_rate,
             exclusive_output,
+            hqplayer: None,
         });
         self.prefs.active_device_config = Some(id);
     }
@@ -575,6 +593,7 @@ mod tests {
                     device: Some("coreaudio:dac".into()),
                     match_source_rate: true,
                     exclusive_output: false,
+                    hqplayer: None,
                 },
                 DeviceConfig {
                     id: "speakers".into(),
@@ -582,6 +601,7 @@ mod tests {
                     device: None,
                     match_source_rate: false,
                     exclusive_output: true,
+                    hqplayer: None,
                 },
             ],
             ..Preferences::default()
@@ -598,6 +618,41 @@ mod tests {
         // A config deleted out from under the pointer.
         prefs.active_device_config = Some("gone".into());
         assert_eq!(prefs.output(), OutputSettings::default());
+    }
+
+    #[test]
+    fn an_hqplayer_config_plays_through_hqplayer() {
+        let raw = r#"{
+            "deviceConfigs": [
+                {"id": "desk", "name": "Desk DAC", "device": "coreaudio:dac", "exclusiveOutput": true},
+                {"id": "hq", "name": "HQPlayer", "hqplayer": {"host": "studio.local", "port": 4321}}
+            ],
+            "activeDeviceConfig": "hq"
+        }"#;
+        let mut prefs: Preferences = serde_json::from_str(raw).unwrap();
+        assert_eq!(
+            prefs.target(),
+            PlaybackTarget::HqPlayer(HqPlayerEndpoint { host: "studio.local".into(), port: 4321 })
+        );
+        // The local engine is left on nothing in particular: it is in standby.
+        assert_eq!(prefs.output(), OutputSettings::default());
+
+        // A config from before HQPlayer has none, and plays here.
+        prefs.active_device_config = Some("desk".into());
+        assert_eq!(prefs.device_configs[0].hqplayer, None);
+        assert_eq!(
+            prefs.target(),
+            PlaybackTarget::Local(OutputSettings {
+                device: Some("coreaudio:dac".into()),
+                auto_rate: false,
+                exclusive: true,
+            })
+        );
+
+        // And the field round-trips under its name.
+        let back = serde_json::to_value(&prefs).unwrap();
+        assert_eq!(back["deviceConfigs"][1]["hqplayer"]["host"], serde_json::json!("studio.local"));
+        assert_eq!(back["deviceConfigs"][0]["hqplayer"], serde_json::Value::Null);
     }
 
     #[test]

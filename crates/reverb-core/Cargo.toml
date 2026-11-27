@@ -19,6 +19,9 @@ url = "2"
 md-5 = "0.11"
 rand = "0.9"
 uuid = { version = "1", features = ["v4", "serde"] }
+# HQPlayer's control protocol is XML. Already in the tree (through Tauri), so
+# no new build weight.
+quick-xml = "0.41"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

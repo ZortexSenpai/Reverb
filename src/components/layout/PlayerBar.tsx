@@ -1,4 +1,4 @@
-import { ListMusic, Maximize2, SlidersVertical } from "lucide-react";
+import { ListMusic, SlidersVertical } from "lucide-react";
 import { useT } from "../../lib/i18n";
 import { playerBarAccent } from "../../lib/themes/genshin";
 import { usePlayerStore } from "../../stores/playerStore";
@@ -103,13 +103,6 @@ export function PlayerBar() {
           className={queuePanelOpen ? "text-accent" : ""}
         >
           <ListMusic className="size-4" />
-        </IconButton>
-        <IconButton
-          label={t("player.fullScreen")}
-          onClick={() => setNowPlayingOpen(true)}
-          disabled={!song}
-        >
-          <Maximize2 className="size-4" />
         </IconButton>
         <VolumeSlider />
       </div>

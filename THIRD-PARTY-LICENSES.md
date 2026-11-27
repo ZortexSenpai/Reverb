@@ -2,7 +2,7 @@
 
 Reverb itself is licensed under the GNU General Public License v3.0 (see `LICENSE`). It bundles the third-party components listed here, whose licences require that their copyright notices and terms travel with any distributed build.
 
-This file is generated — run `python3 scripts/gen-third-party.py` after changing dependencies. It covers 550 Rust crates (`cargo tree -e normal`, all targets) and 16 npm packages (runtime `dependencies`). Build-only tooling is excluded because it contributes no code to the shipped binary.
+This file is generated — run `python3 scripts/gen-third-party.py` after changing dependencies. It covers 552 Rust crates (`cargo tree -e normal`, all targets) and 16 npm packages (runtime `dependencies`). Build-only tooling is excluded because it contributes no code to the shipped binary.
 
 ## Source availability for MPL-2.0 components
 
@@ -135,6 +135,7 @@ The Mozilla Public License 2.0 requires that recipients of a binary be told how 
 - digest 0.11.3 — MIT OR Apache-2.0
 - dirs 7.0.0 — MIT OR Apache-2.0
 - dirs-sys 0.5.0 — MIT OR Apache-2.0
+- discord-rich-presence 1.1.0 — MIT
 - dispatch 0.2.0 — MIT
 - dispatch2 0.3.1 — Zlib OR Apache-2.0 OR MIT
 - displaydoc 0.2.7 — MIT OR Apache-2.0
@@ -493,6 +494,7 @@ The Mozilla Public License 2.0 requires that recipients of a binary be told how 
 - url 2.5.8 — MIT OR Apache-2.0
 - urlpattern 0.6.0 — MIT
 - utf8_iter 1.0.4 — Apache-2.0 OR MIT
+- uuid 0.8.2 — Apache-2.0 OR MIT
 - uuid 1.24.0 — Apache-2.0 OR MIT
 - visibility 0.1.1 — Zlib OR MIT OR Apache-2.0
 - walkdir 2.5.0 — Unlicense/MIT
@@ -659,7 +661,7 @@ These declare a licence in their manifest but include no licence text of their o
 
 Texts are reproduced verbatim as shipped by the packages. Where several packages ship the same licence differing only in the copyright line, the text appears once and every copyright notice is listed with it.
 
-### 1. Applies to 315 package(s)
+### 1. Applies to 316 package(s)
 
 - adler2 2.0.1 (0BSD OR MIT OR Apache-2.0)
 - aes 0.8.4 (MIT OR Apache-2.0)
@@ -944,6 +946,7 @@ Texts are reproduced verbatim as shipped by the packages. Where several packages
 - unicode-segmentation 1.13.3 (MIT OR Apache-2.0)
 - url 2.5.8 (MIT OR Apache-2.0)
 - utf8_iter 1.0.4 (Apache-2.0 OR MIT)
+- uuid 0.8.2 (Apache-2.0 OR MIT)
 - uuid 1.24.0 (Apache-2.0 OR MIT)
 - want 0.3.1 (MIT)
 - wasi 0.11.1+wasi-snapshot-preview1 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT)
@@ -1128,7 +1131,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### 2. Applies to 233 package(s)
+### 2. Applies to 234 package(s)
 
 - aes 0.8.4 (MIT OR Apache-2.0)
 - apple-native-keyring-store 1.0.1 (MIT OR Apache-2.0)
@@ -1308,6 +1311,7 @@ DEALINGS IN THE SOFTWARE.
 - unicode-segmentation 1.13.3 (MIT OR Apache-2.0)
 - url 2.5.8 (MIT OR Apache-2.0)
 - utf8_iter 1.0.4 (Apache-2.0 OR MIT)
+- uuid 0.8.2 (Apache-2.0 OR MIT)
 - uuid 1.24.0 (Apache-2.0 OR MIT)
 - visibility 0.1.1 (Zlib OR MIT OR Apache-2.0)
 - wasi 0.11.1+wasi-snapshot-preview1 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT)
@@ -1597,7 +1601,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### 3. Applies to 62 package(s)
+### 3. Applies to 63 package(s)
 
 - @tanstack/react-query 5.101.4 (MIT)
 - @tanstack/react-virtual 3.14.9 (MIT)
@@ -1611,6 +1615,7 @@ limitations under the License.
 - darling_core 0.23.0 (MIT)
 - darling_macro 0.23.0 (MIT)
 - derive_arbitrary 1.5.0 (MIT OR Apache-2.0)
+- discord-rich-presence 1.1.0 (MIT)
 - embed_plist 1.2.2 (MIT OR Apache-2.0)
 - fdeflate 0.3.7 (MIT OR Apache-2.0)
 - field-offset 0.3.6 (MIT OR Apache-2.0)
@@ -1699,6 +1704,7 @@ Copyright notices:
 - Copyright (c) 2023 Sean Larkin
 - Copyright (c) 2023 dAxpeDDa
 - Copyright (c) 2024 Daniel Henry-Mantilla
+- Copyright (c) 2025 vionya
 - Copyright (c) Meta Platforms, Inc. and affiliates.
 - Copyright (c) React Training LLC 2015-2019
 - Copyright (c) Remix Software Inc. 2020-2021

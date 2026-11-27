@@ -166,6 +166,7 @@ const DEFAULT_PREFS: Preferences = {
   saveQueue: true,
   syncQueue: true,
   checkForUpdates: true,
+  discordPresence: false,
 };
 
 function applyAccent(accent: string) {

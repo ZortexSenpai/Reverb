@@ -148,6 +148,9 @@ pub struct Preferences {
     /// Look for a new release at launch and every 6 hours. Off means Reverb
     /// never contacts GitHub unless asked to ("Check now").
     pub check_for_updates: bool,
+    /// Show the playing Song on the listener's Discord profile (Rich
+    /// Presence). Off by default: everyone who can see the profile sees it.
+    pub discord_presence: bool,
 }
 
 impl Default for Preferences {
@@ -189,6 +192,7 @@ impl Default for Preferences {
             save_queue: true,
             sync_queue: true,
             check_for_updates: true,
+            discord_presence: false,
         }
     }
 }
@@ -393,7 +397,8 @@ mod tests {
             "seekBarAnimated": false,
             "seekBarThickness": "thick",
             "syncQueue": false,
-            "checkForUpdates": false
+            "checkForUpdates": false,
+            "discordPresence": true
         }"#;
         let prefs: Preferences = serde_json::from_str(raw).expect("camelCase names must match");
         assert!(prefs.direct_scrobble);
@@ -405,6 +410,7 @@ mod tests {
         assert_eq!(prefs.seek_bar_thickness, "thick");
         assert!(!prefs.sync_queue);
         assert!(!prefs.check_for_updates);
+        assert!(prefs.discord_presence);
 
         // ...and come back out under the same names.
         let back = serde_json::to_value(&prefs).unwrap();
@@ -417,6 +423,7 @@ mod tests {
         assert_eq!(back["seekBarThickness"], serde_json::json!("thick"));
         assert_eq!(back["syncQueue"], serde_json::json!(false));
         assert_eq!(back["checkForUpdates"], serde_json::json!(false));
+        assert_eq!(back["discordPresence"], serde_json::json!(true));
     }
 
     /// Before ListenBrainz, direct scrobbling was "Last.fm only". A settings
@@ -679,6 +686,7 @@ mod tests {
         assert!(s.prefs.device_configs.is_empty());
         assert_eq!(s.prefs.output(), OutputSettings::default());
         assert!(s.prefs.check_for_updates, "update checks default to on");
+        assert!(!s.prefs.discord_presence, "Discord presence defaults to off");
         // And the new shape round-trips.
         let back = serde_json::to_string(&s).unwrap();
         let s2: Settings = serde_json::from_str(&back).unwrap();

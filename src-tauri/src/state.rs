@@ -5,6 +5,7 @@ use reverb_core::playback::Playback;
 use reverb_core::subsonic::SubsonicClient;
 use serde::Serialize;
 
+use crate::discord_presence::DiscordPresence;
 use crate::mixes::store::MixStore;
 use crate::persistence::keychain::Keychain;
 use crate::persistence::settings::SettingsStore;
@@ -48,6 +49,7 @@ pub struct AppState {
     pub stats: StatsStore,
     pub mixes: MixStore,
     pub play_history: PlayHistoryStore,
+    pub discord: DiscordPresence,
 }
 
 impl AppState {

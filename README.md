@@ -24,7 +24,9 @@ engine and a **parametric EQ**.
 - **OS integration** — media keys via MPRIS (Linux), SMTC (Windows),
   Now Playing (macOS); scrobbling to Navidrome, or straight to Last.fm or
   ListenBrainz (including self-hosted and ListenBrainz-compatible servers);
-  queue restore across restarts
+  queue restore across restarts; Discord Rich Presence ("Listening to
+  Reverb", opt-in, with album covers from the Cover Art Archive for albums
+  tagged with MusicBrainz ids)
 - **Stats** — listening history imported from Last.fm or ListenBrainz: the
   account you scrobble to, or a separate one
 - **HQPlayer** — hand playback to HQPlayer Desktop on this computer or

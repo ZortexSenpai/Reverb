@@ -617,7 +617,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a347dcabdae9c31b0825fd6a8bed285ec9c2acb89c47827126d52fa4f59cece3"
 dependencies = [
  "fnv",
- "uuid",
+ "uuid 1.24.0",
  "web-time",
 ]
 
@@ -1119,6 +1119,21 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "discord-rich-presence"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90c55d69cab17c19677ce3a5f8face993a9e6eaf847fecac3547f3a3ff4a2494"
+dependencies = [
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_repr",
+ "thiserror 2.0.19",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -3677,6 +3692,7 @@ version = "0.0.0"
 dependencies = [
  "chrono",
  "crossbeam-channel",
+ "discord-rich-presence",
  "keyring",
  "log",
  "md-5",
@@ -3693,7 +3709,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tempfile",
  "thiserror 2.0.19",
- "uuid",
+ "uuid 1.24.0",
 ]
 
 [[package]]
@@ -3719,7 +3735,7 @@ dependencies = [
  "thiserror 2.0.19",
  "triple_buffer",
  "url",
- "uuid",
+ "uuid 1.24.0",
  "windows 0.62.2",
  "zbus",
 ]
@@ -3920,7 +3936,7 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
- "uuid",
+ "uuid 1.24.0",
 ]
 
 [[package]]
@@ -4851,7 +4867,7 @@ dependencies = [
  "thiserror 2.0.19",
  "time",
  "url",
- "uuid",
+ "uuid 1.24.0",
  "walkdir",
 ]
 
@@ -5057,7 +5073,7 @@ dependencies = [
  "toml 1.1.4+spec-1.1.0",
  "url",
  "urlpattern",
- "uuid",
+ "uuid 1.24.0",
  "walkdir",
 ]
 
@@ -5524,6 +5540,15 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom 0.2.17",
+]
 
 [[package]]
 name = "uuid"
@@ -6331,7 +6356,7 @@ dependencies = [
  "serde_repr",
  "tracing",
  "uds_windows",
- "uuid",
+ "uuid 1.24.0",
  "windows-sys 0.61.2",
  "winnow 1.0.4",
  "zbus_macros",

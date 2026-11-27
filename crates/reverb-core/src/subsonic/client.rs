@@ -246,6 +246,11 @@ impl SubsonicClient {
         body.album.ok_or_else(|| SubsonicError::Parse("getAlbum: missing album".into()))
     }
 
+    pub async fn get_song(&self, id: &str) -> Result<Child, SubsonicError> {
+        let body = self.call("getSong", &[("id", id.to_owned())]).await?;
+        body.song.ok_or_else(|| SubsonicError::Parse("getSong: missing song".into()))
+    }
+
     pub async fn get_artists(&self) -> Result<ArtistsIndexes, SubsonicError> {
         let body = self.call("getArtists", &[]).await?;
         body.artists.ok_or_else(|| SubsonicError::Parse("getArtists: missing artists".into()))

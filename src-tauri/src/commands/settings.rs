@@ -43,6 +43,9 @@ pub fn settings_set_prefs(
     if old.scrobble_at_percent != prefs.scrobble_at_percent {
         state.playback.send(EngineCommand::SetScrobblePercent(prefs.scrobble_at_percent));
     }
+    if old.discord_presence != prefs.discord_presence {
+        state.discord.set_enabled(prefs.discord_presence);
+    }
     if old.crossfade_secs != prefs.crossfade_secs {
         state
             .playback

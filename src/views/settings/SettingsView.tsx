@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Trash2,
   Unplug,
+  Users,
   Volume2,
   X,
 } from "lucide-react";
@@ -1924,6 +1925,22 @@ function StatsSection() {
   );
 }
 
+function DiscordSection() {
+  const t = useT();
+  const prefs = usePrefsStore((s) => s.prefs);
+  const set = usePrefsStore((s) => s.set);
+  return (
+    <SectionCard icon={Users} title="Discord">
+      <SettingRow label={t("settings.discordPresence")} hint={t("settings.discordPresenceHint")}>
+        <Toggle
+          checked={prefs.discordPresence}
+          onChange={(discordPresence) => set({ discordPresence })}
+        />
+      </SettingRow>
+    </SectionCard>
+  );
+}
+
 /** What the last update check came to, for the line under "Check now". */
 function updateStatus(state: UpdateState, t: T): string | undefined {
   switch (state.status) {
@@ -2032,6 +2049,7 @@ export function SettingsView() {
         <div id={STATS_SECTION_ID} className="mt-4">
           <StatsSection />
         </div>
+        <DiscordSection />
         <ServerSection />
         <AboutSection />
       </div>

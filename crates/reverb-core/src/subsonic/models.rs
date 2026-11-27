@@ -406,6 +406,10 @@ pub struct AlbumId3 {
     pub user_rating: Option<u32>,
     #[serde(default)]
     pub played: Option<String>,
+    /// The MusicBrainz release id the album is tagged with. Servers send an
+    /// empty string as readily as nothing.
+    #[serde(default)]
+    pub music_brainz_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -677,6 +681,8 @@ impl NativeAlbum {
             },
             user_rating: self.rating.filter(|r| *r > 0),
             played: real_date(self.play_date),
+            // Not read from the native API; nothing that lists albums needs it.
+            music_brainz_id: None,
         }
     }
 }

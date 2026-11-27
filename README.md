@@ -4,6 +4,8 @@ A cross-platform (Linux / macOS / Windows) desktop music player for
 [Navidrome](https://www.navidrome.org/) with a native, audiophile-grade audio
 engine and a **parametric EQ**.
 
+![Reverb's home view, with an album playing](docs/screenshots/home.png)
+
 ## Features
 
 - **Playback** — queue-based playing with play-now / play-next / add-to-queue,
@@ -35,6 +37,16 @@ engine and a **parametric EQ**.
   click **Restart to update** (Settings → About to check by hand or turn it off)
 - Keyboard shortcuts: `Space`, `←/→` seek, `Ctrl+←/→` prev/next, `F` full
   screen, `Ctrl+E` EQ, `M` mute, `S` shuffle, `R` repeat, `Ctrl+K` search
+
+## Screenshots
+
+| Full-screen player and queue | Parametric EQ |
+|---|---|
+| ![Full-screen player with the queue panel open](docs/screenshots/now-playing.png) | ![Parametric EQ with a seven-band curve](docs/screenshots/eq.png) |
+| **Artist** | **Albums** |
+| ![Artist page with top songs](docs/screenshots/artist.png) | ![Album grid sorted by recently added](docs/screenshots/albums.png) |
+| **Genres** | **Stats** |
+| ![Genre grid with cover-art mosaics](docs/screenshots/genres.png) | ![Listening stats with activity chart and calendar](docs/screenshots/stats.png) |
 
 ## Install
 

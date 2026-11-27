@@ -2,7 +2,9 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ChevronDown,
   ListMusic,
+  Maximize2,
   MicVocal,
+  Minimize2,
   SlidersVertical,
 } from "lucide-react";
 import { Fragment, useState } from "react";
@@ -25,6 +27,7 @@ import { useUiStore } from "../../stores/uiStore";
 import type { NowPlayingArtSize, NowPlayingBackdrop } from "../../lib/subsonic/types";
 import { LyricsPanel } from "./LyricsPanel";
 import { activeFieldValues } from "./nowPlayingFields";
+import { useWindowFullscreen } from "./useWindowFullscreen";
 
 // Static class strings so Tailwind sees them; sharper styles request larger
 // art. "solid" renders no backdrop at all (the plain bg-bg shows through).
@@ -60,6 +63,7 @@ export function NowPlayingOverlay() {
   const [lyricsOpen, setLyricsOpen] = useState(false);
 
   const song = item?.song;
+  const windowFullscreen = useWindowFullscreen(open && !!song);
   // Key check, not `??`: "solid" is stored as null and must stay null.
   const backdrop = backdropPref in BACKDROPS ? BACKDROPS[backdropPref] : BACKDROPS.blurred;
   const artSize = ART_SIZES[artSizePref] ?? ART_SIZES.medium;
@@ -118,6 +122,18 @@ export function NowPlayingOverlay() {
                 className={queuePanelOpen ? "text-accent" : ""}
               >
                 <ListMusic className="size-4" />
+              </IconButton>
+              <IconButton
+                label={t(
+                  windowFullscreen.fullscreen ? "player.exitFullScreen" : "player.fullScreen",
+                )}
+                onClick={windowFullscreen.toggle}
+              >
+                {windowFullscreen.fullscreen ? (
+                  <Minimize2 className="size-4" />
+                ) : (
+                  <Maximize2 className="size-4" />
+                )}
               </IconButton>
             </div>
           </div>

@@ -330,12 +330,20 @@ fn forward(
         }
         EngineEvent::OutputDeviceLost { device } => {
             log::warn!("output device {device} disconnected; reverting to the system default");
-            // The engine has already reopened on the default and forgotten the
-            // device; persist that so a restart does not resurrect it, and tell
-            // the frontend so the picker follows.
+            // The engine has already reopened on the system default, shared,
+            // and forgotten the device. Make that the active setup too, so a
+            // restart does not chase the device and the settings show what is
+            // playing. The config keeps its device: picking it again once the
+            // device is back is all it takes. A config switched to since the
+            // engine asked for this device is left alone.
             let state = app.state::<crate::state::AppState>();
-            if let Err(e) = state.settings.update(|s| s.prefs.audio_device = None) {
-                log::warn!("could not clear the saved output device: {e}");
+            let update = state.settings.update(|s| {
+                if s.prefs.output().device.as_deref() == Some(device.as_str()) {
+                    s.prefs.active_device_config = None;
+                }
+            });
+            if let Err(e) = update {
+                log::warn!("could not switch to the system default: {e}");
             }
             let _ = app.emit("player:device-lost", DeviceLostPayload { device });
         }

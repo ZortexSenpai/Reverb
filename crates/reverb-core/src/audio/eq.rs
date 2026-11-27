@@ -1,4 +1,4 @@
-//! Roon-style parametric EQ.
+//! Parametric EQ.
 //!
 //! Coefficient design happens on the control plane (RBJ Audio EQ Cookbook);
 //! the real-time callback only runs the biquad chain and two click-suppression

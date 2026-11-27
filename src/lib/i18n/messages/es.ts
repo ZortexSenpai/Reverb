@@ -451,9 +451,29 @@ export const es: Messages = {
     "Guarda la cola en Navidrome para que otro dispositivo continúe donde lo dejaste, y retoma la cola que haya guardado otro dispositivo.",
 
   "settings.audio": "Audio",
+  "settings.deviceConfigs": "Configuraciones de dispositivo",
+  "settings.deviceConfigsHint":
+    "Ajustes de salida guardados: un dispositivo y cómo Reverb reproduce a través de él. Haz clic en uno para cambiar: el flujo de audio se reabre y la reproducción continúa desde la misma posición.",
+  "settings.newDeviceConfig": "Nueva configuración",
+  "settings.newDeviceConfigTitle": "Nueva configuración de dispositivo",
+  "settings.editDeviceConfigTitle": "Editar configuración de dispositivo",
+  "settings.editDeviceConfig": "Editar {name}",
+  "settings.deleteDeviceConfig": "Eliminar {name}",
+  "settings.deleteDeviceConfigTitle": "¿Eliminar “{name}”?",
+  "settings.deleteActiveDeviceConfigBody":
+    "Está en uso, así que la reproducción pasa al predeterminado del sistema.",
+  "settings.deviceConfigName": "Nombre",
+  "settings.deviceConfigNameHint": "Déjalo vacío para usar el nombre del dispositivo.",
+  "settings.systemDefaultConfigHint":
+    "Compartido, a la frecuencia propia del dispositivo. La reproducción vuelve aquí cuando se desconecta el dispositivo de una configuración.",
+  "settings.configShared": "Compartido",
+  "settings.configExclusive": "Exclusivo",
+  "settings.configMatchRate": "Sigue la frecuencia de la fuente",
+  "settings.deviceNotConnected": "Dispositivo no conectado",
+  "settings.savedDeviceMissing": "Dispositivo guardado (no conectado)",
   "settings.outputDevice": "Dispositivo de salida",
   "settings.outputDeviceHint":
-    "Cambiarlo reabre el flujo de audio; la reproducción continúa desde la misma posición. Un dispositivo (directo) evita el servidor de sonido para una salida bit-perfect, y otras aplicaciones lo pierden mientras Reverb reproduce. La salida directa es experimental en Linux: necesita que el servidor de sonido ceda la tarjeta bajo petición, lo que requiere activar la reserva de dispositivos (ver el README).",
+    "Un dispositivo (directo) evita el servidor de sonido para una salida bit-perfect, y otras aplicaciones lo pierden mientras Reverb reproduce. La salida directa es experimental en Linux: necesita que el servidor de sonido ceda la tarjeta bajo petición, lo que requiere activar la reserva de dispositivos (ver el README).",
   "settings.systemDefault": "Predeterminado del sistema",
   "settings.deviceDirect": "(directo)",
   "settings.refreshDevices": "Actualizar la lista de dispositivos",

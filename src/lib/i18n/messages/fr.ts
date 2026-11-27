@@ -452,9 +452,29 @@ export const fr: Messages = {
     "Enregistre la file sur Navidrome pour qu’un autre appareil reprenne là où vous en étiez, et reprend la file qu’un autre appareil y a enregistrée.",
 
   "settings.audio": "Audio",
+  "settings.deviceConfigs": "Configurations de périphérique",
+  "settings.deviceConfigsHint":
+    "Réglages de sortie enregistrés : un périphérique, et la façon dont Reverb joue dessus. Cliquez sur l'une d'elles pour changer — le flux audio est rouvert et la lecture reprend à la même position.",
+  "settings.newDeviceConfig": "Nouvelle configuration",
+  "settings.newDeviceConfigTitle": "Nouvelle configuration de périphérique",
+  "settings.editDeviceConfigTitle": "Modifier la configuration de périphérique",
+  "settings.editDeviceConfig": "Modifier {name}",
+  "settings.deleteDeviceConfig": "Supprimer {name}",
+  "settings.deleteDeviceConfigTitle": "Supprimer « {name} » ?",
+  "settings.deleteActiveDeviceConfigBody":
+    "Elle est en cours d'utilisation : la lecture passe sur le périphérique par défaut.",
+  "settings.deviceConfigName": "Nom",
+  "settings.deviceConfigNameHint": "Laissez vide pour utiliser le nom du périphérique.",
+  "settings.systemDefaultConfigHint":
+    "Partagé, à la fréquence propre du périphérique. La lecture revient ici quand le périphérique d'une configuration est débranché.",
+  "settings.configShared": "Partagé",
+  "settings.configExclusive": "Exclusif",
+  "settings.configMatchRate": "Suit la fréquence de la source",
+  "settings.deviceNotConnected": "Périphérique non connecté",
+  "settings.savedDeviceMissing": "Périphérique enregistré (non connecté)",
   "settings.outputDevice": "Périphérique de sortie",
   "settings.outputDeviceHint":
-    "Changer rouvre le flux audio ; la lecture reprend à la même position. Un périphérique (direct) contourne le serveur de son pour une sortie bit-perfect, et les autres applications le perdent pendant que Reverb joue. La sortie directe est expérimentale sous Linux : elle exige que le serveur de son cède la carte à la demande, ce qui nécessite la réservation de périphérique (voir le README).",
+    "Un périphérique (direct) contourne le serveur de son pour une sortie bit-perfect, et les autres applications le perdent pendant que Reverb joue. La sortie directe est expérimentale sous Linux : elle exige que le serveur de son cède la carte à la demande, ce qui nécessite la réservation de périphérique (voir le README).",
   "settings.systemDefault": "Périphérique par défaut",
   "settings.deviceDirect": "(direct)",
   "settings.refreshDevices": "Actualiser la liste des périphériques",

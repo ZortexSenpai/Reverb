@@ -15,7 +15,8 @@ pub mod source;
 pub mod wasapi;
 
 pub use engine::{
-    spawn_engine, EngineCommand, EngineHandle, ReplayGainMode, ReplayGainSettings, TrackSource,
+    spawn_engine, EngineCommand, EngineHandle, OutputSettings, ReplayGainMode, ReplayGainSettings,
+    TrackSource,
 };
 pub use eq::{EqBand, EqState, FilterType, PreampMode};
 pub use events::{EngineEvent, PlaybackState, TrackChangeReason};

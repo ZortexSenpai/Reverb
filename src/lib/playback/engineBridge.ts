@@ -2,6 +2,7 @@
 // from the Rust engine into store mutations. Living outside React sidesteps
 // StrictMode double-mount listener races.
 
+import { afterDeviceLost } from "../deviceConfigs";
 import { cmd } from "../ipc/commands";
 import { getT } from "../i18n";
 import { on } from "../ipc/events";
@@ -66,11 +67,11 @@ export function initEngineBridge() {
   });
 
   // A disconnected output device: the engine reopened on the system default and
-  // the backend already cleared the saved preference, so this mirrors it into
-  // the store *without* persisting — going through `set` would send the engine a
-  // redundant device change and rebuild the stream a second time.
-  void on("player:device-lost", () => {
-    usePrefsStore.setState((s) => ({ prefs: { ...s.prefs, audioDevice: null } }));
+  // the backend already made that the active setup, so this mirrors it into the
+  // store *without* persisting — going through `set` would send the engine a
+  // redundant output change and rebuild the stream a second time.
+  void on("player:device-lost", ({ device }) => {
+    usePrefsStore.setState((s) => ({ prefs: { ...s.prefs, ...afterDeviceLost(s.prefs, device) } }));
     void queryClient.invalidateQueries({ queryKey: ["audio-devices"] });
     useUiStore.getState().showToast(getT()("toast.outputDeviceLost"));
   });

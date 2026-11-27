@@ -1,4 +1,4 @@
-// Roon-style signal path: a quality dot that opens the actual audio chain
+// Signal path: a quality dot that opens the actual audio chain
 // (source → DSP → output) as reported live by the Rust engine.
 
 import { Popover } from "radix-ui";

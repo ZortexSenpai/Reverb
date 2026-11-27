@@ -404,11 +404,13 @@ export interface Preferences {
   startupView: string;
   gridSize: GridSize;
   playlistLayout: PlaylistLayout;
-  audioDevice: string | null;
-  /** Switch the device to each track's native sample rate (bit-perfect). */
-  matchSourceRate: boolean;
-  /** Take the output device exclusively (macOS hog mode / WASAPI exclusive). */
-  exclusiveOutput: boolean;
+  /** The listener's device configs, in the order they were made. */
+  deviceConfigs: DeviceConfig[];
+  /**
+   * The device config playing now, by id. `null` — or an id no config has —
+   * plays on the system default, shared, at the device's own rate.
+   */
+  activeDeviceConfig: string | null;
   streamingFormat: StreamingFormat;
   replayGain: ReplayGainSettings;
   /** Crossfade between tracks in seconds (0 = gapless). */
@@ -456,6 +458,18 @@ export interface Preferences {
   syncQueue: boolean;
   /** Look for a new release at launch and every 6 hours. */
   checkForUpdates: boolean;
+}
+
+/** A named output setup: a device, and how Reverb plays through it. */
+export interface DeviceConfig {
+  id: string;
+  name: string;
+  /** Output device id; `null` = system default. Kept while unplugged. */
+  device: string | null;
+  /** Switch the device to each track's native sample rate (bit-perfect). */
+  matchSourceRate: boolean;
+  /** Take the output device exclusively (macOS hog mode / WASAPI exclusive). */
+  exclusiveOutput: boolean;
 }
 
 export type FrontendSettings = Preferences & { volume: number };

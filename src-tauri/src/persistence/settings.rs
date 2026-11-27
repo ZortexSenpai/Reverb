@@ -15,7 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-use reverb_core::audio::{EqState, ReplayGainSettings};
+use reverb_core::audio::{list_output_devices, EqState, OutputSettings, ReplayGainSettings};
 use serde::{Deserialize, Serialize};
 
 use crate::error::ReverbError;
@@ -26,6 +26,23 @@ pub struct EqPreset {
     pub id: String,
     pub name: String,
     pub state: EqState,
+}
+
+/// A named output setup the listener switches to in one go: a device, and how
+/// Reverb plays through it. See `GLOSSARY.md`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DeviceConfig {
+    pub id: String,
+    pub name: String,
+    /// Output device id (see `OutputDevice::id`); `None` = system default.
+    /// Kept when the device is unplugged, so the config works again the
+    /// moment it is back.
+    pub device: Option<String>,
+    /// Switch the device to each track's native sample rate (bit-perfect).
+    pub match_source_rate: bool,
+    /// Take the output device exclusively (macOS hog mode / WASAPI exclusive).
+    pub exclusive_output: bool,
 }
 
 /// User preferences shared verbatim with the frontend (no secrets).
@@ -63,12 +80,11 @@ pub struct Preferences {
     pub grid_size: String,
     /// Playlists view: "grid" of cover cards, or "list" of rows.
     pub playlist_layout: String,
-    /// Preferred output device name; `None` = system default.
-    pub audio_device: Option<String>,
-    /// Switch the device to each track's native sample rate (bit-perfect).
-    pub match_source_rate: bool,
-    /// Take the output device exclusively (macOS hog mode / WASAPI exclusive).
-    pub exclusive_output: bool,
+    /// The listener's device configs, in the order they were made.
+    pub device_configs: Vec<DeviceConfig>,
+    /// The device config playing now, by id. `None` — or an id no config has —
+    /// plays on the system default, shared, at the device's own rate.
+    pub active_device_config: Option<String>,
     /// "raw" for the original file, or "mp3-320" / "mp3-192" / "mp3-128"
     /// for server-side transcoding.
     pub streaming_format: String,
@@ -145,9 +161,8 @@ impl Default for Preferences {
             startup_view: "/home".into(),
             grid_size: "medium".into(),
             playlist_layout: "grid".into(),
-            audio_device: None,
-            match_source_rate: false,
-            exclusive_output: false,
+            device_configs: Vec::new(),
+            active_device_config: None,
             streaming_format: "raw".into(),
             replay_gain: ReplayGainSettings::default(),
             crossfade_secs: 0,
@@ -170,6 +185,36 @@ impl Default for Preferences {
             check_for_updates: true,
         }
     }
+}
+
+impl Preferences {
+    /// The device config playing now, if there is one.
+    pub fn active_device_config(&self) -> Option<&DeviceConfig> {
+        let id = self.active_device_config.as_deref()?;
+        self.device_configs.iter().find(|config| config.id == id)
+    }
+
+    /// What the engine should be playing through.
+    pub fn output(&self) -> OutputSettings {
+        self.active_device_config().map_or_else(OutputSettings::default, |config| {
+            OutputSettings {
+                device: config.device.clone(),
+                auto_rate: config.match_source_rate,
+                exclusive: config.exclusive_output,
+            }
+        })
+    }
+}
+
+/// How output was set up before device configs: one device and two switches,
+/// straight on the preferences. Read from old files only, to carry over into a
+/// config (see [`Settings::adopt_legacy_output`]); never written.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct LegacyOutput {
+    audio_device: Option<String>,
+    match_source_rate: bool,
+    exclusive_output: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -198,6 +243,60 @@ impl Default for Settings {
             queue_snapshot: None,
         }
     }
+}
+
+impl Settings {
+    /// Carry output settings from before device configs into a config, made
+    /// active so playback starts exactly where it left off. All-default old
+    /// settings carry nothing: that is the system default, which needs no
+    /// config. `device_label` names the device, when it can.
+    fn adopt_legacy_output(
+        &mut self,
+        legacy: LegacyOutput,
+        device_label: impl FnOnce(&str) -> Option<String>,
+    ) {
+        let LegacyOutput { audio_device, match_source_rate, exclusive_output } = legacy;
+        let nothing_set = audio_device.is_none() && !match_source_rate && !exclusive_output;
+        if nothing_set || !self.prefs.device_configs.is_empty() {
+            return;
+        }
+        let name = match audio_device.as_deref() {
+            None => "System default".to_owned(),
+            Some(device) => device_label(device)
+                // Settings older than device ids hold the display name itself;
+                // cpal ids read "<host>:<device>".
+                .or_else(|| (!device.contains(':')).then(|| device.to_owned()))
+                .unwrap_or_else(|| "Output device".to_owned()),
+        };
+        let id = uuid::Uuid::new_v4().to_string();
+        self.prefs.device_configs.push(DeviceConfig {
+            id: id.clone(),
+            name,
+            device: audio_device,
+            match_source_rate,
+            exclusive_output,
+        });
+        self.prefs.active_device_config = Some(id);
+    }
+}
+
+/// Parse a settings file, carrying over anything an older version kept in a
+/// shape this one no longer uses.
+fn parse(
+    raw: &[u8],
+    device_label: impl FnOnce(&str) -> Option<String>,
+) -> Result<Settings, serde_json::Error> {
+    let mut settings: Settings = serde_json::from_slice(raw)?;
+    // Anything that parses as `Settings` parses as this too: every field has a
+    // default and unknown ones are ignored.
+    let legacy: LegacyOutput = serde_json::from_slice(raw).unwrap_or_default();
+    settings.adopt_legacy_output(legacy, device_label);
+    Ok(settings)
+}
+
+/// A device's display name, looked up among the devices plugged in now.
+fn current_device_label(id: &str) -> Option<String> {
+    list_output_devices().into_iter().find(|d| d.id == id || d.label == id).map(|d| d.label)
 }
 
 pub struct SettingsStore {
@@ -229,7 +328,7 @@ impl SettingsStore {
         fs::create_dir_all(&config_dir)?;
         let path = config_dir.join("settings.json");
         let data = match fs::read(&path) {
-            Ok(raw) => serde_json::from_slice(&raw).unwrap_or_else(|e| {
+            Ok(raw) => parse(&raw, current_device_label).unwrap_or_else(|e| {
                 back_up_unreadable(&path, &e);
                 Settings::default()
             }),
@@ -388,6 +487,119 @@ mod tests {
         assert!(backups(dir.path()).is_empty());
     }
 
+    fn no_label(_: &str) -> Option<String> {
+        None
+    }
+
+    #[test]
+    fn old_output_settings_become_the_active_device_config() {
+        let raw = br#"{
+            "audioDevice": "coreaudio:BTR17-uid",
+            "matchSourceRate": true,
+            "exclusiveOutput": true
+        }"#;
+        let s = parse(raw, |id| (id == "coreaudio:BTR17-uid").then(|| "FiiO BTR17".into()))
+            .unwrap();
+
+        let [config] = s.prefs.device_configs.as_slice() else {
+            panic!("one config: {:?}", s.prefs.device_configs)
+        };
+        assert_eq!(config.name, "FiiO BTR17");
+        assert_eq!(s.prefs.active_device_config.as_deref(), Some(config.id.as_str()));
+        assert_eq!(
+            s.prefs.output(),
+            OutputSettings {
+                device: Some("coreaudio:BTR17-uid".into()),
+                auto_rate: true,
+                exclusive: true,
+            },
+            "playback starts where it left off"
+        );
+
+        // Written back as a config only.
+        let back = serde_json::to_value(&s).unwrap();
+        assert!(back.get("audioDevice").is_none());
+        assert!(back.get("exclusiveOutput").is_none());
+        assert_eq!(back["deviceConfigs"][0]["matchSourceRate"], serde_json::json!(true));
+    }
+
+    #[test]
+    fn an_old_device_that_cannot_be_named_still_gets_a_config() {
+        // Unplugged: the id cannot be looked up.
+        let s = parse(br#"{"audioDevice": "alsa:hw:CARD=1,DEV=0"}"#, no_label).unwrap();
+        assert_eq!(s.prefs.device_configs[0].name, "Output device");
+        assert_eq!(s.prefs.output().device.as_deref(), Some("alsa:hw:CARD=1,DEV=0"));
+
+        // Saved before device ids, when the preference was the display name.
+        let s = parse(br#"{"audioDevice": "MacBook Pro Speakers"}"#, no_label).unwrap();
+        assert_eq!(s.prefs.device_configs[0].name, "MacBook Pro Speakers");
+
+        // The system default with a switch on.
+        let s = parse(br#"{"matchSourceRate": true}"#, no_label).unwrap();
+        assert_eq!(s.prefs.device_configs[0].name, "System default");
+        assert_eq!(
+            s.prefs.output(),
+            OutputSettings { device: None, auto_rate: true, exclusive: false }
+        );
+    }
+
+    #[test]
+    fn default_old_output_settings_need_no_config() {
+        let raw = br#"{"audioDevice": null, "matchSourceRate": false, "exclusiveOutput": false}"#;
+        let s = parse(raw, |_| panic!("nothing to name")).unwrap();
+        assert!(s.prefs.device_configs.is_empty());
+        assert_eq!(s.prefs.active_device_config, None);
+    }
+
+    #[test]
+    fn existing_device_configs_are_not_migrated_over() {
+        // A file this version wrote never has the old fields; one that has both
+        // keeps the configs it has.
+        let raw = br#"{
+            "audioDevice": "coreaudio:other",
+            "deviceConfigs": [{"id": "a", "name": "Desk", "device": null}],
+            "activeDeviceConfig": "a"
+        }"#;
+        let s = parse(raw, no_label).unwrap();
+        assert_eq!(s.prefs.device_configs.len(), 1);
+        assert_eq!(s.prefs.device_configs[0].name, "Desk");
+    }
+
+    #[test]
+    fn output_follows_the_active_device_config() {
+        let mut prefs = Preferences {
+            device_configs: vec![
+                DeviceConfig {
+                    id: "desk".into(),
+                    name: "Desk DAC".into(),
+                    device: Some("coreaudio:dac".into()),
+                    match_source_rate: true,
+                    exclusive_output: false,
+                },
+                DeviceConfig {
+                    id: "speakers".into(),
+                    name: "Speakers".into(),
+                    device: None,
+                    match_source_rate: false,
+                    exclusive_output: true,
+                },
+            ],
+            ..Preferences::default()
+        };
+        assert_eq!(prefs.output(), OutputSettings::default(), "none active: system default");
+
+        prefs.active_device_config = Some("speakers".into());
+        assert_eq!(prefs.output(), OutputSettings { device: None, auto_rate: false, exclusive: true });
+
+        prefs.active_device_config = Some("desk".into());
+        assert_eq!(prefs.output().device.as_deref(), Some("coreaudio:dac"));
+        assert!(prefs.output().auto_rate);
+
+        // A config deleted out from under the pointer.
+        prefs.active_device_config = Some("gone".into());
+        assert_eq!(prefs.output(), OutputSettings::default());
+    }
+
     #[test]
     fn old_settings_files_parse_with_pref_defaults() {
         // A settings.json written before the preferences existed.
@@ -409,7 +621,8 @@ mod tests {
         assert!(!s.prefs.direct_scrobble);
         assert!(!s.prefs.direct_scrobble_reset_on_start);
         assert!(!s.prefs.direct_scrobble_pinned);
-        assert!(s.prefs.audio_device.is_none());
+        assert!(s.prefs.device_configs.is_empty());
+        assert_eq!(s.prefs.output(), OutputSettings::default());
         assert!(s.prefs.check_for_updates, "update checks default to on");
         // And the new shape round-trips.
         let back = serde_json::to_string(&s).unwrap();

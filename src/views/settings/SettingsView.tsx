@@ -1,4 +1,9 @@
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   BarChart3,
@@ -9,13 +14,19 @@ import {
   LogOut,
   Maximize2,
   Palette,
+  Pencil,
+  Plus,
   Radio,
   RefreshCw,
   Server,
   ShieldAlert,
+  Trash2,
   Unplug,
   Volume2,
+  X,
 } from "lucide-react";
+import { nanoid } from "nanoid";
+import { Dialog } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { EQ_SECTION_ID, EqSection } from "../../components/eq/EqSection";
@@ -24,6 +35,14 @@ import { Button, IconButton } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { MultiSelect } from "../../components/ui/MultiSelect";
 import { ConfirmDialog } from "../../components/ui/Dialogs";
+import {
+  activeDeviceConfig,
+  canGoExclusive,
+  deleteDeviceConfig,
+  deviceLabel,
+  isConnected,
+  saveDeviceConfig,
+} from "../../lib/deviceConfigs";
 import { formatSampleRate } from "../../lib/format";
 import { LANGUAGE_NAMES, LOCALES, useT, type MessageKey, type T } from "../../lib/i18n";
 import { cmd, errorMessage } from "../../lib/ipc/commands";
@@ -50,9 +69,11 @@ import {
 import type {
   AccountRole,
   AccountStatus,
+  DeviceConfig,
   GridSize,
   NowPlayingAlign,
   NowPlayingBackdrop,
+  OutputDevice,
   ReplayGainMode,
   SeekBarStyle,
   SeekBarThickness,
@@ -133,6 +154,8 @@ function Toggle({
 }) {
   return (
     <button
+      // Not the default "submit": a switch inside a form must not submit it.
+      type="button"
       role="switch"
       aria-checked={checked}
       disabled={disabled}
@@ -348,6 +371,11 @@ function PlaybackSection() {
   );
 }
 
+/** A config that does not exist yet, for the "New config" dialog. */
+function blankDeviceConfig(): DeviceConfig {
+  return { id: nanoid(), name: "", device: null, matchSourceRate: false, exclusiveOutput: false };
+}
+
 function AudioSection() {
   const t = useT();
   const prefs = usePrefsStore((s) => s.prefs);
@@ -358,35 +386,34 @@ function AudioSection() {
   // open, hence the fallback below.
   const deviceRate = usePlayerStore((s) => s.signalPath?.deviceRate ?? null);
   const devices = useQuery({ queryKey: ["audio-devices"], queryFn: () => cmd("audio_list_devices") });
-
-  // Exclusive access only means something on Linux once a direct (hw:) device
-  // is picked: a sound-server route has no card to take, so the engine's
-  // exclusive path resolves to the shared default anyway. On macOS and Windows
-  // it is a device-level mode that works on the default device too, and no
-  // device is ever reported as direct — so only gate where the flag exists.
   const deviceList = devices.data;
-  const selectedDevice = deviceList?.find((d) => d.id === prefs.audioDevice);
-  const canGoExclusive =
-    // Still loading: leave the toggle alone rather than blinking it disabled.
-    deviceList == null || !deviceList.some((d) => d.direct) || Boolean(selectedDevice?.direct);
+  const active = activeDeviceConfig(prefs);
+
+  // The config open in the editor, and whether it is a new one.
+  const [editing, setEditing] = useState<{ config: DeviceConfig; isNew: boolean } | null>(null);
+  const [deleting, setDeleting] = useState<DeviceConfig | null>(null);
+
+  function summary(config: DeviceConfig): { text: string; missing: boolean } {
+    const missing = !isConnected(deviceList, config.device);
+    const device = missing
+      ? t("settings.deviceNotConnected")
+      : (deviceLabel(deviceList, config.device) ?? t("settings.systemDefault"));
+    const parts = [
+      device,
+      config.exclusiveOutput ? t("settings.configExclusive") : t("settings.configShared"),
+    ];
+    if (config.matchSourceRate) parts.push(t("settings.configMatchRate"));
+    return { text: parts.join(" · "), missing };
+  }
 
   return (
     <SectionCard icon={Volume2} title={t("settings.audio")}>
-      <SettingRow label={t("settings.outputDevice")} hint={t("settings.outputDeviceHint")}>
-        <div className="flex items-center gap-1">
-          <select
-            className={`${selectClass} max-w-72`}
-            value={prefs.audioDevice ?? ""}
-            onChange={(e) => set({ audioDevice: e.target.value === "" ? null : e.target.value })}
-          >
-            <option value="">{t("settings.systemDefault")}</option>
-            {(devices.data ?? []).map((device) => (
-              <option key={device.id} value={device.id}>
-                {device.label}
-                {device.direct ? ` ${t("settings.deviceDirect")}` : ""}
-              </option>
-            ))}
-          </select>
+      <div className="flex items-start justify-between gap-6 py-2">
+        <div className="min-w-0">
+          <div className="text-sm">{t("settings.deviceConfigs")}</div>
+          <div className="mt-0.5 text-xs text-faint">{t("settings.deviceConfigsHint")}</div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
           <IconButton
             label={t("settings.refreshDevices")}
             disabled={devices.isFetching}
@@ -394,8 +421,43 @@ function AudioSection() {
           >
             <RefreshCw className={`size-4 ${devices.isFetching ? "animate-spin" : ""}`} />
           </IconButton>
+          <Button
+            variant="outline"
+            onClick={() => setEditing({ config: blankDeviceConfig(), isNew: true })}
+          >
+            <Plus className="size-4" /> {t("settings.newDeviceConfig")}
+          </Button>
         </div>
-      </SettingRow>
+      </div>
+
+      <div
+        role="radiogroup"
+        aria-label={t("settings.deviceConfigs")}
+        className="mt-1 mb-2 divide-y divide-edge overflow-hidden rounded-lg border border-edge"
+      >
+        <DeviceConfigRow
+          name={t("settings.systemDefault")}
+          summary={t("settings.systemDefaultConfigHint")}
+          active={active == null}
+          onSelect={() => set({ activeDeviceConfig: null })}
+        />
+        {prefs.deviceConfigs.map((config) => {
+          const { text, missing } = summary(config);
+          return (
+            <DeviceConfigRow
+              key={config.id}
+              name={config.name}
+              summary={text}
+              missing={missing}
+              active={active?.id === config.id}
+              onSelect={() => set({ activeDeviceConfig: config.id })}
+              onEdit={() => setEditing({ config, isNew: false })}
+              onDelete={() => setDeleting(config)}
+            />
+          );
+        })}
+      </div>
+
       <SettingRow
         label={t("settings.deviceRate")}
         hint={
@@ -413,29 +475,251 @@ function AudioSection() {
           )}
         </span>
       </SettingRow>
-      <SettingRow
-        label={t("settings.matchRate")}
-        hint={t("settings.matchRateHint")}
-      >
-        <Toggle
-          checked={prefs.matchSourceRate}
-          onChange={(matchSourceRate) => set({ matchSourceRate })}
-        />
-      </SettingRow>
-      <SettingRow
-        label={t("settings.exclusive")}
-        hint={
-          canGoExclusive ? t("settings.exclusiveHint") : t("settings.exclusiveUnavailable")
-        }
-      >
-        <Toggle
-          checked={prefs.exclusiveOutput && canGoExclusive}
-          disabled={!canGoExclusive}
-          onChange={(exclusiveOutput) => set({ exclusiveOutput })}
-        />
-      </SettingRow>
       <p className="mt-1 text-xs text-faint">{t("settings.audioNote")}</p>
+
+      <DeviceConfigDialog
+        editing={editing}
+        devices={devices}
+        onSave={(config) => set(saveDeviceConfig(prefs, config))}
+        onClose={() => setEditing(null)}
+      />
+      <ConfirmDialog
+        open={deleting != null}
+        title={t("settings.deleteDeviceConfigTitle", { name: deleting?.name ?? "" })}
+        body={
+          deleting != null && deleting.id === active?.id
+            ? t("settings.deleteActiveDeviceConfigBody")
+            : undefined
+        }
+        confirmLabel={t("common.delete")}
+        danger
+        onConfirm={() => {
+          if (deleting) set(deleteDeviceConfig(prefs, deleting.id));
+        }}
+        onClose={() => setDeleting(null)}
+      />
     </SectionCard>
+  );
+}
+
+/**
+ * One choice in the device config list. Picking the row makes it the active
+ * setup; the built-in system default row has no edit or delete.
+ */
+function DeviceConfigRow({
+  name,
+  summary,
+  missing = false,
+  active,
+  onSelect,
+  onEdit,
+  onDelete,
+}: {
+  name: string;
+  summary: string;
+  /** The config's device is not plugged in. */
+  missing?: boolean;
+  active: boolean;
+  onSelect: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
+  const t = useT();
+  return (
+    <div
+      className={`flex items-center gap-1 pr-2 transition-colors ${
+        active ? "bg-surface-2" : "hover:bg-surface-2/50"
+      }`}
+    >
+      <button
+        role="radio"
+        aria-checked={active}
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 px-3 py-2.5 text-left"
+      >
+        <span
+          aria-hidden
+          className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+            active ? "border-accent" : "border-faint"
+          }`}
+        >
+          {active && <span className="size-2 rounded-full bg-accent" />}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm">{name}</span>
+          <span className={`mt-0.5 block text-xs ${missing ? "text-danger" : "text-faint"}`}>
+            {summary}
+          </span>
+        </span>
+      </button>
+      {onEdit && (
+        <IconButton label={t("settings.editDeviceConfig", { name })} onClick={onEdit}>
+          <Pencil className="size-4" />
+        </IconButton>
+      )}
+      {onDelete && (
+        <IconButton
+          label={t("settings.deleteDeviceConfig", { name })}
+          onClick={onDelete}
+          className="hover:text-danger"
+        >
+          <Trash2 className="size-4" />
+        </IconButton>
+      )}
+    </div>
+  );
+}
+
+/** Create or edit a device config. Saving the active one applies it at once. */
+function DeviceConfigDialog({
+  editing,
+  devices,
+  onSave,
+  onClose,
+}: {
+  editing: { config: DeviceConfig; isNew: boolean } | null;
+  devices: UseQueryResult<OutputDevice[]>;
+  onSave: (config: DeviceConfig) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const [draft, setDraft] = useState<DeviceConfig | null>(null);
+  useEffect(() => {
+    if (editing) setDraft(editing.config);
+  }, [editing]);
+
+  const deviceList = devices.data;
+  const device = draft?.device ?? null;
+  const exclusiveOk = canGoExclusive(deviceList, device);
+  // A saved device that is unplugged is still the config's device: keep it
+  // selectable rather than letting the picker silently read "System default".
+  const deviceMissing = !isConnected(deviceList, device);
+  const fallbackName =
+    deviceLabel(deviceList, device) ??
+    (device == null ? t("settings.systemDefault") : t("settings.outputDevice"));
+
+  function update(patch: Partial<DeviceConfig>) {
+    setDraft((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!draft) return;
+    onSave({
+      ...draft,
+      name: draft.name.trim() || fallbackName,
+      // Keep the summary truthful: the switch cannot be on where it means nothing.
+      exclusiveOutput: draft.exclusiveOutput && exclusiveOk,
+    });
+    onClose();
+  }
+
+  return (
+    <Dialog.Root open={editing != null} onOpenChange={(o) => !o && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60" />
+        <Dialog.Content
+          className="fixed top-1/2 left-1/2 z-50 max-h-[85vh] w-[34rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-edge bg-surface p-5 shadow-2xl focus:outline-none"
+          aria-describedby={undefined}
+          // A stray click beside the dialog must not throw away the edits:
+          // it closes through ×, Cancel, Save (or Escape) only.
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <Dialog.Title className="text-sm font-semibold">
+              {editing?.isNew
+                ? t("settings.newDeviceConfigTitle")
+                : t("settings.editDeviceConfigTitle")}
+            </Dialog.Title>
+            <Dialog.Close asChild>
+              <IconButton type="button" label={t("common.close")} className="-my-2 -mr-2">
+                <X className="size-4" />
+              </IconButton>
+            </Dialog.Close>
+          </div>
+          {draft && (
+            <form onSubmit={submit}>
+              <label className="block">
+                <span className="text-sm">{t("settings.deviceConfigName")}</span>
+                <Input
+                  className="mt-1.5"
+                  value={draft.name}
+                  onChange={(e) => update({ name: e.target.value })}
+                  placeholder={fallbackName}
+                  autoFocus
+                  spellCheck={false}
+                />
+                <span className="mt-1 block text-xs text-faint">
+                  {t("settings.deviceConfigNameHint")}
+                </span>
+              </label>
+
+              <div className="mt-4">
+                <span className="text-sm">{t("settings.outputDevice")}</span>
+                <div className="mt-1.5 flex items-center gap-1">
+                  <select
+                    aria-label={t("settings.outputDevice")}
+                    className={`${selectClass} min-w-0 flex-1`}
+                    value={device ?? ""}
+                    onChange={(e) => update({ device: e.target.value === "" ? null : e.target.value })}
+                  >
+                    <option value="">{t("settings.systemDefault")}</option>
+                    {(deviceList ?? []).map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.label}
+                        {d.direct ? ` ${t("settings.deviceDirect")}` : ""}
+                      </option>
+                    ))}
+                    {deviceMissing && device != null && (
+                      <option value={device}>{t("settings.savedDeviceMissing")}</option>
+                    )}
+                  </select>
+                  <IconButton
+                    type="button"
+                    label={t("settings.refreshDevices")}
+                    disabled={devices.isFetching}
+                    onClick={() => void devices.refetch()}
+                  >
+                    <RefreshCw className={`size-4 ${devices.isFetching ? "animate-spin" : ""}`} />
+                  </IconButton>
+                </div>
+                <span className="mt-1 block text-xs text-faint">
+                  {t("settings.outputDeviceHint")}
+                </span>
+              </div>
+
+              <div className="mt-2">
+                <SettingRow label={t("settings.matchRate")} hint={t("settings.matchRateHint")}>
+                  <Toggle
+                    checked={draft.matchSourceRate}
+                    onChange={(matchSourceRate) => update({ matchSourceRate })}
+                  />
+                </SettingRow>
+                <SettingRow
+                  label={t("settings.exclusive")}
+                  hint={
+                    exclusiveOk ? t("settings.exclusiveHint") : t("settings.exclusiveUnavailable")
+                  }
+                >
+                  <Toggle
+                    checked={draft.exclusiveOutput && exclusiveOk}
+                    disabled={!exclusiveOk}
+                    onChange={(exclusiveOutput) => update({ exclusiveOutput })}
+                  />
+                </SettingRow>
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {t("common.cancel")}
+                </Button>
+                <Button type="submit">{t("common.save")}</Button>
+              </div>
+            </form>
+          )}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

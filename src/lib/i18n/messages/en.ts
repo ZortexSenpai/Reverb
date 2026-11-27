@@ -477,9 +477,28 @@ export const en = {
 
   // ---- settings: audio ----
   "settings.audio": "Audio",
+  "settings.deviceConfigs": "Device configs",
+  "settings.deviceConfigsHint":
+    "Saved output setups: a device, and how Reverb plays through it. Click one to switch — the audio stream reopens and playback continues from position.",
+  "settings.newDeviceConfig": "New config",
+  "settings.newDeviceConfigTitle": "New device config",
+  "settings.editDeviceConfigTitle": "Edit device config",
+  "settings.editDeviceConfig": "Edit {name}",
+  "settings.deleteDeviceConfig": "Delete {name}",
+  "settings.deleteDeviceConfigTitle": "Delete “{name}”?",
+  "settings.deleteActiveDeviceConfigBody": "It is in use, so playback moves to the system default.",
+  "settings.deviceConfigName": "Name",
+  "settings.deviceConfigNameHint": "Leave empty to use the device's name.",
+  "settings.systemDefaultConfigHint":
+    "Shared, at the device's own rate. Playback falls back here when a config's device is unplugged.",
+  "settings.configShared": "Shared",
+  "settings.configExclusive": "Exclusive",
+  "settings.configMatchRate": "Matches source rate",
+  "settings.deviceNotConnected": "Device not connected",
+  "settings.savedDeviceMissing": "Saved device (not connected)",
   "settings.outputDevice": "Output device",
   "settings.outputDeviceHint":
-    "Switching reopens the audio stream; playback continues from position. A (direct) device bypasses the sound server for bit-perfect output, and other apps lose it while Reverb plays. Direct output is experimental on Linux: it needs the sound server to hand the card over on request, which needs device reservation enabled (see the README).",
+    "A (direct) device bypasses the sound server for bit-perfect output, and other apps lose it while Reverb plays. Direct output is experimental on Linux: it needs the sound server to hand the card over on request, which needs device reservation enabled (see the README).",
   "settings.systemDefault": "System default",
   "settings.deviceDirect": "(direct)",
   "settings.refreshDevices": "Refresh device list",

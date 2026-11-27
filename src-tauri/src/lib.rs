@@ -68,17 +68,13 @@ pub fn run() {
             }
 
             let (event_tx, event_rx) = crossbeam_channel::unbounded();
-            let engine = spawn_engine(event_tx, persisted.prefs.audio_device.clone());
+            let engine = spawn_engine(event_tx, persisted.prefs.output());
             engine.send(EngineCommand::SetVolume { volume: persisted.volume });
             engine.send(EngineCommand::SetEq(persisted.eq.clone()));
             engine.send(EngineCommand::SetReplayGain(persisted.prefs.replay_gain));
             engine.send(EngineCommand::SetScrobblePercent(persisted.prefs.scrobble_at_percent));
             engine.send(EngineCommand::SetCrossfade {
                 ms: u64::from(persisted.prefs.crossfade_secs) * 1000,
-            });
-            engine.send(EngineCommand::SetOutputMode {
-                auto_rate: persisted.prefs.match_source_rate,
-                exclusive: persisted.prefs.exclusive_output,
             });
 
             let player = Arc::new(Mutex::new(PlayerSnapshot {

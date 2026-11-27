@@ -2,7 +2,7 @@
 
 A cross-platform (Linux / macOS / Windows) desktop music player for
 [Navidrome](https://www.navidrome.org/) with a native, audiophile-grade audio
-engine and a Roon-style **parametric EQ**.
+engine and a **parametric EQ**.
 
 ## Features
 
@@ -25,7 +25,9 @@ engine and a Roon-style **parametric EQ**.
   queue restore across restarts
 - **Stats** — listening history imported from Last.fm or ListenBrainz: the
   account you scrobble to, or a separate one
-- **Settings** — output device selection, streaming quality (original /
+- **Settings** — device configs (named output setups: device, exclusive
+  access, sample-rate matching — switch between them in one click),
+  streaming quality (original /
   MP3 320/192/128 transcoding), ReplayGain (track/album, pre-amp, clip
   protection), scrobbling toggle, library rescan, accent color, startup view,
   grid density

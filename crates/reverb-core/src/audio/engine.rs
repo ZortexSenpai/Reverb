@@ -122,12 +122,25 @@ pub enum EngineCommand {
     SetScrobblePercent(u32),
     /// Crossfade length between tracks in ms (0 = gapless transitions).
     SetCrossfade { ms: u64 },
-    /// Bit-perfect output options: switch the device to each track's native
-    /// sample rate, and/or hold exclusive (hog) access to it.
-    SetOutputMode { auto_rate: bool, exclusive: bool },
-    /// Switch output device (`None` = system default). Reopens the stream.
-    SetDevice(Option<String>),
+    /// Where and how to play. Reopens the stream when anything changed —
+    /// once, however many of the three did.
+    SetOutput(OutputSettings),
     Shutdown,
+}
+
+/// Where and how the engine plays: the output device, whether the device is
+/// re-clocked to each track's native rate, and whether it is held
+/// exclusively. The default is the system default device, shared, at its own
+/// rate.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OutputSettings {
+    /// Device id (see `OutputDevice::id`); `None` = system default.
+    pub device: Option<String>,
+    /// Switch the device to each track's native sample rate (bit-perfect).
+    pub auto_rate: bool,
+    /// Hold the device exclusively: hog mode on macOS, WASAPI exclusive mode
+    /// on Windows, the raw `hw:` alias of a direct device on Linux.
+    pub exclusive: bool,
 }
 
 #[derive(Clone)]
@@ -142,16 +155,27 @@ impl EngineHandle {
     }
 }
 
-pub fn spawn_engine(event_tx: Sender<EngineEvent>, initial_device: Option<String>) -> EngineHandle {
+pub fn spawn_engine(event_tx: Sender<EngineEvent>, output: OutputSettings) -> EngineHandle {
     let (cmd_tx, cmd_rx) = unbounded();
     let shared = Arc::new(SharedAudioState::new());
     let shared_for_thread = shared.clone();
     let event_tx_for_err = event_tx.clone();
+    let initial_device = output.device.clone();
 
     std::thread::Builder::new()
         .name("reverb-audio-engine".into())
         .spawn(move || match Engine::init(cmd_rx, event_tx, shared_for_thread, initial_device) {
-            Ok(mut engine) => engine.run(),
+            Ok(mut engine) => {
+                // The stream opened shared and at the device's own rate; the
+                // two switches go on through the same path a later change
+                // takes. Only on the device they were asked for, though: if
+                // it was not there, `init` fell back to the system default,
+                // and that runs plain (see `drop_lost_device`).
+                if engine.preferred_device == output.device {
+                    engine.set_output(output);
+                }
+                engine.run()
+            }
             Err(e) => {
                 log::error!("audio engine failed to start: {e}");
                 let _ = event_tx_for_err.send(EngineEvent::Error {
@@ -360,8 +384,8 @@ impl Engine {
 
         // A saved device that is not plugged in at all: `open_output` opened the
         // system default, so the preference follows it rather than sitting there
-        // inert — nothing here re-attaches a device that comes back, and a stale
-        // preference would keep the settings picker naming absent hardware.
+        // inert — nothing here re-attaches a device that comes back, and the
+        // app layer has to hear that playback is no longer where it asked.
         let initial_device = if output.device_missing {
             if let Some(lost) = initial_device {
                 log::warn!("saved output device {lost} is gone; starting on the system default");
@@ -531,23 +555,7 @@ impl Engine {
                 // Applies from the next transition; an in-flight fade plays out.
                 self.crossfade_ms = ms.min(15_000);
             }
-            EngineCommand::SetOutputMode { auto_rate, exclusive } => {
-                let changed = self.auto_rate != auto_rate || self.exclusive_output != exclusive;
-                self.auto_rate = auto_rate;
-                self.exclusive_output = exclusive;
-                if changed {
-                    // Re-open at the current track's rate (or the device
-                    // default when auto-rate just turned off).
-                    if let Err(e) = self.rebuild_output(self.auto_rate_target()) {
-                        self.emit(EngineEvent::Error {
-                            code: "audio-device".into(),
-                            message: format!("could not apply output mode: {e}"),
-                            track_id: None,
-                            recoverable: true,
-                        });
-                    }
-                }
-            }
+            EngineCommand::SetOutput(settings) => self.set_output(settings),
             EngineCommand::SetReplayGain(settings) => {
                 self.replay_gain = settings;
                 // Applies from the next track (gain is baked in at push time).
@@ -555,17 +563,6 @@ impl Engine {
                     current.replay_gain = settings.gain_for(current.src.replay_gain.as_ref());
                 }
                 self.emit_signal_path();
-            }
-            EngineCommand::SetDevice(device) => {
-                self.preferred_device = device;
-                if let Err(e) = self.rebuild_output(self.auto_rate_target()) {
-                    self.emit(EngineEvent::Error {
-                        code: "audio-device".into(),
-                        message: format!("could not switch output device: {e}"),
-                        track_id: None,
-                        recoverable: true,
-                    });
-                }
             }
             EngineCommand::Shutdown => unreachable!("handled in run()"),
         }
@@ -784,6 +781,45 @@ impl Engine {
         }
     }
 
+    /// Switch device and output mode together, reopening the stream once —
+    /// and not at all when nothing changed.
+    fn set_output(&mut self, settings: OutputSettings) {
+        let OutputSettings { device, auto_rate, exclusive } = settings;
+        if self.preferred_device == device
+            && self.auto_rate == auto_rate
+            && self.exclusive_output == exclusive
+        {
+            return;
+        }
+        self.preferred_device = device;
+        self.auto_rate = auto_rate;
+        self.exclusive_output = exclusive;
+        // Re-open at the current track's rate (or the device default when
+        // auto-rate is off).
+        if let Err(e) = self.rebuild_output(self.auto_rate_target()) {
+            self.emit(EngineEvent::Error {
+                code: "audio-device".into(),
+                message: format!("could not switch output: {e}"),
+                track_id: None,
+                recoverable: true,
+            });
+        }
+    }
+
+    /// The configured device has left; the stream is already open on the
+    /// system default. Exclusive access and rate matching were asked for on
+    /// the device that left, not on whichever one playback fell back to — so
+    /// they go with it, and the fallback runs shared, at its own rate.
+    fn drop_lost_device(&mut self) {
+        self.auto_rate = false;
+        self.exclusive_output = false;
+        self.exclusive_access = ExclusiveAccess::inactive();
+        if let Some(lost) = self.preferred_device.take() {
+            log::warn!("output device {lost} is gone; staying on the system default");
+            self.emit(EngineEvent::OutputDeviceLost { device: lost });
+        }
+    }
+
     /// The rate the output should run at right now under auto-rate (None =
     /// device default, or auto-rate off).
     fn auto_rate_target(&self) -> Option<u32> {
@@ -910,14 +946,11 @@ impl Engine {
             self.claim_card(None);
         }
         // The device asked for is gone, not merely busy — `open_output` already
-        // fell back to the system default. Drop the preference so the picker and
-        // every rebuild after this one stop chasing hardware that has left;
-        // nothing here re-attaches a device that comes back.
+        // fell back to the system default. Drop the preference so every
+        // rebuild after this one stops chasing hardware that has left; nothing
+        // here re-attaches a device that comes back.
         if output.device_missing {
-            if let Some(lost) = self.preferred_device.take() {
-                log::warn!("output device {lost} is gone; staying on the system default");
-                self.emit(EngineEvent::OutputDeviceLost { device: lost });
-            }
+            self.drop_lost_device();
         }
         if let Some(message) = fallback_error {
             self.emit(EngineEvent::Error {

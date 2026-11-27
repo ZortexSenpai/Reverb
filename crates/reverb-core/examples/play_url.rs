@@ -16,7 +16,8 @@
 use std::time::{Duration, Instant};
 
 use reverb_core::audio::{
-    spawn_engine, EngineCommand, EqBand, EqState, FilterType, PreampMode, TrackSource,
+    spawn_engine, EngineCommand, EqBand, EqState, FilterType, OutputSettings, PreampMode,
+    TrackSource,
 };
 
 struct Stderr;
@@ -48,11 +49,14 @@ fn main() {
     let eq_cut_hz: Option<f32> = args.next().and_then(|s| s.parse().ok());
 
     let (event_tx, event_rx) = crossbeam_channel::unbounded();
-    let engine = spawn_engine(event_tx, device);
-    engine.send(EngineCommand::SetOutputMode {
-        auto_rate: std::env::var("REVERB_AUTO_RATE").is_ok(),
-        exclusive: std::env::var("REVERB_EXCLUSIVE").is_ok(),
-    });
+    let engine = spawn_engine(
+        event_tx,
+        OutputSettings {
+            device,
+            auto_rate: std::env::var("REVERB_AUTO_RATE").is_ok(),
+            exclusive: std::env::var("REVERB_EXCLUSIVE").is_ok(),
+        },
+    );
     engine.send(EngineCommand::SetVolume { volume });
     engine.send(EngineCommand::PlayTrack(TrackSource {
         track_id: "smoke-test".into(),

@@ -78,7 +78,7 @@ pub enum EngineEvent {
     OutputDeviceLost {
         device: String,
     },
-    /// The current audio chain (Roon-style signal path).
+    /// The current audio chain, source to output (the signal path).
     SignalPath(SignalPathInfo),
 }
 

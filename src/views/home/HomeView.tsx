@@ -1,4 +1,4 @@
-// Roon-style landing page: a rotating hero built from recent plays, a
+// Landing page: a rotating hero built from recent plays, a
 // library stats strip, and carousel shelves. All data comes from the same
 // queries the library views use, so everything shares one cache.
 

@@ -451,9 +451,29 @@ export const de: Messages = {
     "Speichert die Warteschlange in Navidrome, damit ein anderes Gerät dort weitermachen kann, und übernimmt eine Warteschlange, die ein anderes Gerät gespeichert hat.",
 
   "settings.audio": "Audio",
+  "settings.deviceConfigs": "Gerätekonfigurationen",
+  "settings.deviceConfigsHint":
+    "Gespeicherte Ausgabe-Setups: ein Gerät und wie Reverb darüber spielt. Zum Wechseln eines anklicken — der Audiostream wird neu geöffnet, die Wiedergabe läuft an derselben Position weiter.",
+  "settings.newDeviceConfig": "Neue Konfiguration",
+  "settings.newDeviceConfigTitle": "Neue Gerätekonfiguration",
+  "settings.editDeviceConfigTitle": "Gerätekonfiguration bearbeiten",
+  "settings.editDeviceConfig": "{name} bearbeiten",
+  "settings.deleteDeviceConfig": "{name} löschen",
+  "settings.deleteDeviceConfigTitle": "„{name}“ löschen?",
+  "settings.deleteActiveDeviceConfigBody":
+    "Sie ist gerade aktiv, daher wechselt die Wiedergabe auf den Systemstandard.",
+  "settings.deviceConfigName": "Name",
+  "settings.deviceConfigNameHint": "Leer lassen, um den Namen des Geräts zu verwenden.",
+  "settings.systemDefaultConfigHint":
+    "Geteilt, mit der eigenen Abtastrate des Geräts. Hierher wechselt die Wiedergabe, wenn das Gerät einer Konfiguration getrennt wird.",
+  "settings.configShared": "Geteilt",
+  "settings.configExclusive": "Exklusiv",
+  "settings.configMatchRate": "Übernimmt die Abtastrate der Quelle",
+  "settings.deviceNotConnected": "Gerät nicht verbunden",
+  "settings.savedDeviceMissing": "Gespeichertes Gerät (nicht verbunden)",
   "settings.outputDevice": "Ausgabegerät",
   "settings.outputDeviceHint":
-    "Ein Wechsel öffnet den Audiostream neu; die Wiedergabe läuft an derselben Position weiter. Ein (direkt)-Gerät umgeht den Soundserver für bit-perfect Ausgabe, und andere Apps verlieren es, solange Reverb spielt. Direkte Ausgabe ist unter Linux experimentell: Der Soundserver muss die Karte auf Anfrage abgeben, wofür die Geräte-Reservierung aktiv sein muss (siehe README).",
+    "Ein (direkt)-Gerät umgeht den Soundserver für bit-perfect Ausgabe, und andere Apps verlieren es, solange Reverb spielt. Direkte Ausgabe ist unter Linux experimentell: Der Soundserver muss die Karte auf Anfrage abgeben, wofür die Geräte-Reservierung aktiv sein muss (siehe README).",
   "settings.systemDefault": "Systemstandard",
   "settings.deviceDirect": "(direkt)",
   "settings.refreshDevices": "Geräteliste aktualisieren",

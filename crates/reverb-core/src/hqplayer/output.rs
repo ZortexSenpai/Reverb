@@ -396,7 +396,7 @@ impl Output {
             .and_then(|()| self.request(&protocol::playlist_clear()))
             .map_err(|e| e.to_string())
             .and_then(|_| self.add_to_playlist(&src))
-            .and_then(|()| self.request(&protocol::play()).map_err(|e| e.to_string()));
+            .and_then(|()| self.request(&protocol::play()).map_err(|e| self.play_failure(e)));
         if let Err(message) = loaded {
             self.fail_track(src.track_id, message);
             return;
@@ -425,6 +425,24 @@ impl Output {
         });
         self.emit_signal_path();
         self.sync_next();
+    }
+
+    /// Why `Play` failed, in the listener's terms. HQPlayer takes a playlist
+    /// addition it cannot fetch without complaint and leaves the playlist
+    /// empty, so its "empty transport" means it could not reach the relay.
+    fn play_failure(&self, error: ClientError) -> String {
+        match &error {
+            ClientError::Refused(reason)
+                if reason.to_ascii_lowercase().contains("empty transport") =>
+            {
+                format!(
+                    "HQPlayer at {} could not fetch the song from Reverb. Is this computer's \
+                     firewall letting it in?",
+                    self.endpoint.address()
+                )
+            }
+            _ => error.to_string(),
+        }
     }
 
     fn fail_track(&mut self, track_id: String, message: String) {

@@ -12,7 +12,7 @@
 
 use std::collections::VecDeque;
 use std::io::{self, BufRead, BufReader, Read, Write};
-use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -52,7 +52,7 @@ impl SongRelay {
     /// Start listening on every interface, on a port the OS picks: HQPlayer
     /// may run on another computer.
     pub fn start() -> io::Result<Self> {
-        let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))?;
+        let listener = listen_everywhere()?;
         let port = listener.local_addr()?.port();
         let inner = Arc::new(Inner {
             routes: Mutex::new(VecDeque::new()),
@@ -86,8 +86,10 @@ impl SongRelay {
     /// reaches `path` under. `local_ip` is this computer's address on the
     /// network HQPlayer is on — the local end of the control connection.
     pub fn url(&self, local_ip: IpAddr, path: &str) -> String {
-        // Only IPv4 is listened on; a v4-mapped v6 address is still v4.
+        // A v4-mapped v6 address is still v4, and this computer is
+        // 127.0.0.1 too — which works even where only IPv4 is listened on.
         let ip = match local_ip {
+            IpAddr::V6(v6) if v6.is_loopback() => IpAddr::V4(Ipv4Addr::LOCALHOST),
             IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(local_ip, IpAddr::V4),
             v4 => v4,
         };
@@ -112,6 +114,28 @@ impl Drop for SongRelay {
             Duration::from_millis(200),
         );
     }
+}
+
+/// A listener on every interface, IPv6 and IPv4 alike. The relay URL is built
+/// from the address Reverb reached HQPlayer from, which is IPv6 whenever the
+/// host name resolved to one first — on Windows, `localhost` is `::1` — so an
+/// IPv4-only relay leaves HQPlayer nothing to fetch. Where IPv6 is off
+/// altogether, IPv4 alone.
+fn listen_everywhere() -> io::Result<TcpListener> {
+    use socket2::{Domain, Protocol, SockAddr, Socket, Type};
+    let dual_stack = || -> io::Result<TcpListener> {
+        let socket = Socket::new(Domain::IPV6, Type::STREAM, Some(Protocol::TCP))?;
+        // Windows makes an IPv6 socket IPv6-only unless told otherwise;
+        // elsewhere it is a system setting.
+        socket.set_only_v6(false)?;
+        socket.bind(&SockAddr::from(SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0))))?;
+        socket.listen(128)?;
+        Ok(socket.into())
+    };
+    dual_stack().or_else(|e| {
+        log::debug!("song relay: no IPv6 ({e}); listening on IPv4 only");
+        TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
+    })
 }
 
 fn accept_loop(listener: TcpListener, inner: Arc<Inner>) {
@@ -336,6 +360,31 @@ mod tests {
         // A v4-mapped address is still the v4 listener.
         let mapped = relay.url("::ffff:192.168.1.20".parse().unwrap(), &path);
         assert_eq!(mapped, url);
+        // This computer by IPv6 is this computer by IPv4.
+        let loopback = relay.url("::1".parse().unwrap(), &path);
+        assert_eq!(loopback, format!("http://127.0.0.1:{}{path}", relay.port));
+        let v6 = relay.url("2001:db8::20".parse().unwrap(), &path);
+        assert_eq!(v6, format!("http://[2001:db8::20]:{}{path}", relay.port));
+    }
+
+    /// HQPlayer reached by IPv6 is handed an IPv6 address to fetch from
+    /// (bar loopback), so the relay has to answer there as well as on IPv4.
+    #[test]
+    fn answers_on_ipv4_and_ipv6() {
+        let relay = SongRelay::start().unwrap();
+        let mut addresses = vec![SocketAddr::from((Ipv4Addr::LOCALHOST, relay.port))];
+        // Only where this computer has IPv6 at all.
+        if TcpListener::bind(SocketAddr::from((Ipv6Addr::LOCALHOST, 0))).is_ok() {
+            addresses.push(SocketAddr::from((Ipv6Addr::LOCALHOST, relay.port)));
+        }
+        for address in addresses {
+            let mut client = TcpStream::connect(address)
+                .unwrap_or_else(|e| panic!("the relay is not listening on {address}: {e}"));
+            write!(client, "GET /songs/deadbeef.flac HTTP/1.1\r\n\r\n").unwrap();
+            let mut answer = String::new();
+            client.read_to_string(&mut answer).unwrap();
+            assert!(answer.starts_with("HTTP/1.1 404"), "{address}: {answer}");
+        }
     }
 
     /// End to end: a fake server behind the relay, and a request through it

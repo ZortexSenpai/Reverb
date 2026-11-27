@@ -3713,6 +3713,7 @@ dependencies = [
  "rubato",
  "serde",
  "serde_json",
+ "socket2",
  "symphonia",
  "tempfile",
  "thiserror 2.0.19",

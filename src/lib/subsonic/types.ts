@@ -473,6 +473,8 @@ export interface Preferences {
   syncQueue: boolean;
   /** Look for a new release at launch and every 6 hours. */
   checkForUpdates: boolean;
+  /** Show the playing song on the listener's Discord profile. */
+  discordPresence: boolean;
 }
 
 /** A named output setup: a device, and how Reverb plays through it. */

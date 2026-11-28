@@ -613,6 +613,11 @@ export const en = {
   "settings.scanLibrary": "Scan library",
   "settings.signOut": "Sign out",
 
+  // ---- settings: discord ----
+  "settings.discordPresence": "Show what’s playing",
+  "settings.discordPresenceHint":
+    "Shows the song, artist and album on your Discord profile while music plays, as “Listening to Reverb”. Anyone who can see your profile sees it. Album covers come from the Cover Art Archive, for albums tagged with a MusicBrainz release. Needs the Discord desktop app running on this computer.",
+
   // ---- settings: about ----
   "settings.about": "About",
   "about.version": "Version",

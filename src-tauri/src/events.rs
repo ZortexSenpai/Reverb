@@ -1,5 +1,6 @@
 //! Bridges `EngineEvent`s from the audio thread to Tauri events for the
-//! frontend, keeps the `PlayerSnapshot` cache current, and fires scrobbles.
+//! frontend, keeps the `PlayerSnapshot` cache current, fires scrobbles, and
+//! keeps the Discord presence up to date.
 
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
@@ -10,8 +11,17 @@ use reverb_core::subsonic::SubsonicClient;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::discord_presence::PresenceTracker;
 use crate::state::PlayerSnapshot;
 use crate::stats::scrobble::{self, ScrobbleTrack};
+
+/// Now, as Unix ms.
+fn unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
 
 /// One connection pool for the scrobble traffic, rather than a fresh client
 /// (and TLS handshake) per play.
@@ -183,8 +193,10 @@ pub fn spawn_forwarder(
         .spawn(move || {
             let mut media = crate::media_keys::MediaSession::new(&app);
             let mut reporter = PlaybackReporter::new();
+            let discord = app.state::<crate::state::AppState>().discord.clone();
+            let mut presence = PresenceTracker::new(discord);
             while let Ok(event) = rx.recv() {
-                forward(&app, &player, &subsonic, &mut media, &mut reporter, event);
+                forward(&app, &player, &subsonic, &mut media, &mut reporter, &mut presence, event);
             }
         })
         .expect("spawning the event forwarder cannot fail");
@@ -196,6 +208,7 @@ fn forward(
     subsonic: &Arc<SubsonicClient>,
     media: &mut crate::media_keys::MediaSession,
     reporter: &mut PlaybackReporter,
+    presence: &mut PresenceTracker,
     event: EngineEvent,
 ) {
     match event {
@@ -213,6 +226,7 @@ fn forward(
             }
             media.on_playback(state, position_ms);
             reporter.on_state(app, subsonic, state, position_ms);
+            presence.on_state(state, position_ms, unix_ms());
             let _ = app.emit("player:state", StatePayload { state });
         }
         EngineEvent::Position { position_ms, duration_ms } => {
@@ -227,6 +241,7 @@ fn forward(
             if state == PlaybackState::Playing {
                 reporter.on_position(app, subsonic, position_ms);
             }
+            presence.on_position(position_ms, duration_ms, unix_ms());
             let _ = app.emit("player:position", PositionPayload { position_ms, duration_ms });
         }
         EngineEvent::TrackChanged { track_id, reason, title, artist, album, duration_ms } => {
@@ -237,6 +252,14 @@ fn forward(
             }
             media.on_track_changed(title.as_deref(), artist.as_deref(), album.as_deref(), duration_ms);
             reporter.on_track_changed(app, subsonic, &track_id);
+            presence.on_track_changed(
+                &track_id,
+                title.as_deref(),
+                artist.as_deref(),
+                album.as_deref(),
+                duration_ms,
+                unix_ms(),
+            );
             let _ = app.emit(
                 "player:track-changed",
                 TrackChangedPayload { track_id, reason, title, artist, album, duration_ms },
@@ -263,11 +286,7 @@ fn forward(
             // Submissions carry the time the song *started* playing.
             let time_ms = submission.then(|| {
                 let position_ms = player.lock().unwrap().position_ms;
-                let now_ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_millis() as u64)
-                    .unwrap_or(0);
-                now_ms.saturating_sub(position_ms)
+                unix_ms().saturating_sub(position_ms)
             });
             // A submission is also the moment the Song counts as a Play. The
             // Play History records it whether or not it gets scrobbled, and

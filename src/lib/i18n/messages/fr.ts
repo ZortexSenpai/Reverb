@@ -590,6 +590,10 @@ export const fr: Messages = {
   "settings.scanLibrary": "Analyser la bibliothèque",
   "settings.signOut": "Se déconnecter",
 
+  "settings.discordPresence": "Afficher ce qui joue",
+  "settings.discordPresenceHint":
+    "Affiche le morceau, l’artiste et l’album sur votre profil Discord pendant la lecture, sous la forme « Écoute Reverb ». Toute personne qui peut voir votre profil le voit. Les pochettes viennent du Cover Art Archive, pour les albums tagués avec une sortie MusicBrainz. Nécessite l’application de bureau Discord sur cet ordinateur.",
+
   "settings.about": "À propos",
   "about.version": "Version",
   "about.versionHint": "Ouvre la page de cette version sur GitHub.",

@@ -1,4 +1,5 @@
 mod commands;
+mod discord_presence;
 mod error;
 mod events;
 mod media_keys;
@@ -27,6 +28,9 @@ pub fn run() {
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
                 .level_for("reverb_core", log::LevelFilter::Debug)
+                // It warns each time it looks for Discord and finds none,
+                // which is every 15 s while a Song plays with Discord closed.
+                .level_for("discord_rich_presence", log::LevelFilter::Error)
                 .build(),
         )
         // Self-update from GitHub releases, and the relaunch into the new
@@ -78,6 +82,11 @@ pub fn run() {
                 ms: u64::from(persisted.prefs.crossfade_secs) * 1000,
             });
 
+            let discord = discord_presence::DiscordPresence::start(
+                persisted.prefs.discord_presence,
+                subsonic.clone(),
+            );
+
             let player = Arc::new(Mutex::new(PlayerSnapshot {
                 volume: persisted.volume,
                 ..PlayerSnapshot::default()
@@ -99,6 +108,7 @@ pub fn run() {
                 stats,
                 mixes,
                 play_history,
+                discord,
             });
 
             events::spawn_forwarder(app.handle().clone(), event_rx, player, subsonic);

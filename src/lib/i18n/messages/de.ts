@@ -588,6 +588,10 @@ export const de: Messages = {
   "settings.scanLibrary": "Bibliothek scannen",
   "settings.signOut": "Abmelden",
 
+  "settings.discordPresence": "Zeigen, was läuft",
+  "settings.discordPresenceHint":
+    "Zeigt Titel, Künstler und Album in deinem Discord-Profil, während Musik läuft – als „Hört Reverb“. Alle, die dein Profil sehen können, sehen das. Albumcover kommen aus dem Cover Art Archive, sofern das Album mit einer MusicBrainz-Veröffentlichung getaggt ist. Braucht die Discord-Desktop-App auf diesem Computer.",
+
   "settings.about": "Über Reverb",
   "about.version": "Version",
   "about.versionHint": "Öffnet die Seite dieser Version auf GitHub.",

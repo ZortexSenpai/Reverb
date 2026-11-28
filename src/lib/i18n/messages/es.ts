@@ -589,6 +589,10 @@ export const es: Messages = {
   "settings.scanLibrary": "Analizar la biblioteca",
   "settings.signOut": "Cerrar sesión",
 
+  "settings.discordPresence": "Mostrar lo que suena",
+  "settings.discordPresenceHint":
+    "Muestra la canción, el artista y el álbum en tu perfil de Discord mientras suena la música, como «Escuchando Reverb». Cualquiera que pueda ver tu perfil lo verá. Las portadas vienen del Cover Art Archive, para los álbumes etiquetados con una publicación de MusicBrainz. Necesita la aplicación de escritorio de Discord en este ordenador.",
+
   "settings.about": "Acerca de",
   "about.version": "Versión",
   "about.versionHint": "Abre la página de esta versión en GitHub.",
